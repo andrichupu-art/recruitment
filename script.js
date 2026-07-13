@@ -1737,7 +1737,7 @@ async function loadAdminDashboard() {
       supabase.from('documents').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
       supabase.from('documents').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
       supabase.from('documents').select('id', { count: 'exact', head: true }).eq('status', 'rejected'),
-      supabase.from('documents').select('*, profiles(full_name)').order('created_at', { ascending: false }).limit(5)
+      supabase.from('documents').select('*, profiles!user_id(full_name)').order('created_at', { ascending: false }).limit(5)
     ]);
 
     $('#admin-stat-total').textContent = totalRes.count || 0;
@@ -1774,7 +1774,7 @@ async function loadAdminPeserta() {
   try {
     const { data: profiles, error: profilesErr } = await supabase
       .from('profiles')
-      .select('*, documents(status)')
+      .select('*, documents!user_id(status)')
       .eq('role', 'user');
 
     if (profilesErr) {
@@ -2132,7 +2132,7 @@ async function loadAdminDokumen() {
   try {
     let query = supabase
       .from('documents')
-      .select('*, profiles(full_name, email)')
+      .select('*, profiles!user_id(full_name, email)')
       .order('created_at', { ascending: false });
 
     if (state.adminDocs.filterStatus) {
