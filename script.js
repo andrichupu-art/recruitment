@@ -2141,6 +2141,11 @@ async function loadAdminDokumen() {
 
     const { data, error } = await query;
 
+    if (error) {
+      console.error('Load admin dokumen error:', error);
+      toast('error', 'Gagal Memuat Dokumen', error.message);
+    }
+
     let filtered = data || [];
     if (state.adminDocs.search) {
       const search = state.adminDocs.search.toLowerCase();
