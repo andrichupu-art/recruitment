@@ -1400,6 +1400,47 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 /* Upload Modal */
 .upload-modal-content { padding: 24px; }
 
+.upload-zone {
+  border: 2px dashed var(--gray-300);
+  border-radius: var(--radius-md, 12px);
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.upload-zone:hover,
+.upload-zone.dragover {
+  border-color: var(--blue-600, #3b5bfd);
+  background: var(--gray-50);
+}
+
+.upload-zone h3 {
+  font-size: 15px;
+  margin: 0 0 4px;
+  color: var(--gray-700);
+}
+
+.upload-zone p {
+  font-size: 13px;
+  color: var(--gray-500);
+  margin: 0;
+}
+
+.upload-zone svg {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 12px;
+  color: var(--gray-400);
+}
+
+.preview-info svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--gray-500);
+}
+
 .upload-progress { margin: 16px 0; }
 
 .upload-progress-bar {
