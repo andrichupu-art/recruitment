@@ -362,6 +362,11 @@ if (registerPassword) {
   registerPassword.addEventListener('input', (e) => checkPasswordStrength(e.target.value));
 }
 
+const resetPasswordInput = $('#reset-password');
+if (resetPasswordInput) {
+  resetPasswordInput.addEventListener('input', (e) => checkPasswordStrength(e.target.value));
+}
+
 // Real-time validation
 $$('input, select, textarea').forEach(input => {
   input.addEventListener('blur', () => validateField(input));
@@ -429,7 +434,7 @@ $$('[data-page]').forEach(el => {
   el.addEventListener('click', (e) => {
     e.preventDefault();
     const page = el.dataset.page;
-    if (['login', 'register', 'forgot'].includes(page)) {
+    if (['login', 'register', 'forgot', 'reset'].includes(page)) {
       showAuthPage(page);
     }
   });
@@ -544,6 +549,39 @@ $('#form-forgot').addEventListener('submit', async (e) => {
   } catch (err) {
     setLoading(btn, false);
     toast('error', 'Error', 'Terjadi kesalahan.');
+  }
+});
+
+$('#form-reset').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!validateForm(e.target)) return;
+
+  const btn = e.target.querySelector('button[type="submit"]');
+  const password = $('#reset-password').value;
+  const passwordConfirm = $('#reset-password-confirm').value;
+
+  if (password !== passwordConfirm) {
+    toast('error', 'Password Tidak Cocok', 'Password baru dan konfirmasi harus sama.');
+    return;
+  }
+
+  setLoading(btn, true);
+
+  try {
+    const { error } = await supabase.auth.updateUser({ password });
+
+    setLoading(btn, false);
+    if (error) {
+      toast('error', 'Gagal Menyimpan Password', error.message);
+      return;
+    }
+
+    toast('success', 'Password Berhasil Diubah', 'Silakan masuk dengan password baru Anda.');
+    await supabase.auth.signOut();
+    showAuthPage('login');
+  } catch (err) {
+    setLoading(btn, false);
+    toast('error', 'Error', 'Terjadi kesalahan. Silakan coba lagi.');
   }
 });
 
@@ -1828,6 +1866,7 @@ function renderAdminTable() {
               <button class="btn-approve" onclick="approveParticipant('${p.id}')">Approve</button>
               <button class="btn-reject" onclick="rejectParticipant('${p.id}')">Reject</button>
             ` : ''}
+            <button class="btn-make-admin" onclick="makeAdmin('${p.id}', '${escapeHtml(p.full_name).replace(/'/g, "\\'")}')">Jadikan Admin</button>
           </div>
         </td>
       </tr>
@@ -2052,6 +2091,29 @@ window.rejectParticipant = async function(userId) {
   } catch (err) {
     toast('error', 'Error', 'Gagal menolak');
   }
+};
+
+window.makeAdmin = async function(userId, fullName) {
+  confirmDialog(
+    'Jadikan Admin',
+    `Yakin ingin menjadikan "${fullName}" sebagai admin? User ini akan mendapat akses penuh ke panel admin.`,
+    async () => {
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ role: 'admin' })
+          .eq('id', userId);
+
+        if (error) throw error;
+
+        toast('success', 'Berhasil', `${fullName} sekarang menjadi admin`);
+        loadAdminPeserta();
+      } catch (err) {
+        console.error('Make admin error:', err);
+        toast('error', 'Error', 'Gagal mengubah role. Periksa RLS policy tabel profiles.');
+      }
+    }
+  );
 };
 
 /* ============================================ */
@@ -2954,7 +3016,15 @@ function showBrowserNotification(title, body) {
 /* AUTH STATE LISTENER */
 /* ============================================ */
 supabase.auth.onAuthStateChange(async (event, session) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    hideSplash();
+    hide($('#dashboard-wrapper'));
+    show($('#auth-wrapper'));
+    showAuthPage('reset');
+    return;
+  }
   if (event === 'SIGNED_IN' && session) {
+    if ($('#page-reset').classList.contains('active')) return;
     hideSplash();
     initDashboard();
   } else if (event === 'SIGNED_OUT') {
@@ -2970,10 +3040,15 @@ supabase.auth.onAuthStateChange(async (event, session) => {
 /* ============================================ */
 (async () => {
   try {
+    const isRecoveryLink = window.location.hash.includes('type=recovery');
     const { data: { session } } = await supabase.auth.getSession();
     hideSplash();
-    
-    if (session) {
+
+    if (isRecoveryLink) {
+      hide($('#dashboard-wrapper'));
+      show($('#auth-wrapper'));
+      showAuthPage('reset');
+    } else if (session) {
       initDashboard();
     } else {
       show($('#auth-wrapper'));
