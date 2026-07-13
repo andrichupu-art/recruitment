@@ -43,6 +43,21 @@ const DOC_TYPES = [
   'Sertifikat', 'Foto Full Body', 'Foto Close Up'
 ];
 
+// Keyword cek OCR ringan (client-side, Tesseract.js). Bukan validasi resmi/legal —
+// hanya sanity-check agar user tidak salah upload dokumen. Dokumen foto (tanpa teks
+// baku) sengaja tidak dicek. Cocok jika minimal satu keyword per grup ditemukan.
+const DOC_OCR_KEYWORDS = {
+  'KTP': [['KARTU TANDA PENDUDUK', 'TANDA PENDUDUK'], ['NIK'], ['PROVINSI']],
+  'KK': [['KARTU KELUARGA'], ['NO', 'NOMOR'], ['KEPALA KELUARGA']],
+  'Akta': [['AKTA'], ['KELAHIRAN', 'LAHIR']],
+  'Ijazah': [['IJAZAH', 'IJASAH']],
+  'Paspor': [['PASPOR', 'PASSPORT'], ['REPUBLIK INDONESIA']],
+  'SKCK': [['SKCK', 'KEPOLISIAN']],
+  'Surat Izin Orang Tua': [['SURAT IZIN', 'IZIN ORANG TUA']],
+  'Buku Nikah': [['NIKAH']],
+  'Sertifikat': [['SERTIFIKAT', 'CERTIFICATE']]
+};
+
 const TIMELINE_STEPS = [
   { step: 1, title: 'Pendaftaran', desc: 'Registrasi akun dan lengkapi data diri' },
   { step: 2, title: 'Verifikasi', desc: 'Verifikasi dokumen dan data peserta' },
@@ -1086,6 +1101,17 @@ window.openUploadModal = function(docType) {
         </div>
         <input type="file" id="modal-file-input" accept=".pdf,.jpg,.jpeg,.png" class="hidden" />
       </div>
+      <div class="ocr-status hidden" id="modal-ocr-checking">
+        <span class="spinner"></span> Memeriksa isi dokumen...
+      </div>
+      <div class="ocr-warning hidden" id="modal-ocr-warning">
+        <strong>⚠️ Dokumen tidak terdeteksi sebagai <span id="modal-ocr-doctype"></span></strong>
+        <p>Pastikan file yang diupload sudah benar. Anda tetap bisa lanjut jika yakin file ini sudah sesuai.</p>
+        <label class="ocr-override-label">
+          <input type="checkbox" id="modal-ocr-override" />
+          Saya yakin file ini sudah benar, tetap upload
+        </label>
+      </div>
       <div class="upload-progress hidden" id="modal-upload-progress">
         <div class="upload-progress-bar">
           <div class="upload-progress-fill" id="modal-progress-fill" style="width: 0%"></div>
@@ -1120,13 +1146,18 @@ window.openUploadModal = function(docType) {
     if (e.target.files[0]) handleModalFileSelect(e.target.files[0]);
   });
   
+  let ocrPassed = true; // default true (docs without keyword rules, or PDFs, skip check)
+
   function handleModalFileSelect(file) {
     if (file.size > 5 * 1024 * 1024) {
       toast('error', 'File terlalu besar', 'Maks 5MB');
       return;
     }
     selectedFile = file;
+    ocrPassed = true;
     $('#modal-preview-name').textContent = file.name;
+    hide($('#modal-ocr-warning'));
+    $('#modal-ocr-override').checked = false;
 
     const imgEl = $('#modal-preview-img');
     const iconEl = $('#modal-preview-icon');
@@ -1147,11 +1178,55 @@ window.openUploadModal = function(docType) {
 
     hide($('#modal-upload-placeholder'));
     show($('#modal-preview'));
+
+    runOcrCheck(file);
   }
-  
+
+  async function runOcrCheck(file) {
+    const keywordGroups = DOC_OCR_KEYWORDS[docType];
+    // Skip: bukan tipe dokumen bertulisan (foto) atau bukan gambar (PDF) atau lib belum termuat
+    if (!keywordGroups || !file.type.startsWith('image/') || typeof Tesseract === 'undefined') return;
+
+    const btn = $('#modal-upload-btn');
+    const checkingEl = $('#modal-ocr-checking');
+    setLoading(btn, false);
+    btn.disabled = true;
+    show(checkingEl);
+
+    try {
+      const { data } = await Tesseract.recognize(file, 'eng');
+      const text = (data.text || '').toUpperCase();
+
+      const matched = keywordGroups.every(group => group.some(kw => text.includes(kw)));
+
+      if (!matched) {
+        ocrPassed = false;
+        $('#modal-ocr-doctype').textContent = docType;
+        show($('#modal-ocr-warning'));
+      } else {
+        ocrPassed = true;
+      }
+    } catch (err) {
+      // Gagal OCR (mis. offline/CDN blocked) -> jangan blokir user, lewati pengecekan
+      console.warn('OCR check failed, skipping validation:', err);
+      ocrPassed = true;
+    } finally {
+      hide(checkingEl);
+      btn.disabled = false;
+    }
+  }
+
+  $('#modal-ocr-override').addEventListener('change', (e) => {
+    ocrPassed = e.target.checked;
+  });
+
   $('#modal-upload-btn').addEventListener('click', async () => {
     if (!selectedFile) {
       toast('warning', 'Pilih file dulu');
+      return;
+    }
+    if (!ocrPassed) {
+      toast('warning', 'Dokumen belum sesuai', 'Centang konfirmasi jika yakin file sudah benar');
       return;
     }
     
