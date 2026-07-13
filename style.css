@@ -1443,6 +1443,37 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 
 .upload-progress { margin: 16px 0; }
 
+.ocr-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--gray-500);
+  margin: 12px 0;
+}
+.ocr-status .spinner {
+  width: 14px; height: 14px;
+  border: 2px solid var(--gray-300);
+  border-top-color: var(--blue-600, #3b5bfd);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.ocr-warning {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #9a3412;
+  font-size: 13px;
+}
+.ocr-warning strong { display: block; margin-bottom: 4px; font-size: 13.5px; }
+.ocr-warning p { margin: 0 0 8px; }
+.ocr-override-label { display: flex; align-items: center; gap: 6px; font-weight: 500; cursor: pointer; }
+.ocr-override-label input { width: 15px; height: 15px; }
+
 .upload-progress-bar {
   height: 8px;
   background: var(--gray-200);
