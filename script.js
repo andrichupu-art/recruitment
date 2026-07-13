@@ -537,7 +537,7 @@ $('#form-forgot').addEventListener('submit', async (e) => {
   
   try {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin
+      redirectTo: window.location.origin + window.location.pathname
     });
 
     setLoading(btn, false);
