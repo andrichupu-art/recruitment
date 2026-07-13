@@ -977,10 +977,13 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   padding: 20px;
   overflow-y: auto;
   flex: 1;
+  text-align: center;
 }
 
 .modal-body img {
   max-width: 100%;
+  display: block;
+  margin: 0 auto;
   border-radius: var(--radius-sm);
 }
 
@@ -1919,6 +1922,9 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 
 .btn-edit { background: var(--orange-500); color: var(--white); }
 .btn-edit:hover { background: var(--orange-600); }
+
+.btn-make-admin { background: #7c3aed; color: var(--white); }
+.btn-make-admin:hover { background: #6d28d9; }
 
 .btn-delete { background: var(--gray-400); color: var(--white); }
 .btn-delete:hover { background: var(--red-500); }
