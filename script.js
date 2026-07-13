@@ -1072,17 +1072,19 @@ window.openUploadModal = function(docType) {
   body.innerHTML = `
     <div class="upload-modal-content">
       <div class="upload-zone" id="modal-upload-zone" style="margin-bottom: 16px;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        <h3>Drag & Drop atau Klik</h3>
-        <p>Maks. 5MB (PDF, JPG, PNG)</p>
-        <input type="file" id="modal-file-input" accept=".pdf,.jpg,.jpeg,.png" class="hidden" />
-      </div>
-      <div id="modal-preview" class="upload-preview hidden">
-        <img id="modal-preview-img" class="hidden" alt="Preview" />
-        <div class="preview-info">
-          <svg id="modal-preview-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          <span id="modal-preview-name">file.pdf</span>
+        <div id="modal-upload-placeholder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <h3>Drag & Drop atau Klik</h3>
+          <p>Maks. 5MB (PDF, JPG, PNG)</p>
         </div>
+        <div id="modal-preview" class="upload-preview hidden">
+          <img id="modal-preview-img" class="hidden" alt="Preview" />
+          <div class="preview-info">
+            <svg id="modal-preview-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span id="modal-preview-name">file.pdf</span>
+          </div>
+        </div>
+        <input type="file" id="modal-file-input" accept=".pdf,.jpg,.jpeg,.png" class="hidden" />
       </div>
       <div class="upload-progress hidden" id="modal-upload-progress">
         <div class="upload-progress-bar">
@@ -1143,6 +1145,7 @@ window.openUploadModal = function(docType) {
       show(iconEl);
     }
 
+    hide($('#modal-upload-placeholder'));
     show($('#modal-preview'));
   }
   
