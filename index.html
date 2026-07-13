@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <meta name="theme-color" content="#1e40af" />
+  <meta name="description" content="GlobalWork - Agensi Penyalur Tenaga Kerja ke Luar Negeri" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GlobalWork" />
+  <title>GlobalWork - Agensi Penyalur Tenaga Kerja</title>
+
+  <!-- PWA Manifest Inline -->
+  <link rel="manifest" href='data:application/manifest+json,{"name":"GlobalWork","short_name":"GlobalWork","start_url":"./","display":"standalone","background_color":"%23f5f7fb","theme_color":"%231e40af","orientation":"portrait","icons":[{"src":"data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22><rect width=%22192%22 height=%22192%22 rx=%2240%22 fill=%22%231e40af%22/><circle cx=%2296%22 cy=%2296%22 r=%2260%22 fill=%22none%22 stroke=%22white%22 stroke-width=%228%22/><path d=%22M36 96h120M96 36a90 90 0 0 1 24 60 90 90 0 0 1-24 60 90 90 0 0 1-24-60 90 90 0 0 1 24-60z%22 fill=%22none%22 stroke=%22white%22 stroke-width=%228%22/></svg>","sizes":"192x192","type":"image/svg+xml"},{"src":"data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 512 512%22><rect width=%22512%22 height=%22512%22 rx=%22100%22 fill=%22%231e40af%22/><circle cx=%22256%22 cy=%22256%22 r=%22160%22 fill=%22none%22 stroke=%22white%22 stroke-width=%2220%22/></svg>","sizes":"512x512","type":"image/svg+xml"}]}' />
+  <link rel="icon" type="image/svg+xml" href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%231e40af"/><circle cx="50" cy="50" r="30" fill="none" stroke="white" stroke-width="5"/></svg>' />
+  <link rel="apple-touch-icon" href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180"><rect width="180" height="180" rx="40" fill="%231e40af"/><circle cx="90" cy="90" r="55" fill="none" stroke="white" stroke-width="8"/></svg>' />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- SPLASH SCREEN -->
+  <div id="splash-screen" class="splash-screen">
+    <div class="splash-content">
+      <div class="splash-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+      </div>
+      <h1>GlobalWork</h1>
+      <div class="splash-loader">
+        <div class="splash-loader-bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OFFLINE BANNER -->
+  <div id="offline-banner" class="offline-banner hidden">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="1" y1="1" x2="23" y2="23"/>
+      <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/>
+      <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/>
+      <path d="M10.71 5.05A16 16 0 0 1 22.58 9"/>
+      <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/>
+      <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+      <line x1="12" y1="20" x2="12.01" y2="20"/>
+    </svg>
+    <span>Anda sedang offline. Beberapa fitur tidak tersedia.</span>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- PREVIEW MODAL -->
+  <div id="preview-modal" class="modal hidden">
+    <div class="modal-overlay"></div>
+    <div class="modal-content glass">
+      <div class="modal-header">
+        <h3 id="preview-title">Preview</h3>
+        <button class="icon-btn" id="preview-close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" id="preview-body"></div>
+    </div>
+  </div>
+
+  <!-- CONFIRM MODAL -->
+  <div id="confirm-modal" class="modal hidden">
+    <div class="modal-overlay"></div>
+    <div class="modal-content glass modal-small">
+      <div class="modal-body" style="text-align: center; padding: 30px;">
+        <div class="confirm-icon" id="confirm-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </div>
+        <h3 id="confirm-title" style="margin: 12px 0 8px;">Konfirmasi</h3>
+        <p id="confirm-message" style="color: var(--gray-600); margin-bottom: 20px;">Apakah Anda yakin?</p>
+        <div class="confirm-actions">
+          <button class="btn btn-outline" id="confirm-cancel">Batal</button>
+          <button class="btn btn-primary" id="confirm-ok">Ya, Lanjutkan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AUTH PAGES -->
+  <div id="auth-wrapper" class="auth-wrapper hidden">
+    <div class="auth-bg">
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+      <div class="blob blob-3"></div>
+    </div>
+
+    <div id="page-login" class="auth-page active">
+      <div class="auth-card glass">
+        <div class="auth-logo">
+          <div class="logo-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+          </div>
+          <h1>GlobalWork</h1>
+          <p class="tagline">Karier Global Dimulai Di Sini</p>
+        </div>
+
+        <form id="form-login" class="auth-form" novalidate>
+          <div class="input-group">
+            <label>Email</label>
+            <div class="input-with-icon">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+              <input type="email" id="login-email" placeholder="nama@email.com" required autocomplete="email" />
+            </div>
+            <span class="field-error"></span>
+          </div>
+
+          <div class="input-group">
+            <label>Password</label>
+            <div class="input-with-icon">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              <input type="password" id="login-password" placeholder="••••••••" required minlength="6" autocomplete="current-password" />
+              <button type="button" class="toggle-password" data-target="login-password">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+            <span class="field-error"></span>
+          </div>
+
+          <div class="form-row">
+            <label class="checkbox-label">
+              <input type="checkbox" id="login-remember" />
+              <span>Ingat saya</span>
+            </label>
+            <a href="#" class="link" data-page="forgot">Lupa password?</a>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">
+            <span class="btn-text">Masuk</span>
+            <span class="btn-loader hidden"></span>
+          </button>
+
+          <p class="auth-footer">
+            Belum punya akun? <a href="#" class="link" data-page="register">Daftar sekarang</a>
+          </p>
+        </form>
+      </div>
+    </div>
+
+    <div id="page-register" class="auth-page">
+      <div class="auth-card glass">
+        <div class="auth-logo">
+          <div class="logo-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+          </div>
+          <h1>Buat Akun Baru</h1>
+          <p class="tagline">Mulai perjalanan karier globalmu</p>
+        </div>
+
+        <form id="form-register" class="auth-form" novalidate>
+          <div class="input-group">
+            <label>Nama Lengkap</label>
+            <div class="input-with-icon">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              <input type="text" id="register-name" placeholder="Nama lengkap" required />
+            </div>
+            <span class="field-error"></span>
+          </div>
+
+          <div class="input-group">
+            <label>Nomor Telepon</label>
+            <div class="input-with-icon">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+              <input type="tel" id="register-phone" placeholder="08xxxxxxxxxx" required pattern="[0-9]{10,13}" />
+            </div>
+            <span class="field-error"></span>
+          </div>
+
+          <div class="input-group">
+            <label>Email</label>
+            <div class="input-with-icon">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+              <input type="email" id="register-email" placeholder="nama@email.com" required />
+            </div>
+            <span class="field-error"></span>
+          </div>
+
+          <div class="input-group">
+            <label>Password</label>
+            <div class="input-with-icon">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              <input type="password" id="register-password" placeholder="Minimal 6 karakter" required minlength="6" />
+            </div>
+            <span class="field-error"></span>
+            <div class="password-strength">
+              <div class="strength-bar"><div class="strength-fill"></div></div>
+              <span class="strength-text"></span>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">
+            <span class="btn-text">Daftar</span>
+            <span class="btn-loader hidden"></span>
+          </button>
+
+          <p class="auth-footer">
+            Sudah punya akun? <a href="#" class="link" data-page="login">Masuk di sini</a>
+          </p>
+        </form>
+      </div>
+    </div>
+
+    <div id="page-forgot" class="auth-page">
+      <div class="auth-card glass">
+        <div class="auth-logo">
+          <div class="logo-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>
+            </svg>
+          </div>
+          <h1>Lupa Password</h1>
+          <p class="tagline">Kami akan kirim link reset ke email Anda</p>
+        </div>
+
+        <form id="form-forgot" class="auth-form" novalidate>
+          <div class="input-group">
+            <label>Email</label>
+            <div class="input-with-icon">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+              <input type="email" id="forgot-email" placeholder="nama@email.com" required />
+            </div>
+            <span class="field-error"></span>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">
+            <span class="btn-text">Kirim Link Reset</span>
+            <span class="btn-loader hidden"></span>
+          </button>
+
+          <p class="auth-footer">
+            <a href="#" class="link" data-page="login">← Kembali ke Login</a>
+          </p>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard-wrapper" class="dashboard-wrapper hidden">
+
+    <header class="topbar glass">
+      <div class="topbar-left">
+        <button class="icon-btn menu-toggle" id="menu-toggle" aria-label="Menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+        <div class="brand-mini">
+          <div class="logo-icon small">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M2 12h20"/>
+            </svg>
+          </div>
+          <span>GlobalWork</span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <button class="icon-btn" id="theme-toggle" title="Toggle Dark Mode">
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg class="icon-moon hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="notif-btn" title="Notifikasi">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span class="badge" id="notif-badge">0</span>
+        </button>
+        <div class="user-avatar" id="user-avatar">
+          <img id="user-avatar-img" src="" alt="avatar" />
+        </div>
+      </div>
+    </header>
+
+    <aside class="sidebar glass" id="sidebar">
+      <div class="sidebar-header">
+        <div class="user-info">
+          <div class="user-avatar large">
+            <img id="sidebar-avatar" src="" alt="avatar" />
+          </div>
+          <div class="user-detail">
+            <h4 id="sidebar-name">Peserta</h4>
+            <p id="sidebar-email">email@example.com</p>
+            <p id="sidebar-role" class="role-badge">Peserta</p>
+          </div>
+        </div>
+      </div>
+      
+      <nav class="sidebar-nav" id="user-nav">
+        <a href="#" class="nav-item active" data-page="beranda">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          <span>Beranda</span>
+        </a>
+        <a href="#" class="nav-item" data-page="lowongan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+          </svg>
+          <span>Lowongan Kerja</span>
+        </a>
+        <a href="#" class="nav-item" data-page="profil">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          <span>Profil</span>
+        </a>
+        <a href="#" class="nav-item" data-page="dokumen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <span>Upload Dokumen</span>
+        </a>
+        <a href="#" class="nav-item" data-page="progress">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+          <span>Progress</span>
+        </a>
+        <a href="#" class="nav-item" data-page="jadwal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          <span>Jadwal</span>
+        </a>
+        <a href="#" class="nav-item" data-page="notifikasi">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span>Notifikasi</span>
+        </a>
+        <a href="#" class="nav-item" data-page="chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span>Chat Admin</span>
+        </a>
+        <a href="#" class="nav-item" data-page="pengumuman">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 11l18-5v12L3 14v-3z"/>
+          </svg>
+          <span>Pengumuman</span>
+        </a>
+      </nav>
+      
+      <nav class="sidebar-nav hidden" id="admin-nav">
+        <a href="#" class="nav-item active" data-page="admin-dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          <span>Dashboard</span>
+        </a>
+        <a href="#" class="nav-item" data-page="admin-peserta">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <span>Kelola Peserta</span>
+        </a>
+        <a href="#" class="nav-item" data-page="admin-dokumen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <span>Review Dokumen</span>
+        </a>
+        <a href="#" class="nav-item" data-page="admin-jadwal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+          </svg>
+          <span>Kelola Jadwal</span>
+        </a>
+        <a href="#" class="nav-item" data-page="admin-pengumuman">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 11l18-5v12L3 14v-3z"/>
+          </svg>
+          <span>Pengumuman</span>
+        </a>
+        <a href="#" class="nav-item" data-page="admin-negara">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+          <span>Negara Tujuan</span>
+        </a>
+        <a href="#" class="nav-item" data-page="admin-posisi">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+          </svg>
+          <span>Posisi Kerja</span>
+        </a>
+      </nav>
+      
+      <a href="#" class="nav-item logout" id="btn-logout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        <span>Logout</span>
+      </a>
+    </aside>
+
+    <main class="main-content" id="main-content">
+
+      <!-- USER: BERANDA -->
+      <section id="view-beranda" class="view active">
+        <div class="view-header">
+          <h1>Selamat Datang 👋</h1>
+          <p id="welcome-name">Peserta</p>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card glass stat-blue">
+            <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+            <div class="stat-info"><p>Dokumen</p><h3 id="stat-docs">0/11</h3></div>
+          </div>
+          <div class="stat-card glass stat-orange">
+            <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+            <div class="stat-info"><p>Progress</p><h3 id="stat-progress">0%</h3></div>
+          </div>
+          <div class="stat-card glass stat-green">
+            <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+            <div class="stat-info"><p>Jadwal</p><h3 id="stat-schedules">0</h3></div>
+          </div>
+        </div>
+
+        <div class="section-title">Aksi Cepat</div>
+        <div class="quick-actions">
+          <button class="quick-card glass" data-page="dokumen">
+            <div class="quick-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+            <span>Upload Dokumen</span>
+          </button>
+          <button class="quick-card glass" data-page="lowongan">
+            <div class="quick-icon orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
+            <span>Lowongan Kerja</span>
+          </button>
+          <button class="quick-card glass" data-page="progress">
+            <div class="quick-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+            <span>Cek Progress</span>
+          </button>
+          <button class="quick-card glass" data-page="chat">
+            <div class="quick-icon purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <span>Chat Admin</span>
+          </button>
+        </div>
+
+        <div class="section-title">Pengumuman Terbaru</div>
+        <div id="home-announcements" class="card-list"><div class="skeleton-card"></div></div>
+      </section>
+
+      <!-- USER: LOWONGAN KERJA -->
+      <section id="view-lowongan" class="view">
+        <div class="view-header">
+          <h1>Lowongan Kerja</h1>
+          <p>Pilih negara dan posisi impianmu</p>
+        </div>
+
+        <div class="lowongan-filters glass">
+          <div class="table-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="lowongan-search" placeholder="Cari posisi..." />
+          </div>
+          <select id="lowongan-country-filter">
+            <option value="">Semua Negara</option>
+          </select>
+        </div>
+
+        <div id="lowongan-list" class="lowongan-grid">
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+        </div>
+      </section>
+
+      <!-- USER: PROFIL -->
+      <section id="view-profil" class="view">
+        <div class="view-header">
+          <h1>Profil Saya</h1>
+          <p>Kelola data pribadi Anda</p>
+        </div>
+        <div class="profile-card glass">
+          <div class="profile-header">
+            <div class="profile-avatar">
+              <img id="profile-avatar-img" src="" alt="avatar" />
+              <label class="avatar-upload" for="avatar-input">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </label>
+              <input type="file" id="avatar-input" accept="image/*" class="hidden" />
+            </div>
+            <div class="profile-name">
+              <h3 id="profile-name-text">Peserta</h3>
+              <p id="profile-email-text">email@example.com</p>
+            </div>
+          </div>
+        </div>
+        <form id="form-profile" class="form-card glass" novalidate>
+          <h3 class="form-title">Informasi Pribadi</h3>
+          <div class="form-grid">
+            <div class="input-group"><label>Nama Lengkap</label><input type="text" id="profile-fullname" required /><span class="field-error"></span></div>
+            <div class="input-group"><label>Nomor Telepon</label><input type="tel" id="profile-phone" required /><span class="field-error"></span></div>
+            <div class="input-group full"><label>Alamat</label><textarea id="profile-address" rows="2"></textarea></div>
+            <div class="input-group"><label>Tanggal Lahir</label><input type="date" id="profile-birth" /></div>
+            <div class="input-group"><label>Jenis Kelamin</label><select id="profile-gender"><option value="">Pilih...</option><option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option></select></div>
+            <div class="input-group"><label>Pendidikan</label><select id="profile-education"><option value="">Pilih...</option><option>SMP</option><option>SMA/SMK</option><option>D3</option><option>S1</option><option>S2</option></select></div>
+            <div class="input-group"><label>Pekerjaan Diminati</label><input type="text" id="profile-job" /></div>
+            <div class="input-group"><label>Status Pernikahan</label><select id="profile-marital"><option value="">Pilih...</option><option>Belum Menikah</option><option>Menikah</option><option>Cerai</option></select></div>
+            <div class="input-group"><label>Agama</label><select id="profile-religion"><option value="">Pilih...</option><option>Islam</option><option>Kristen</option><option>Katolik</option><option>Hindu</option><option>Buddha</option><option>Konghucu</option></select></div>
+          </div>
+          <div class="form-actions">
+            <span class="autosave-indicator" id="profile-autosave">✓ Tersimpan otomatis</span>
+            <button type="submit" class="btn btn-primary"><span class="btn-text">Simpan</span><span class="btn-loader hidden"></span></button>
+          </div>
+        </form>
+      </section>
+
+      <!-- USER: DOKUMEN -->
+      <section id="view-dokumen" class="view">
+        <div class="view-header">
+          <h1>Upload Dokumen</h1>
+          <p>Lengkapi 11 dokumen persyaratan</p>
+        </div>
+        <div class="doc-progress-card glass">
+          <div class="doc-progress-header">
+            <h3>Progress Dokumen</h3>
+            <span id="doc-progress-text">0/11 Lengkap</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="doc-progress-bar" style="width: 0%"></div></div>
+        </div>
+        <div id="docs-checklist" class="docs-checklist"></div>
+      </section>
+
+      <!-- USER: PROGRESS -->
+      <section id="view-progress" class="view">
+        <div class="view-header">
+          <h1>Progress Penempatan</h1>
+          <p>Pantau tahapan proses Anda</p>
+        </div>
+        <div class="progress-overview glass">
+          <div class="progress-bar-wrap">
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width: 0%"></div></div>
+            <span class="progress-percent" id="progress-percent">0%</span>
+          </div>
+          <p class="progress-status" id="progress-status">Memuat data...</p>
+        </div>
+        <div id="progress-timeline" class="timeline"><div class="skeleton-card"></div></div>
+      </section>
+
+      <!-- USER: JADWAL -->
+      <section id="view-jadwal" class="view">
+        <div class="view-header">
+          <h1>Jadwal Saya</h1>
+          <p>Jadwal interview, medical, pelatihan, dan pemberangkatan</p>
+        </div>
+        <div class="calendar-filters">
+          <button class="filter-btn active" data-filter="all">Semua</button>
+          <button class="filter-btn" data-filter="Interview">Interview</button>
+          <button class="filter-btn" data-filter="Medical">Medical</button>
+          <button class="filter-btn" data-filter="Pelatihan">Pelatihan</button>
+          <button class="filter-btn" data-filter="Pemberangkatan">Pemberangkatan</button>
+        </div>
+        <div id="schedules-list" class="card-list"><div class="skeleton-card"></div></div>
+      </section>
+
+      <!-- USER: NOTIFIKASI -->
+      <section id="view-notifikasi" class="view">
+        <div class="view-header">
+          <h1>Notifikasi</h1>
+          <p>Pesan dan informasi terbaru</p>
+        </div>
+        <button class="btn btn-outline" id="btn-mark-all-read">Tandai Semua Dibaca</button>
+        <div id="notif-list" class="card-list"><div class="skeleton-card"></div></div>
+      </section>
+
+      <!-- USER: CHAT -->
+      <section id="view-chat" class="view">
+        <div class="view-header">
+          <h1>Chat Admin</h1>
+          <p>Hubungi admin untuk bantuan</p>
+        </div>
+        <div class="chat-container glass">
+          <div class="chat-messages" id="chat-messages">
+            <div class="chat-empty">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <p>Belum ada pesan. Mulai percakapan!</p>
+            </div>
+          </div>
+          <div class="chat-attachment-preview hidden" id="chat-attachment-preview">
+            <div class="attachment-info">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+              <span id="chat-attachment-name">file.pdf</span>
+            </div>
+            <button class="icon-btn" id="chat-attachment-remove">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <form class="chat-input" id="form-chat">
+            <button type="button" class="icon-btn" id="chat-attach-btn" title="Lampirkan file">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+            <input type="file" id="chat-file-input" accept="image/*,.pdf" class="hidden" />
+            <input type="text" id="chat-message" placeholder="Ketik pesan..." required />
+            <button type="submit" class="btn btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- USER: PENGUMUMAN -->
+      <section id="view-pengumuman" class="view">
+        <div class="view-header">
+          <h1>Pengumuman</h1>
+          <p>Informasi resmi dari agensi</p>
+        </div>
+        <div id="announcements-list" class="card-list"><div class="skeleton-card"></div></div>
+      </section>
+
+      <!-- ADMIN: DASHBOARD -->
+      <section id="view-admin-dashboard" class="view">
+        <div class="view-header">
+          <h1>Dashboard Admin</h1>
+          <p>Overview sistem penyaluran tenaga kerja</p>
+        </div>
+        <div class="admin-stats-grid">
+          <div class="admin-stat-card glass"><div class="admin-stat-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="admin-stat-info"><p>Total Peserta</p><h3 id="admin-stat-total">0</h3></div></div>
+          <div class="admin-stat-card glass"><div class="admin-stat-icon orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="admin-stat-info"><p>Menunggu Review</p><h3 id="admin-stat-pending">0</h3></div></div>
+          <div class="admin-stat-card glass"><div class="admin-stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="admin-stat-info"><p>Disetujui</p><h3 id="admin-stat-approved">0</h3></div></div>
+          <div class="admin-stat-card glass"><div class="admin-stat-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div><div class="admin-stat-info"><p>Ditolak</p><h3 id="admin-stat-rejected">0</h3></div></div>
+        </div>
+        <div class="section-title">Aktivitas Terbaru</div>
+        <div id="admin-recent-activity" class="card-list"><div class="skeleton-card"></div></div>
+      </section>
+
+      <!-- ADMIN: KELOLA PESERTA -->
+      <section id="view-admin-peserta" class="view">
+        <div class="view-header">
+          <h1>Kelola Peserta</h1>
+          <p>Approval dan management peserta</p>
+        </div>
+        <div class="table-controls glass">
+          <div class="table-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="admin-search" placeholder="Cari nama atau email..." /></div>
+          <div class="table-filters">
+            <select id="admin-filter-status"><option value="">Semua Status</option><option value="pending">Menunggu</option><option value="approved">Disetujui</option><option value="rejected">Ditolak</option></select>
+            <select id="admin-filter-step"><option value="">Semua Tahapan</option><option value="1">Pendaftaran</option><option value="2">Verifikasi</option><option value="3">Interview</option><option value="4">Administrasi</option><option value="5">Medical</option><option value="6">Pelatihan</option><option value="7">Paspor</option><option value="8">Visa</option><option value="9">Booking Tiket</option><option value="10">Siap Berangkat</option><option value="11">Berangkat</option></select>
+          </div>
+          <div class="table-actions">
+            <button class="btn btn-outline" id="btn-export-excel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Excel</button>
+            <button class="btn btn-outline" id="btn-export-pdf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>PDF</button>
+          </div>
+        </div>
+        <div class="table-container glass">
+          <table class="modern-table" id="admin-table">
+            <thead><tr>
+              <th data-sort="full_name">Nama <span class="sort-icon">↕</span></th>
+              <th data-sort="email">Email <span class="sort-icon">↕</span></th>
+              <th data-sort="phone">Telepon</th>
+              <th data-sort="current_step">Tahapan <span class="sort-icon">↕</span></th>
+              <th data-sort="status">Status <span class="sort-icon">↕</span></th>
+              <th>Aksi</th>
+            </tr></thead>
+            <tbody id="admin-table-body"><tr><td colspan="6" class="table-loading">Memuat data...</td></tr></tbody>
+          </table>
+        </div>
+        <div class="table-pagination" id="admin-pagination"></div>
+      </section>
+
+      <!-- ADMIN: REVIEW DOKUMEN -->
+      <section id="view-admin-dokumen" class="view">
+        <div class="view-header"><h1>Review Dokumen</h1><p>Verifikasi dokumen peserta</p></div>
+        <div class="table-controls glass">
+          <div class="table-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="admin-doc-search" placeholder="Cari peserta..." /></div>
+          <div class="table-filters"><select id="admin-doc-filter"><option value="">Semua Status</option><option value="pending">Menunggu Review</option><option value="approved">Disetujui</option><option value="rejected">Ditolak</option></select></div>
+        </div>
+        <div id="admin-docs-list" class="card-list"><div class="skeleton-card"></div></div>
+      </section>
+
+      <!-- ADMIN: KELOLA JADWAL -->
+      <section id="view-admin-jadwal" class="view">
+        <div class="view-header"><h1>Kelola Jadwal</h1><p>Buat dan kelola jadwal peserta</p></div>
+        <button class="btn btn-primary" id="btn-add-schedule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tambah Jadwal</button>
+        <div id="admin-schedules-list" class="card-list" style="margin-top: 20px;"><div class="skeleton-card"></div></div>
+      </section>
+
+      <!-- ADMIN: PENGGUMAN CRUD -->
+      <section id="view-admin-pengumuman" class="view">
+        <div class="view-header"><h1>Kelola Pengumuman</h1><p>Buat dan kelola pengumuman untuk peserta</p></div>
+        <button class="btn btn-primary" id="btn-add-announcement"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tambah Pengumuman</button>
+        <div id="admin-announcements-list" class="card-list" style="margin-top: 20px;"><div class="skeleton-card"></div></div>
+      </section>
+
+      <!-- ADMIN: NEGARA TUJUAN -->
+      <section id="view-admin-negara" class="view">
+        <div class="view-header"><h1>Negara Tujuan</h1><p>Kelola daftar negara tujuan kerja</p></div>
+        <button class="btn btn-primary" id="btn-add-country"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tambah Negara</button>
+        <div class="table-container glass" style="margin-top: 20px;">
+          <table class="modern-table">
+            <thead><tr><th>Bendera</th><th>Nama Negara</th><th>Kode</th><th>Region</th><th>Mata Uang</th><th>Status</th><th>Aksi</th></tr></thead>
+            <tbody id="admin-countries-body"><tr><td colspan="7" class="table-loading">Memuat data...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ADMIN: POSISI KERJA -->
+      <section id="view-admin-posisi" class="view">
+        <div class="view-header"><h1>Posisi Kerja</h1><p>Kelola posisi kerja per negara</p></div>
+        <button class="btn btn-primary" id="btn-add-position"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tambah Posisi</button>
+        <div class="table-container glass" style="margin-top: 20px;">
+          <table class="modern-table">
+            <thead><tr><th>Posisi</th><th>Negara</th><th>Kategori</th><th>Gaji</th><th>Kuota</th><th>Estimasi</th><th>Aksi</th></tr></thead>
+            <tbody id="admin-positions-body"><tr><td colspan="7" class="table-loading">Memuat data...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+
+    <nav class="bottom-nav glass" id="bottom-nav">
+      <a href="#" class="bottom-item active" data-page="beranda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Beranda</span></a>
+      <a href="#" class="bottom-item" data-page="lowongan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg><span>Lowongan</span></a>
+      <a href="#" class="bottom-item" data-page="progress"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span>Progress</span></a>
+      <a href="#" class="bottom-item" data-page="chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></a>
+      <a href="#" class="bottom-item" data-page="profil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profil</span></a>
+    </nav>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
