@@ -1772,14 +1772,23 @@ async function loadAdminDashboard() {
 /* ============================================ */
 async function loadAdminPeserta() {
   try {
-    const { data: profiles } = await supabase
+    const { data: profiles, error: profilesErr } = await supabase
       .from('profiles')
       .select('*, documents(status)')
       .eq('role', 'user');
 
-    const { data: statuses } = await supabase
+    if (profilesErr) {
+      console.error('Profiles query error:', profilesErr);
+      toast('error', 'Gagal Memuat Peserta', profilesErr.message);
+    }
+
+    const { data: statuses, error: statusesErr } = await supabase
       .from('participant_status')
       .select('user_id, current_step');
+
+    if (statusesErr) {
+      console.error('Participant status query error:', statusesErr);
+    }
 
     const statusMap = {};
     (statuses || []).forEach(s => { statusMap[s.user_id] = s.current_step; });
