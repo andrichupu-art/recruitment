@@ -1078,8 +1078,9 @@ window.openUploadModal = function(docType) {
         <input type="file" id="modal-file-input" accept=".pdf,.jpg,.jpeg,.png" class="hidden" />
       </div>
       <div id="modal-preview" class="upload-preview hidden">
+        <img id="modal-preview-img" class="hidden" alt="Preview" />
         <div class="preview-info">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <svg id="modal-preview-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           <span id="modal-preview-name">file.pdf</span>
         </div>
       </div>
@@ -1124,6 +1125,24 @@ window.openUploadModal = function(docType) {
     }
     selectedFile = file;
     $('#modal-preview-name').textContent = file.name;
+
+    const imgEl = $('#modal-preview-img');
+    const iconEl = $('#modal-preview-icon');
+
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        imgEl.src = e.target.result;
+        show(imgEl);
+        hide(iconEl);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      imgEl.removeAttribute('src');
+      hide(imgEl);
+      show(iconEl);
+    }
+
     show($('#modal-preview'));
   }
   
