@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
-  <meta name="theme-color" content="#1e40af" />
+  <meta name="theme-color" content="#0a1e33" />
   <meta name="description" content="GlobalWork - Agensi Penyalur Tenaga Kerja ke Luar Negeri" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -508,21 +508,6 @@
           </svg>
           <span>Pengumuman</span>
         </a>
-        <a href="#" class="nav-item" data-page="admin-negara">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="2" y1="12" x2="22" y2="12"/>
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-          </svg>
-          <span>Negara Tujuan</span>
-        </a>
-        <a href="#" class="nav-item" data-page="admin-posisi">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
-            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
-          </svg>
-          <span>Posisi Kerja</span>
-        </a>
       </nav>
       
       <a href="#" class="nav-item logout" id="btn-logout">
@@ -755,11 +740,12 @@
           <h1>Dashboard Admin</h1>
           <p>Overview sistem penyaluran tenaga kerja</p>
         </div>
-        <div class="admin-stats-grid">
+        <div class="admin-stats-grid stacked">
           <div class="admin-stat-card glass clickable-stat" data-page="admin-peserta"><div class="admin-stat-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="admin-stat-info"><p>Total Peserta</p><h3 id="admin-stat-total">0</h3></div></div>
-          <div class="admin-stat-card glass clickable-stat" data-page="admin-peserta" data-filter-status="pending"><div class="admin-stat-icon orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="admin-stat-info"><p>Menunggu Review</p><h3 id="admin-stat-pending">0</h3></div></div>
-          <div class="admin-stat-card glass"><div class="admin-stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="admin-stat-info"><p>Disetujui</p><h3 id="admin-stat-approved">0</h3></div></div>
-          <div class="admin-stat-card glass"><div class="admin-stat-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div><div class="admin-stat-info"><p>Ditolak</p><h3 id="admin-stat-rejected">0</h3></div></div>
+          <div class="admin-stat-card glass clickable-stat" data-page="admin-peserta" data-filter-step="1"><div class="admin-stat-icon purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg></div><div class="admin-stat-info"><p>Memuat Data dan Dokumen</p><h3 id="admin-stat-pendaftaran">0</h3></div></div>
+          <div class="admin-stat-card glass clickable-stat" data-page="admin-peserta"><div class="admin-stat-icon orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="admin-stat-info"><p>Sedang di Review</p><h3 id="admin-stat-review">0</h3></div></div>
+          <div class="admin-stat-card glass clickable-stat" data-page="admin-peserta" data-filter-step="6"><div class="admin-stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="admin-stat-info"><p>Disetujui</p><h3 id="admin-stat-approved">0</h3></div></div>
+          <div class="admin-stat-card glass clickable-stat" data-page="admin-peserta" data-filter-status="rejected"><div class="admin-stat-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div><div class="admin-stat-info"><p>Ditolak</p><h3 id="admin-stat-rejected">0</h3></div></div>
         </div>
       </section>
 
