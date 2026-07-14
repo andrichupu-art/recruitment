@@ -785,7 +785,8 @@ function navigateTo(page) {
     'admin-jadwal': loadAdminJadwal,
     'admin-pengumuman': loadAdminPengumuman,
     'admin-negara': loadAdminNegara,
-    'admin-posisi': loadAdminPosisi
+    'admin-posisi': loadAdminPosisi,
+    'admin-penempatan': loadAdminPenempatan
   };
   
   if (loaders[page]) loaders[page]();
@@ -2030,7 +2031,14 @@ async function loadAdminPeserta() {
     const statusMap = {};
     (statuses || []).forEach(s => { statusMap[s.user_id] = s.current_step; });
 
-    state.adminTable.data = (profiles || []).map(p => {
+    // Peserta yang sudah mencapai tahap akhir timeline (saat ini "Medical")
+    // dipindah otomatis ke tab Penempatan, jadi tidak lagi ditampilkan di
+    // sini supaya tabel Kelola Peserta fokus ke peserta yang masih berproses.
+    const finalStep = TIMELINE_STEPS[TIMELINE_STEPS.length - 1].step;
+
+    state.adminTable.data = (profiles || [])
+      .filter(p => (statusMap[p.id] || 1) < finalStep)
+      .map(p => {
       const docs = p.documents || [];
       const hasRejected = docs.some(d => d.status === 'rejected');
       const allApproved = docs.length > 0 && docs.every(d => d.status === 'approved');
@@ -3465,6 +3473,167 @@ window.deletePosition = function(id) {
       loadAdminPosisi();
     } catch (err) {
       toast('error', 'Error', 'Gagal menghapus');
+    }
+  });
+};
+
+/* ============================================ */
+/* ADMIN PENEMPATAN */
+/* Menampilkan peserta yang sudah mencapai tahap akhir timeline (saat ini
+   "Medical") beserta detail penempatan (tanggal pemberangkatan, tujuan
+   negara, penempatan) yang bisa diisi/diedit admin. Detail tersimpan di
+   tabel terpisah `placements` (satu baris per peserta, keyed by user_id)
+   supaya tidak mencampur data operasional ke tabel profiles/participant_status. */
+async function loadAdminPenempatan() {
+  try {
+    const finalStep = TIMELINE_STEPS[TIMELINE_STEPS.length - 1].step;
+
+    const { data: statuses, error: statusErr } = await supabase
+      .from('participant_status')
+      .select('user_id, current_step')
+      .gte('current_step', finalStep);
+
+    if (statusErr) {
+      console.error('Load penempatan status error:', statusErr);
+    }
+
+    const userIds = (statuses || []).map(s => s.user_id);
+    const tbody = $('#admin-penempatan-body');
+
+    if (userIds.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="table-loading">Belum ada peserta yang mencapai tahap akhir</td></tr>';
+      return;
+    }
+
+    const { data: profiles, error: profilesErr } = await supabase
+      .from('profiles')
+      .select('id, full_name, email')
+      .in('id', userIds);
+
+    if (profilesErr) {
+      console.error('Load penempatan profiles error:', profilesErr);
+    }
+
+    const { data: placements, error: placementsErr } = await supabase
+      .from('placements')
+      .select('*')
+      .in('user_id', userIds);
+
+    if (placementsErr) {
+      console.error('Load penempatan data error:', placementsErr);
+    }
+
+    const placementMap = {};
+    (placements || []).forEach(p => { placementMap[p.user_id] = p; });
+
+    const rows = (profiles || [])
+      .slice()
+      .sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
+
+    if (rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="table-loading">Belum ada peserta yang mencapai tahap akhir</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map((p, i) => {
+      const pl = placementMap[p.id];
+      return `
+        <tr>
+          <td>${i + 1}</td>
+          <td><strong>${escapeHtml(p.full_name)}</strong></td>
+          <td>${pl?.departure_date ? formatDate(pl.departure_date) : '-'}</td>
+          <td>${escapeHtml(pl?.destination_country || '-')}</td>
+          <td>${escapeHtml(pl?.placement || '-')}</td>
+          <td>
+            <div class="table-actions-cell">
+              <button class="btn-edit" onclick="openPenempatanModal('${p.id}', '${escapeHtml(p.full_name).replace(/'/g, "\\'")}')">Edit</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Load admin penempatan error:', err);
+  }
+}
+
+window.openPenempatanModal = async function(userId, fullName) {
+  let existing = null;
+  try {
+    const { data } = await supabase.from('placements').select('*').eq('user_id', userId).maybeSingle();
+    existing = data;
+  } catch (err) {
+    console.error('Load placement detail error:', err);
+  }
+
+  let countryOptions = '<option value="">Pilih negara...</option>';
+  try {
+    const { data: countries } = await supabase.from('countries').select('name').eq('is_active', true).order('name');
+    countryOptions += (countries || []).map(c =>
+      `<option value="${escapeHtml(c.name)}" ${existing?.destination_country === c.name ? 'selected' : ''}>${escapeHtml(c.name)}</option>`
+    ).join('');
+  } catch (err) {
+    console.error('Load countries for penempatan error:', err);
+  }
+
+  const modal = $('#preview-modal');
+  const body = $('#preview-body');
+  $('#preview-title').textContent = `Penempatan - ${fullName}`;
+
+  body.innerHTML = `
+    <form id="form-penempatan" style="display: flex; flex-direction: column; gap: 14px;" novalidate>
+      <div class="input-group">
+        <label>Tanggal Pemberangkatan</label>
+        <input type="date" id="penempatan-departure-date" value="${existing?.departure_date || ''}" />
+      </div>
+      <div class="input-group">
+        <label>Tujuan Negara</label>
+        <select id="penempatan-country">${countryOptions}</select>
+      </div>
+      <div class="input-group">
+        <label>Penempatan</label>
+        <input type="text" id="penempatan-placement" value="${escapeHtml(existing?.placement || '')}" placeholder="Mis. Nama perusahaan / posisi kerja" />
+        <span class="field-error"></span>
+      </div>
+      <button type="submit" class="btn btn-primary">
+        <span class="btn-text">Simpan</span>
+        <span class="btn-loader hidden"></span>
+      </button>
+    </form>
+  `;
+
+  show(modal);
+
+  $('#form-penempatan').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    setLoading(btn, true);
+
+    const payload = {
+      user_id: userId,
+      departure_date: $('#penempatan-departure-date').value || null,
+      destination_country: $('#penempatan-country').value || null,
+      placement: $('#penempatan-placement').value.trim() || null,
+      updated_by: state.user.id,
+      updated_at: new Date().toISOString()
+    };
+
+    try {
+      const { error } = await supabase.from('placements').upsert(payload, { onConflict: 'user_id' });
+
+      setLoading(btn, false);
+
+      if (error) {
+        toast('error', 'Gagal', error.message);
+        return;
+      }
+
+      toast('success', 'Penempatan Disimpan');
+      hide(modal);
+      loadAdminPenempatan();
+    } catch (err) {
+      setLoading(btn, false);
+      toast('error', 'Error', 'Terjadi kesalahan');
     }
   });
 };
