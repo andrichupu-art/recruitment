@@ -31,7 +31,7 @@ const state = {
     filterStatus: '',
     filterStep: ''
   },
-  adminDocs: { data: [], search: '', filterStatus: '', grouped: {}, activeUserId: null },
+  adminDetail: { activeUserId: null, previewReturnsToDetail: false },
   adminVerifikasi: { data: [], search: '' },
   scheduleFilter: 'all',
   theme: localStorage.getItem('theme') || 'light',
@@ -109,18 +109,52 @@ function downscaleImageForOcr(file, maxDim = 1400) {
   });
 }
 
+// Foto asli dari kamera HP (bisa 3-8MB) adalah penyumbang terbesar lamanya waktu
+// upload, karena itulah data yang benar-benar dikirim lewat jaringan ke server.
+// Fungsi ini mengecilkan resolusi & kompres kualitas JPEG SEBELUM file dikirim,
+// tanpa mengorbankan keterbacaan dokumen. File yang sudah kecil (<=800KB, mis.
+// screenshot atau hasil kompresi kamera yang efisien) dilewati saja.
+function compressImageForUpload(file, maxDim = 2000, quality = 0.82) {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith('image/') || file.size <= 800 * 1024) {
+      resolve(file);
+      return;
+    }
+    try {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          URL.revokeObjectURL(url);
+          if (!blob || blob.size >= file.size) {
+            // Kompresi tidak membantu -> pakai file asli saja
+            resolve(file);
+            return;
+          }
+          const newName = file.name.replace(/\.(jpe?g|png)$/i, '') + '.jpg';
+          resolve(new File([blob], newName, { type: 'image/jpeg' }));
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    } catch (err) {
+      resolve(file);
+    }
+  });
+}
+
 const TIMELINE_STEPS = [
   { step: 1, title: 'Pendaftaran', desc: 'Registrasi akun dan lengkapi data diri' },
   { step: 2, title: 'Verifikasi', desc: 'Verifikasi dokumen dan data peserta' },
   { step: 3, title: 'Interview', desc: 'Wawancara dengan pihak agensi' },
   { step: 4, title: 'Administrasi', desc: 'Pengurusan dokumen administrasi' },
-  { step: 5, title: 'Medical', desc: 'Pemeriksaan kesehatan' },
-  { step: 6, title: 'Pelatihan', desc: 'Pelatihan kerja dan bahasa' },
-  { step: 7, title: 'Paspor', desc: 'Pembuatan paspor' },
-  { step: 8, title: 'Visa', desc: 'Pengurusan visa kerja' },
-  { step: 9, title: 'Booking Tiket', desc: 'Pemesanan tiket pesawat' },
-  { step: 10, title: 'Siap Berangkat', desc: 'Persiapan akhir sebelum berangkat' },
-  { step: 11, title: 'Berangkat', desc: 'Keberangkatan ke negara tujuan' }
+  { step: 5, title: 'Medical', desc: 'Pemeriksaan kesehatan' }
 ];
 
 /* ============================================ */
@@ -748,7 +782,6 @@ function navigateTo(page) {
     'admin-dashboard': loadAdminDashboard,
     'admin-peserta': loadAdminPeserta,
     'admin-verifikasi': loadAdminVerifikasi,
-    'admin-dokumen': loadAdminDokumen,
     'admin-jadwal': loadAdminJadwal,
     'admin-pengumuman': loadAdminPengumuman,
     'admin-negara': loadAdminNegara,
@@ -780,16 +813,17 @@ $$('.quick-card[data-page]').forEach(item => {
 
 // Kartu statistik Dashboard Admin: klik untuk lompat ke halaman terkait,
 // dan otomatis set filter status kalau kartunya punya data-filter-status
-// (mis. "Menunggu Review" -> Review Dokumen dengan filter "pending").
+// (mis. "Menunggu Review" -> Kelola Peserta dengan filter "pending").
 $$('.admin-stat-card[data-page]').forEach(item => {
   item.addEventListener('click', () => {
     const page = item.dataset.page;
     const filterStatus = item.dataset.filterStatus;
 
-    if (filterStatus !== undefined && page === 'admin-dokumen') {
-      state.adminDocs.filterStatus = filterStatus;
-      const filterSelect = $('#admin-doc-filter');
+    if (filterStatus !== undefined && page === 'admin-peserta') {
+      state.adminTable.filterStatus = filterStatus;
+      const filterSelect = $('#admin-filter-status');
       if (filterSelect) filterSelect.value = filterStatus;
+      applyAdminFilters();
     }
 
     navigateTo(page);
@@ -898,7 +932,7 @@ async function loadBeranda() {
   try {
     const [docsRes, progressRes, schedulesRes] = await Promise.all([
       supabase.from('documents').select('id, status').eq('user_id', userId),
-      supabase.from('participant_status').select('current_step').eq('user_id', userId).single(),
+      supabase.from('participant_status').select('current_step').eq('user_id', userId).maybeSingle(),
       supabase.from('schedules').select('id').eq('user_id', userId).eq('status', 'scheduled')
     ]);
 
@@ -907,7 +941,7 @@ async function loadBeranda() {
     $('#stat-docs').textContent = `${completedDocs}/${DOC_TYPES.length}`;
     
     const currentStep = progressRes.data?.current_step || 1;
-    const percent = Math.round(((currentStep - 1) / 10) * 100);
+    const percent = Math.round(((currentStep - 1) / (TIMELINE_STEPS.length - 1)) * 100);
     $('#stat-progress').textContent = percent + '%';
     
     $('#stat-schedules').textContent = schedulesRes.data?.length || 0;
@@ -1264,6 +1298,13 @@ async function loadDocumentsChecklist() {
 window.previewDocument = function(url, title) {
   const modal = $('#preview-modal');
   const body = $('#preview-body');
+
+  // Kalau dipanggil dari dalam modal Detail Peserta yang sedang terbuka
+  // (klik dokumen di grid "Dokumen"), tandai supaya tombol close nanti
+  // kembali ke Detail Peserta, bukan menutup modal sepenuhnya.
+  state.adminDetail.previewReturnsToDetail =
+    !!state.adminDetail.activeUserId && body.querySelector('.detail-peserta') !== null;
+
   $('#preview-title').textContent = title;
   
   const isImage = /\.(jpg|jpeg|png|gif)$/i.test(url);
@@ -1280,14 +1321,32 @@ window.previewDocument = function(url, title) {
   show(modal);
 };
 
-$('#preview-close').addEventListener('click', () => { hide($('#preview-modal')); state.adminDocs.activeUserId = null; });
+function closePreviewModal() {
+  // Jika modal preview dokumen ini dibuka dari dalam Detail Peserta,
+  // kembali ke Detail Peserta alih-alih menutup modal sepenuhnya.
+  if (state.adminDetail.previewReturnsToDetail && state.adminDetail.activeUserId) {
+    state.adminDetail.previewReturnsToDetail = false;
+    viewParticipantDetail(state.adminDetail.activeUserId);
+    return;
+  }
+  state.adminDetail.previewReturnsToDetail = false;
+  hide($('#preview-modal'));
+  state.adminDetail.activeUserId = null;
+}
+
+$('#preview-close').addEventListener('click', closePreviewModal);
 $$('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', (e) => {
     if (e.target.classList.contains('modal-overlay')) {
-      hide($('#preview-modal'));
+      if (e.target.closest('#preview-modal')) {
+        closePreviewModal();
+      } else {
+        hide($('#preview-modal'));
+        state.adminDetail.previewReturnsToDetail = false;
+        state.adminDetail.activeUserId = null;
+      }
       if (activeConfirmCleanup) activeConfirmCleanup();
       else hide($('#confirm-modal'));
-      state.adminDocs.activeUserId = null;
     }
   });
 });
@@ -1459,7 +1518,11 @@ window.openUploadModal = function(docType) {
     setLoading(btn, true);
     show($('#modal-upload-progress'));
     
-    const ext = selectedFile.name.split('.').pop();
+    // Kecilkan dulu file gambar sebelum dikirim -> ini yang paling menentukan
+    // cepat/lambatnya upload di jaringan mobile, bukan proses pengecekan OCR.
+    const fileToUpload = await compressImageForUpload(selectedFile);
+    
+    const ext = fileToUpload.name.split('.').pop();
     const path = `${state.user.id}/${docType}-${Date.now()}.${ext}`;
     
     let progress = 0;
@@ -1472,7 +1535,17 @@ window.openUploadModal = function(docType) {
     }, 100);
     
     try {
-      const { error: upErr } = await supabase.storage.from('documents').upload(path, selectedFile);
+      // Upload file & cek dokumen lama dijalankan BARENGAN (bukan berurutan),
+      // karena dua-duanya tidak saling bergantung -> hemat satu round-trip jaringan.
+      const [{ error: upErr }, { data: existing }] = await Promise.all([
+        supabase.storage.from('documents').upload(path, fileToUpload),
+        supabase
+          .from('documents')
+          .select('id')
+          .eq('user_id', state.user.id)
+          .eq('doc_type', docType)
+          .single()
+      ]);
       clearInterval(progressInterval);
       
       if (upErr) {
@@ -1487,20 +1560,13 @@ window.openUploadModal = function(docType) {
       
       const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path);
       
-      const { data: existing } = await supabase
-        .from('documents')
-        .select('id')
-        .eq('user_id', state.user.id)
-        .eq('doc_type', docType)
-        .single();
-      
       let dbErr;
       if (existing) {
         const { error } = await supabase
           .from('documents')
           .update({
             file_url: urlData.publicUrl,
-            file_name: selectedFile.name,
+            file_name: fileToUpload.name,
             status: 'pending',
             rejection_reason: null,
             reviewed_at: new Date().toISOString()
@@ -1512,7 +1578,7 @@ window.openUploadModal = function(docType) {
           user_id: state.user.id,
           doc_type: docType,
           file_url: urlData.publicUrl,
-          file_name: selectedFile.name,
+          file_name: fileToUpload.name,
           status: 'pending'
         });
         dbErr = error;
@@ -1547,10 +1613,10 @@ async function loadProgress() {
       .from('participant_status')
       .select('*')
       .eq('user_id', state.user.id)
-      .single();
+      .maybeSingle();
 
     const currentStep = statusData?.current_step || 1;
-    const percent = Math.round(((currentStep - 1) / 10) * 100);
+    const percent = Math.round(((currentStep - 1) / (TIMELINE_STEPS.length - 1)) * 100);
     
     $('#progress-fill').style.width = percent + '%';
     $('#progress-percent').textContent = percent + '%';
@@ -1944,7 +2010,7 @@ async function loadAdminPeserta() {
   try {
     const { data: profiles, error: profilesErr } = await supabase
       .from('profiles')
-      .select('*, documents!user_id(status)')
+      .select('*, documents!user_id(status, doc_type)')
       .eq('role', 'user')
       .eq('email_verified', true);
 
@@ -1969,10 +2035,34 @@ async function loadAdminPeserta() {
       const hasRejected = docs.some(d => d.status === 'rejected');
       const allApproved = docs.length > 0 && docs.every(d => d.status === 'approved');
       const approvedCount = docs.filter(d => d.status === 'approved').length;
+      const uploadedCount = docs.length;
 
       let status = 'pending';
       if (hasRejected) status = 'rejected';
       else if (allApproved) status = 'approved';
+
+      // Kelengkapan data profil: field-field yang ditampilkan di "Detail Peserta"
+      // harus terisi semua. Kosong/null/string kosong dianggap belum diisi.
+      // Dicatat labelnya satu-satu (bukan cuma true/false) supaya admin bisa lihat
+      // persis field mana yang kosong lewat tooltip, tidak perlu nebak-nebak.
+      const profileFieldChecks = [
+        ['Telepon', p.phone],
+        ['Tgl Lahir', p.birth_date],
+        ['Jenis Kelamin', p.gender],
+        ['Pendidikan', p.education],
+        ['Status Nikah', p.marital_status],
+        ['Agama', p.religion],
+        ['Pekerjaan Diminati', p.job_interest],
+        ['Alamat', p.address]
+      ];
+      const missingProfileFields = profileFieldChecks
+        .filter(([, v]) => v === null || v === undefined || String(v).trim() === '')
+        .map(([label]) => label);
+
+      // Kelengkapan dokumen: semua jenis dokumen wajib sudah DIUPLOAD (belum tentu
+      // sudah di-approve) -> dicatat jenis dokumen mana saja yang belum ada sama sekali.
+      const uploadedDocTypes = docs.map(d => d.doc_type);
+      const missingDocTypes = DOC_TYPES.filter(t => !uploadedDocTypes.includes(t));
 
       return {
         id: p.id,
@@ -1982,7 +2072,11 @@ async function loadAdminPeserta() {
         current_step: statusMap[p.id] || 1,
         status,
         approvedDocs: approvedCount,
-        totalDocs: DOC_TYPES.length
+        uploadedDocs: uploadedCount,
+        totalDocs: DOC_TYPES.length,
+        missingProfileFields,
+        missingDocTypes,
+        isDataComplete: missingProfileFields.length === 0 && missingDocTypes.length === 0
       };
     });
 
@@ -2094,7 +2188,7 @@ function renderAdminTable() {
         <td>
           <div class="table-actions-cell">
             <div class="table-actions-group">
-              <button class="btn-action" onclick="viewParticipantDetail('${p.id}')">Detail</button>
+              <button class="btn-action ${p.isDataComplete ? '' : 'btn-action-incomplete'}" onclick="viewParticipantDetail('${p.id}')" ${p.isDataComplete ? '' : `title="Belum lengkap: ${escapeHtml([...p.missingProfileFields, ...p.missingDocTypes.map(t => 'Dok. ' + t)].join(', '))}"`}>Detail</button>
               <!-- Sementara disembunyikan: fungsi Approve/Reject akan dipindahkan ke tempat lain.
                    Fungsi approveParticipant()/rejectParticipant() masih ada di script.js,
                    tinggal dipanggil lagi dari sini kalau mau diaktifkan ulang. -->
@@ -2406,9 +2500,11 @@ $('#btn-export-pdf').addEventListener('click', () => {
 
 window.viewParticipantDetail = async function(userId) {
   try {
+    state.adminDetail.activeUserId = userId;
+    state.adminDetail.previewReturnsToDetail = false;
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', userId).single();
     const { data: docs } = await supabase.from('documents').select('*').eq('user_id', userId);
-    const { data: status } = await supabase.from('participant_status').select('*').eq('user_id', userId).single();
+    const { data: status } = await supabase.from('participant_status').select('*').eq('user_id', userId).maybeSingle();
 
     const modal = $('#preview-modal');
     const body = $('#preview-body');
@@ -2491,9 +2587,20 @@ window.viewParticipantDetail = async function(userId) {
         <div class="detail-docs-grid">
           ${docs.map(d => `
             <div class="detail-doc-item status-${d.status}">
-              <div class="detail-doc-icon status-${d.status}">${svgIcon(docIcons[d.status] || docIcons.pending)}</div>
-              <span class="detail-doc-name">${d.doc_type}</span>
-              <span class="status-badge status-${d.status}">${statusLabel(d.status)}</span>
+              <div class="detail-doc-main" onclick="previewDocument('${d.file_url}', '${escapeHtml(d.doc_type).replace(/'/g, "\\'")}')" title="Klik untuk lihat dokumen">
+                <div class="detail-doc-icon status-${d.status}">${svgIcon(docIcons[d.status] || docIcons.pending)}</div>
+                <span class="detail-doc-name">${d.doc_type}</span>
+                <span class="status-badge status-${d.status}">${statusLabel(d.status)}</span>
+              </div>
+              ${d.status === 'pending' ? `
+                <div class="table-actions-cell">
+                  <button class="btn-approve" onclick="event.stopPropagation(); approveDocument('${d.id}', '${d.user_id}')">OK</button>
+                  <button class="btn-reject" onclick="event.stopPropagation(); rejectDocument('${d.id}', '${d.user_id}')">Reject</button>
+                </div>
+              ` : ''}
+              ${d.status === 'rejected' && d.rejection_reason ? `
+                <div class="doc-item-reason"><strong>Alasan:</strong> ${escapeHtml(d.rejection_reason)}</div>
+              ` : ''}
             </div>
           `).join('') || '<p style="color: var(--gray-500);">Belum ada dokumen</p>'}
         </div>
@@ -2640,150 +2747,9 @@ window.makeAdmin = async function(userId, fullName) {
 };
 
 /* ============================================ */
-/* ADMIN REVIEW DOKUMEN */
+/* ADMIN REVIEW DOKUMEN (sekarang jadi bagian dari modal Detail Peserta
+   di Kelola Peserta -> lihat viewParticipantDetail) */
 /* ============================================ */
-async function loadAdminDokumen() {
-  try {
-    const { data, error } = await supabase
-      .from('documents')
-      .select('*, profiles!user_id(full_name, email)')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Load admin dokumen error:', error);
-      toast('error', 'Gagal Memuat Dokumen', error.message);
-    }
-
-    // Kelompokkan dokumen berdasarkan peserta (user_id)
-    const grouped = {};
-    (data || []).forEach(d => {
-      if (!grouped[d.user_id]) {
-        grouped[d.user_id] = {
-          user_id: d.user_id,
-          full_name: d.profiles?.full_name || 'Peserta',
-          email: d.profiles?.email || '',
-          docs: []
-        };
-      }
-      grouped[d.user_id].docs.push(d);
-    });
-    state.adminDocs.grouped = grouped;
-
-    let participants = Object.values(grouped);
-
-    if (state.adminDocs.search) {
-      const search = state.adminDocs.search.toLowerCase();
-      participants = participants.filter(p =>
-        p.full_name.toLowerCase().includes(search) ||
-        p.email.toLowerCase().includes(search)
-      );
-    }
-
-    if (state.adminDocs.filterStatus) {
-      participants = participants.filter(p => p.docs.some(d => d.status === state.adminDocs.filterStatus));
-    }
-
-    participants.sort((a, b) => a.full_name.localeCompare(b.full_name));
-
-    const container = $('#admin-docs-list');
-    if (participants.length === 0) {
-      container.innerHTML = '<div class="empty-state"><h4>Tidak ada dokumen</h4></div>';
-      return;
-    }
-
-    container.innerHTML = participants.map(p => {
-      const total = p.docs.length;
-      const pendingCount = p.docs.filter(d => d.status === 'pending').length;
-      const rejectedCount = p.docs.filter(d => d.status === 'rejected').length;
-      const overall = rejectedCount > 0 ? 'rejected' : pendingCount > 0 ? 'pending' : 'approved';
-      const summary = pendingCount > 0
-        ? `${pendingCount} dari ${total} menunggu`
-        : rejectedCount > 0
-          ? `${rejectedCount} dari ${total} ditolak`
-          : `${total} dokumen disetujui`;
-
-      return `
-      <div class="doc-participant-card" onclick="viewParticipantDocuments('${p.user_id}')">
-        <div class="doc-participant-info">
-          <div class="doc-participant-name">${escapeHtml(p.full_name)}</div>
-          <div class="card-item-meta">${escapeHtml(p.email)} • ${summary}</div>
-        </div>
-        <span class="status-badge status-${overall}">${statusLabel(overall)}</span>
-        <svg class="doc-participant-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-      </div>
-    `;
-    }).join('');
-
-    // Kalau modal dokumen peserta sedang terbuka, refresh isinya juga
-    if (state.adminDocs.activeUserId && grouped[state.adminDocs.activeUserId]) {
-      renderParticipantDocumentsModal(grouped[state.adminDocs.activeUserId]);
-    }
-  } catch (err) {
-    console.error('Load admin dokumen error:', err);
-  }
-}
-
-window.viewParticipantDocuments = function(userId) {
-  const participant = state.adminDocs.grouped[userId];
-  if (!participant) return;
-  state.adminDocs.activeUserId = userId;
-  renderParticipantDocumentsModal(participant);
-  show($('#preview-modal'));
-};
-
-function renderParticipantDocumentsModal(participant) {
-  const body = $('#preview-body');
-  $('#preview-title').textContent = participant.full_name;
-
-  body.innerHTML = `
-    <div style="padding: 4px; text-align: left;">
-      <p class="card-item-meta" style="margin-bottom: 14px;">${escapeHtml(participant.email)}</p>
-      <div class="doc-review-grid docs-checklist">
-        ${participant.docs.map(d => {
-          const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(d.file_url || '');
-          return `
-          <div class="doc-item status-${d.status}">
-            <div class="doc-item-header">
-              <div class="doc-item-title">${d.doc_type}</div>
-              <div class="doc-item-status ${d.status}">${statusLabel(d.status)}</div>
-            </div>
-            <div class="doc-item-preview">
-              <div class="doc-thumb" onclick="previewDocument('${d.file_url}', '${d.doc_type}')" title="Lihat dokumen">
-                ${isImg
-                  ? `<img src="${d.file_url}" alt="${escapeHtml(d.doc_type)}" loading="lazy" />`
-                  : `<div class="doc-thumb-file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>`
-                }
-                <span class="doc-thumb-zoom"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span>
-              </div>
-            </div>
-            ${d.status === 'pending' ? `
-              <div class="table-actions-cell">
-                <button class="btn-approve" onclick="approveDocument('${d.id}', '${d.user_id}')">OK</button>
-                <button class="btn-reject" onclick="rejectDocument('${d.id}', '${d.user_id}')">Reject</button>
-              </div>
-            ` : ''}
-            ${d.status === 'rejected' && d.rejection_reason ? `
-              <div class="doc-item-reason" style="margin-top: 8px;"><strong>Alasan:</strong> ${escapeHtml(d.rejection_reason)}</div>
-            ` : ''}
-            <div class="card-item-meta" style="margin-top: 6px;">${formatDate(d.created_at)}</div>
-          </div>
-        `;
-        }).join('')}
-      </div>
-    </div>
-  `;
-}
-
-$('#admin-doc-search').addEventListener('input', (e) => {
-  state.adminDocs.search = e.target.value;
-  loadAdminDokumen();
-});
-
-$('#admin-doc-filter').addEventListener('change', (e) => {
-  state.adminDocs.filterStatus = e.target.value;
-  loadAdminDokumen();
-});
-
 window.approveDocument = async function(docId, userId) {
   confirmDialog('Approve Dokumen', 'Setujui dokumen ini?', async () => {
     try {
@@ -2800,7 +2766,7 @@ window.approveDocument = async function(docId, userId) {
         .from('participant_status')
         .select('current_step')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (!statusRow || statusRow.current_step === 1) {
         await supabase
@@ -2822,7 +2788,10 @@ window.approveDocument = async function(docId, userId) {
       });
 
       toast('success', 'Dokumen Disetujui');
-      loadAdminDokumen();
+      // Refresh modal Detail Peserta yang sedang terbuka + tabel Kelola Peserta
+      // (badge status & tombol Detail merah/tidak ikut berubah sesuai data terbaru).
+      if (state.adminDetail.activeUserId) viewParticipantDetail(state.adminDetail.activeUserId);
+      loadAdminPeserta();
     } catch (err) {
       toast('error', 'Error', 'Gagal mengapprove');
     }
@@ -2849,7 +2818,8 @@ window.rejectDocument = async function(docId, userId) {
     });
 
     toast('success', 'Dokumen Ditolak');
-    loadAdminDokumen();
+    if (state.adminDetail.activeUserId) viewParticipantDetail(state.adminDetail.activeUserId);
+    loadAdminPeserta();
   } catch (err) {
     toast('error', 'Error', 'Gagal menolak');
   }
