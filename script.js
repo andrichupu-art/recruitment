@@ -32,6 +32,7 @@ const state = {
     filterStep: ''
   },
   adminDetail: { activeUserId: null, previewReturnsToDetail: false },
+  adminChat: { userId: null, channel: null },
   adminVerifikasi: { data: [], search: '' },
   scheduleFilter: 'all',
   theme: localStorage.getItem('theme') || 'light',
@@ -1334,6 +1335,15 @@ function closePreviewModal() {
   state.adminDetail.previewReturnsToDetail = false;
   hide($('#preview-modal'));
   state.adminDetail.activeUserId = null;
+  closeAdminChatChannel();
+}
+
+function closeAdminChatChannel() {
+  if (state.adminChat.channel) {
+    supabase.removeChannel(state.adminChat.channel);
+    state.adminChat.channel = null;
+  }
+  state.adminChat.userId = null;
 }
 
 $('#preview-close').addEventListener('click', closePreviewModal);
@@ -1632,7 +1642,7 @@ async function loadProgress() {
     container.innerHTML = TIMELINE_STEPS.map(step => {
       const isCompleted = step.step < currentStep;
       const isCurrent = step.step === currentStep;
-      const statusClass = isCompleted ? 'completed' : isCurrent ? 'in_progress' : '';
+      const statusClass = isCompleted ? 'completed' : isCurrent ? 'current' : '';
       
       return `
         <div class="timeline-item ${statusClass}">
@@ -2032,6 +2042,21 @@ async function loadAdminPeserta() {
     const statusMap = {};
     (statuses || []).forEach(s => { statusMap[s.user_id] = s.current_step; });
 
+    // Jumlah pesan chat dari peserta yang belum dibaca admin, dipakai untuk
+    // menampilkan titik notifikasi kecil di tombol Chat pada tabel.
+    const { data: unreadChats, error: unreadChatsErr } = await supabase
+      .from('chat_messages')
+      .select('user_id')
+      .eq('sender_role', 'user')
+      .eq('is_read', false);
+
+    if (unreadChatsErr) {
+      console.error('Load unread chat error:', unreadChatsErr);
+    }
+
+    const unreadChatMap = {};
+    (unreadChats || []).forEach(m => { unreadChatMap[m.user_id] = (unreadChatMap[m.user_id] || 0) + 1; });
+
     // Peserta yang sudah mencapai tahap akhir timeline (saat ini "Penempatan")
     // dipindah ke tab Penempatan, jadi tidak lagi ditampilkan di sini supaya
     // tabel Kelola Peserta fokus ke peserta yang masih berproses. Perpindahan
@@ -2087,7 +2112,8 @@ async function loadAdminPeserta() {
         totalDocs: DOC_TYPES.length,
         missingProfileFields,
         missingDocTypes,
-        isDataComplete: missingProfileFields.length === 0 && missingDocTypes.length === 0
+        isDataComplete: missingProfileFields.length === 0 && missingDocTypes.length === 0,
+        unreadChat: unreadChatMap[p.id] || 0
       };
     });
 
@@ -2200,6 +2226,9 @@ function renderAdminTable() {
           <div class="table-actions-cell">
             <div class="table-actions-group">
               <button class="btn-action ${p.isDataComplete ? '' : 'btn-action-incomplete'}" onclick="viewParticipantDetail('${p.id}')" ${p.isDataComplete ? '' : `title="Belum lengkap: ${escapeHtml([...p.missingProfileFields, ...p.missingDocTypes.map(t => 'Dok. ' + t)].join(', '))}"`}>Detail</button>
+              <button class="btn-action btn-chat-action btn-icon-only ${p.unreadChat > 0 ? 'has-unread' : ''}" data-user-id="${p.id}" onclick="openAdminChat('${p.id}', '${escapeHtml(p.full_name).replace(/'/g, "\\'")}')" title="Chat dengan Peserta" aria-label="Chat dengan Peserta">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </button>
               <!-- Sementara disembunyikan: fungsi Approve/Reject akan dipindahkan ke tempat lain.
                    Fungsi approveParticipant()/rejectParticipant() masih ada di script.js,
                    tinggal dipanggil lagi dari sini kalau mau diaktifkan ulang. -->
@@ -2279,6 +2308,170 @@ window.updateParticipantStage = async function(userId, newStep, selectEl) {
     if (selectEl) selectEl.value = selectEl.dataset.currentStep;
   }
 };
+
+/* ============================================ */
+/* ADMIN CHAT DENGAN PESERTA */
+/* Dibuka lewat tombol chat di sebelah tombol Detail pada tabel Kelola
+   Peserta. Memakai tabel `chat_messages` yang sama dengan chat peserta
+   (sender_role 'user' vs 'admin'), hanya saja di sini di-scope ke
+   user_id peserta yang dipilih, bukan admin yang sedang login. */
+window.openAdminChat = async function(userId, fullName) {
+  const modal = $('#preview-modal');
+  const body = $('#preview-body');
+
+  state.adminChat.userId = userId;
+
+  $('#preview-title').textContent = `Chat - ${fullName}`;
+  body.innerHTML = `
+    <div class="chat-container glass">
+      <div class="chat-messages" id="admin-chat-messages">
+        <div class="chat-empty"><p>Memuat pesan...</p></div>
+      </div>
+      <form class="chat-input" id="form-admin-chat" novalidate>
+        <input type="text" id="admin-chat-message" placeholder="Ketik pesan ke peserta..." autocomplete="off" required />
+        <button type="submit" class="btn btn-primary" aria-label="Kirim">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </form>
+    </div>
+  `;
+  show(modal);
+
+  $('#form-admin-chat').addEventListener('submit', (e) => {
+    e.preventDefault();
+    sendAdminChatMessage(userId);
+  });
+
+  await loadAdminChatMessages(userId);
+
+  // Dengarkan pesan baru dari peserta ini secara realtime selama modal terbuka.
+  if (state.adminChat.channel) {
+    supabase.removeChannel(state.adminChat.channel);
+    state.adminChat.channel = null;
+  }
+  state.adminChat.channel = supabase
+    .channel('admin-chat-' + userId)
+    .on('postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `user_id=eq.${userId}` },
+      (payload) => {
+        if (payload.new.sender_role !== 'admin' && state.adminChat.userId === userId) {
+          loadAdminChatMessages(userId);
+        }
+      }
+    )
+    .subscribe();
+};
+
+async function sendAdminChatMessage(userId) {
+  const input = $('#admin-chat-message');
+  const message = input.value.trim();
+  if (!message) return;
+
+  input.value = '';
+  const container = $('#admin-chat-messages');
+  const empty = container.querySelector('.chat-empty');
+  if (empty) empty.remove();
+
+  const tempBubble = document.createElement('div');
+  tempBubble.className = 'chat-bubble user';
+  tempBubble.innerHTML = `${escapeHtml(message)}<span class="chat-time">mengirim...</span>`;
+  container.appendChild(tempBubble);
+  container.scrollTop = container.scrollHeight;
+
+  try {
+    const { error } = await supabase.from('chat_messages').insert({
+      user_id: userId,
+      sender_id: state.user.id,
+      sender_role: 'admin',
+      message
+    });
+
+    if (error) throw error;
+
+    tempBubble.querySelector('.chat-time').textContent = formatTime(new Date());
+
+    await supabase.from('notifications').insert({
+      user_id: userId,
+      title: 'Pesan Baru dari Admin',
+      message: message.length > 80 ? message.slice(0, 80) + '...' : message,
+      type: 'info'
+    });
+  } catch (err) {
+    tempBubble.remove();
+    toast('error', 'Gagal Mengirim', err.message || 'Terjadi kesalahan');
+    input.value = message;
+  }
+}
+
+async function loadAdminChatMessages(userId) {
+  try {
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true });
+
+    const container = $('#admin-chat-messages');
+    if (!container) return; // modal sudah ditutup / peserta lain sudah dibuka
+
+    if (error) {
+      console.error('Load admin chat error:', error);
+    }
+
+    if (!data || data.length === 0) {
+      container.innerHTML = `
+        <div class="chat-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <p>Belum ada pesan. Mulai percakapan dengan peserta ini!</p>
+        </div>
+      `;
+    } else {
+      container.innerHTML = data.map(renderAdminChatBubble).join('');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    await supabase
+      .from('chat_messages')
+      .update({ is_read: true })
+      .eq('user_id', userId)
+      .eq('sender_role', 'user')
+      .eq('is_read', false);
+
+    // Hilangkan titik notifikasi di tombol chat pada tabel setelah dibaca.
+    const participant = state.adminTable.data.find(p => p.id === userId);
+    if (participant) participant.unreadChat = 0;
+    const chatBtn = document.querySelector(`.btn-chat-action[data-user-id="${userId}"]`);
+    if (chatBtn) chatBtn.classList.remove('has-unread');
+  } catch (err) {
+    console.error('Load admin chat error:', err);
+  }
+}
+
+function renderAdminChatBubble(m) {
+  const isMine = m.sender_role === 'admin';
+  let attachmentHtml = '';
+
+  if (m.attachment_url) {
+    if (m.attachment_type === 'image') {
+      attachmentHtml = `<div class="attachment" onclick="previewDocument('${m.attachment_url}', 'Lampiran')"><img src="${m.attachment_url}" alt="attachment" /></div>`;
+    } else {
+      attachmentHtml = `
+        <a href="${m.attachment_url}" target="_blank" class="attachment">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span>${escapeHtml(m.attachment_name || 'File')}</span>
+        </a>
+      `;
+    }
+  }
+
+  return `
+    <div class="chat-bubble ${isMine ? 'user' : ''}">
+      ${m.message ? escapeHtml(m.message) : ''}
+      ${attachmentHtml}
+      <span class="chat-time">${formatTime(m.created_at)}</span>
+    </div>
+  `;
+}
 
 function renderPagination() {
   const { filtered, page, perPage } = state.adminTable;
