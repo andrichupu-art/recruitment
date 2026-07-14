@@ -109,7 +109,16 @@ function toast(type, title, message = '') {
   }, 3500);
 }
 
+// Menyimpan fungsi cleanup dari confirmDialog yang sedang aktif, supaya bisa
+// dibersihkan paksa kalau popup ditutup lewat cara lain (klik overlay/di luar)
+// tanpa menekan OK/Batal — sebelumnya ini yang bikin listener lama menumpuk
+// dan ikut ke-trigger bareng dialog konfirmasi berikutnya.
+let activeConfirmCleanup = null;
+
 function confirmDialog(title, message, onConfirm, onCancel) {
+  // Bersihkan dulu listener dari dialog sebelumnya kalau masih nyangkut
+  if (activeConfirmCleanup) activeConfirmCleanup();
+
   $('#confirm-title').textContent = title;
   $('#confirm-message').textContent = message;
   show($('#confirm-modal'));
@@ -121,6 +130,7 @@ function confirmDialog(title, message, onConfirm, onCancel) {
     hide($('#confirm-modal'));
     okBtn.removeEventListener('click', handleOk);
     cancelBtn.removeEventListener('click', handleCancel);
+    activeConfirmCleanup = null;
   };
   
   const handleOk = () => { cleanup(); onConfirm(); };
@@ -128,6 +138,8 @@ function confirmDialog(title, message, onConfirm, onCancel) {
   
   okBtn.addEventListener('click', handleOk);
   cancelBtn.addEventListener('click', handleCancel);
+
+  activeConfirmCleanup = cleanup;
 }
 
 function setLoading(btn, loading) {
@@ -934,12 +946,19 @@ $('#form-profile').addEventListener('submit', async (e) => {
     setLoading(btn, false);
 
     if (error) {
+      console.error('Save profile error:', error);
       toast('error', 'Gagal Menyimpan', error.message);
       return;
     }
 
-    // Clear draft
-    await supabase.from('form_drafts').delete().eq('user_id', state.user.id).eq('form_key', 'profile');
+    // Bersihkan draft — dibungkus try terpisah supaya kalau baris ini gagal
+    // (mis. tabel form_drafts / RLS bermasalah), profil yang SUDAH tersimpan
+    // di atas tidak ikut dianggap gagal dan tetap menampilkan toast sukses.
+    try {
+      await supabase.from('form_drafts').delete().eq('user_id', state.user.id).eq('form_key', 'profile');
+    } catch (draftErr) {
+      console.error('Clear draft error:', draftErr);
+    }
 
     state.profile = { ...state.profile, ...updates };
     $('#welcome-name').textContent = updates.full_name;
@@ -948,6 +967,7 @@ $('#form-profile').addEventListener('submit', async (e) => {
     toast('success', 'Profil Diperbarui');
   } catch (err) {
     setLoading(btn, false);
+    console.error('Save profile error:', err);
     toast('error', 'Error', 'Terjadi kesalahan');
   }
 });
@@ -1196,12 +1216,15 @@ window.previewDocument = function(url, title) {
 };
 
 $('#preview-close').addEventListener('click', () => { hide($('#preview-modal')); state.adminDocs.activeUserId = null; });
-$('.modal-overlay').addEventListener('click', (e) => {
-  if (e.target.classList.contains('modal-overlay')) {
-    hide($('#preview-modal'));
-    hide($('#confirm-modal'));
-    state.adminDocs.activeUserId = null;
-  }
+$$('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', (e) => {
+    if (e.target.classList.contains('modal-overlay')) {
+      hide($('#preview-modal'));
+      if (activeConfirmCleanup) activeConfirmCleanup();
+      else hide($('#confirm-modal'));
+      state.adminDocs.activeUserId = null;
+    }
+  });
 });
 
 window.openUploadModal = function(docType) {
@@ -2290,7 +2313,16 @@ window.viewParticipantDetail = async function(userId) {
     const body = $('#preview-body');
     $('#preview-title').textContent = 'Detail Peserta';
 
-    const docsStatus = docs.some(d => d.status === 'rejected') ? 'rejected' : docs.every(d => d.status === 'approved') ? 'approved' : 'pending';
+    // docs.length === 0 dicek eksplisit di depan karena Array.every() pada array
+    // kosong selalu bernilai true di JavaScript — tanpa ini, peserta yang belum
+    // upload dokumen sama sekali keliru dianggap "Disetujui".
+    const docsStatus = docs.length === 0
+      ? 'pending'
+      : docs.some(d => d.status === 'rejected')
+        ? 'rejected'
+        : docs.every(d => d.status === 'approved')
+          ? 'approved'
+          : 'pending';
 
     const initial = (profile.full_name || '?').charAt(0).toUpperCase();
     const fields = [
