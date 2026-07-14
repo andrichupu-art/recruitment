@@ -58,6 +58,57 @@ const DOC_OCR_KEYWORDS = {
   'Sertifikat': [['SERTIFIKAT', 'CERTIFICATE']]
 };
 
+// Worker Tesseract di-reuse antar pengecekan OCR (bukan dibuat ulang tiap upload).
+// Tanpa ini, tiap kali user upload dokumen, browser mendownload ulang model bahasa
+// OCR (~10-15MB) dan menginisialisasi worker dari nol -> ini penyebab utama loading
+// lama saat upload dokumen, terutama di koneksi mobile. Dengan reuse, hanya upload
+// PERTAMA dalam sesi yang lambat; upload berikutnya jauh lebih cepat.
+let tesseractWorkerPromise = null;
+function getTesseractWorker() {
+  if (typeof Tesseract === 'undefined') return Promise.reject(new Error('Tesseract belum termuat'));
+  if (!tesseractWorkerPromise) {
+    tesseractWorkerPromise = Tesseract.createWorker('eng').catch((err) => {
+      tesseractWorkerPromise = null; // reset supaya percobaan berikutnya bisa retry
+      throw err;
+    });
+  }
+  return tesseractWorkerPromise;
+}
+
+// Foto dari kamera HP biasanya jauh lebih besar (mis. 3000x4000px) daripada yang
+// dibutuhkan untuk sekadar mendeteksi keyword. Waktu proses OCR kira-kira sebanding
+// dengan jumlah piksel, jadi mengecilkan gambar dulu sebelum di-OCR mempercepat
+// pengecekan secara signifikan tanpa mengubah file asli yang diupload ke server.
+function downscaleImageForOcr(file, maxDim = 1400) {
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        if (scale >= 1) {
+          URL.revokeObjectURL(url);
+          resolve(file);
+          return;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          URL.revokeObjectURL(url);
+          resolve(blob || file);
+        }, 'image/jpeg', 0.85);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    } catch (err) {
+      resolve(file);
+    }
+  });
+}
+
 const TIMELINE_STEPS = [
   { step: 1, title: 'Pendaftaran', desc: 'Registrasi akun dan lengkapi data diri' },
   { step: 2, title: 'Verifikasi', desc: 'Verifikasi dokumen dan data peserta' },
@@ -1288,6 +1339,13 @@ window.openUploadModal = function(docType) {
   `;
   
   show(modal);
+
+  // Mulai siapkan worker OCR di background begitu modal dibuka (kalau dokumen ini
+  // memang dicek OCR), supaya saat user selesai pilih file, worker sudah/lagi siap
+  // -> tidak menunggu proses inisialisasi dari nol setelah file dipilih.
+  if (DOC_OCR_KEYWORDS[docType] && typeof Tesseract !== 'undefined') {
+    getTesseractWorker().catch(() => {});
+  }
   
   const zone = $('#modal-upload-zone');
   const input = $('#modal-file-input');
@@ -1356,7 +1414,9 @@ window.openUploadModal = function(docType) {
     show(checkingEl);
 
     try {
-      const { data } = await Tesseract.recognize(file, 'eng');
+      const ocrImage = await downscaleImageForOcr(file);
+      const worker = await getTesseractWorker();
+      const { data } = await worker.recognize(ocrImage);
       const text = (data.text || '').toUpperCase();
 
       const matched = keywordGroups.every(group => group.some(kw => text.includes(kw)));
@@ -1369,8 +1429,11 @@ window.openUploadModal = function(docType) {
         ocrPassed = true;
       }
     } catch (err) {
-      // Gagal OCR (mis. offline/CDN blocked) -> jangan blokir user, lewati pengecekan
+      // Gagal OCR (mis. offline/CDN blocked/worker error) -> jangan blokir user,
+      // lewati pengecekan. Reset worker supaya percobaan upload berikutnya bikin
+      // worker baru (siapa tahu error-nya karena worker sebelumnya rusak).
       console.warn('OCR check failed, skipping validation:', err);
+      tesseractWorkerPromise = null;
       ocrPassed = true;
     } finally {
       hide(checkingEl);
