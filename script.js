@@ -35,7 +35,9 @@ const state = {
   adminVerifikasi: { data: [], search: '' },
   scheduleFilter: 'all',
   theme: localStorage.getItem('theme') || 'light',
-  autoSaveTimers: {}
+  autoSaveTimers: {},
+  dashboardInitializing: false,
+  dashboardReady: false
 };
 
 const DOC_TYPES = [
@@ -546,7 +548,12 @@ $('#form-login').addEventListener('submit', async (e) => {
     }
 
     toast('success', 'Login Berhasil', 'Selamat datang kembali!');
-    setTimeout(() => initDashboard(), 500);
+    // initDashboard() akan otomatis dijalankan oleh listener onAuthStateChange (event SIGNED_IN)
+    // begitu sesi terbentuk — tidak perlu dipanggil lagi di sini (dulu menyebabkan dashboard
+    // dimuat dua kali berturut-turut / tampak "loading lagi" setelah berhasil login).
+    // Fallback jaga-jaga saja bila event auth telat terpicu; aman karena initDashboard()
+    // sudah dilindungi guard state.dashboardInitializing (tidak akan jalan dobel).
+    setTimeout(() => { if (!state.dashboardReady) initDashboard(); }, 1500);
   } catch (err) {
     setLoading(btn, false);
     toast('error', 'Error', 'Terjadi kesalahan. Silakan coba lagi.');
@@ -741,6 +748,8 @@ $('#btn-logout').addEventListener('click', (e) => {
 /* DASHBOARD INIT */
 /* ============================================ */
 async function initDashboard() {
+  if (state.dashboardInitializing) return;
+  state.dashboardInitializing = true;
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -797,6 +806,9 @@ async function initDashboard() {
   } catch (err) {
     console.error('Init error:', err);
     toast('error', 'Error', 'Gagal memuat dashboard');
+  } finally {
+    state.dashboardInitializing = false;
+    state.dashboardReady = true;
   }
 }
 
