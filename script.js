@@ -262,49 +262,66 @@ updateOnlineStatus();
 /* PWA SERVICE WORKER */
 /* ============================================ */
 if ('serviceWorker' in navigator) {
-  const swCode = `
-    const CACHE_NAME = 'globalwork-v1';
-    const URLS_TO_CACHE = ['./', './index.html', './style.css', './script.js'];
-    
-    self.addEventListener('install', (event) => {
-      event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(URLS_TO_CACHE))
-      );
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {
+      // Silent fail if SW registration fails
     });
-    
-    self.addEventListener('fetch', (event) => {
-      if (event.request.url.includes('supabase')) return;
-      event.respondWith(
-        caches.match(event.request).then((response) => {
-          return response || fetch(event.request).then((fetchResponse) => {
-            return caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, fetchResponse.clone());
-              return fetchResponse;
-            });
-          });
-        }).catch(() => caches.match('./index.html'))
-      );
-    });
-    
-    self.addEventListener('push', (event) => {
-      const data = event.data ? event.data.json() : {};
-      event.waitUntil(
-        self.registration.showNotification(data.title || 'GlobalWork', {
-          body: data.body || 'Notifikasi baru',
-          icon: './icon.svg',
-          badge: './icon.svg'
-        })
-      );
-    });
-  `;
-  
-  const swBlob = new Blob([swCode], { type: 'application/javascript' });
-  const swUrl = URL.createObjectURL(swBlob);
-  
-  navigator.serviceWorker.register(swUrl).catch(() => {
-    // Silent fail if SW registration fails
   });
 }
+
+/* ============================================ */
+/* TOMBOL INSTALL PWA */
+/* ============================================ */
+let deferredInstallPrompt = null;
+const installBanner = $('#install-banner');
+const installBtn = $('#install-btn');
+const installDismiss = $('#install-dismiss');
+const INSTALL_DISMISS_KEY = 'gw_install_dismissed';
+
+function isStandaloneMode() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+
+  if (isStandaloneMode()) return; // sudah terinstall/berjalan sebagai app
+  if (sessionStorage.getItem(INSTALL_DISMISS_KEY) === '1') return; // sudah ditutup sesi ini
+
+  if (installBanner) show(installBanner);
+});
+
+if (installBtn) {
+  installBtn.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) {
+      hide(installBanner);
+      return;
+    }
+    installBtn.disabled = true;
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    installBtn.disabled = false;
+    hide(installBanner);
+    if (outcome === 'accepted' && typeof toast === 'function') {
+      toast('success', 'Aplikasi Terinstall', 'GlobalWork berhasil ditambahkan ke perangkat Anda.');
+    }
+  });
+}
+
+if (installDismiss) {
+  installDismiss.addEventListener('click', () => {
+    hide(installBanner);
+    sessionStorage.setItem(INSTALL_DISMISS_KEY, '1');
+  });
+}
+
+window.addEventListener('appinstalled', () => {
+  hide(installBanner);
+  deferredInstallPrompt = null;
+});
 
 // Request notification permission
 async function requestNotificationPermission() {
@@ -3326,6 +3343,10 @@ function subscribeRealtime() {
         showBrowserNotification(payload.new.title, payload.new.message || '');
         if (state.currentPage === 'notifikasi') loadNotifications();
         if (state.currentPage === 'beranda') loadBeranda();
+        // Notifikasi terkait perubahan tahapan (mis. "Dokumen Disetujui",
+        // "Tahapan Diperbarui") juga harus langsung memperbarui halaman
+        // Progress kalau sedang dibuka, tanpa perlu refresh manual.
+        if (state.currentPage === 'progress') loadProgress();
       })
       .subscribe();
 
