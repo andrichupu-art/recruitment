@@ -1028,8 +1028,6 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 .quick-card span { font-size: 12px; font-weight: 600; color: var(--gray-700); }
 
 @media (max-width: 640px) {
-  .stats-grid { grid-template-columns: 1fr; }
-  .stat-card:nth-child(1) { grid-column: 1; }
   .quick-actions { grid-template-columns: repeat(2, 1fr); }
 }
 
@@ -1284,9 +1282,6 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 /* ============================================ */
 /* MOBILE TWEAKS (foundation) */
 /* ============================================ */
-@media (max-width: 900px) {
-  .stats-grid { grid-template-columns: 1fr 1fr 1fr; }
-}
 
 @media (max-width: 480px) {
   .auth-card { padding: 32px 22px; }
@@ -3022,7 +3017,6 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   
   .auth-card { padding: 24px 20px; }
   .view-header h1 { font-size: 20px; }
-  .stats-grid { grid-template-columns: 1fr 1fr; }
   .quick-actions { grid-template-columns: 1fr 1fr; }
   .form-grid { grid-template-columns: 1fr; }
   .profile-header { flex-direction: column; text-align: center; }
