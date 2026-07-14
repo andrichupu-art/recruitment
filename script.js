@@ -762,6 +762,12 @@ $('#btn-logout').addEventListener('click', (e) => {
 async function initDashboard() {
   if (state.dashboardInitializing) return;
   state.dashboardInitializing = true;
+  // Tandai apakah ini init PERTAMA (login awal) atau re-init yang dipicu ulang
+  // oleh Supabase (mis. SIGNED_IN yang re-fire saat sesi/token di-refresh setelah
+  // app sempat di-background-kan, contoh: buka kamera untuk upload dokumen).
+  // Re-init TIDAK boleh memaksa pindah halaman, supaya user yang sedang di
+  // halaman lain (mis. Upload Dokumen) tidak tiba-tiba dilempar ke Beranda.
+  const isFirstInit = !state.dashboardReady;
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -803,11 +809,11 @@ async function initDashboard() {
     if (state.isAdmin) {
       hide($('#user-nav'));
       show($('#admin-nav'));
-      navigateTo('admin-dashboard');
+      if (isFirstInit) navigateTo('admin-dashboard');
     } else {
       show($('#user-nav'));
       hide($('#admin-nav'));
-      navigateTo('beranda');
+      if (isFirstInit) navigateTo('beranda');
     }
 
     hide($('#auth-wrapper'));
