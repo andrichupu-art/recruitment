@@ -2744,11 +2744,26 @@ $('#btn-add-schedule').addEventListener('click', async () => {
   const body = $('#preview-body');
   $('#preview-title').textContent = 'Tambah Jadwal';
 
+  // Ambil data peserta DULU, sebelum select dirender ke DOM.
+  // custom-select.js membangun panel dropdown begitu elemen <select> muncul
+  // di DOM, jadi opsi yang ditambahkan belakangan (setelah render) tidak
+  // pernah masuk ke panel yang sudah dibangun -> dropdown terlihat tapi
+  // tidak bisa dipilih.
+  let pesertaOptions = '<option value="">Pilih peserta...</option>';
+  try {
+    const { data: pesertaList } = await supabase.from('profiles').select('id, full_name').eq('role', 'user');
+    pesertaOptions += (pesertaList || []).map(u =>
+      `<option value="${u.id}">${escapeHtml(u.full_name)}</option>`
+    ).join('');
+  } catch (err) {
+    console.error('Load users error:', err);
+  }
+
   body.innerHTML = `
     <form id="form-add-schedule" style="display: flex; flex-direction: column; gap: 14px;" novalidate>
       <div class="input-group">
         <label>Peserta</label>
-        <select id="schedule-user" required><option value="">Pilih peserta...</option></select>
+        <select id="schedule-user" required>${pesertaOptions}</select>
         <span class="field-error"></span>
       </div>
       <div class="input-group">
@@ -2790,19 +2805,6 @@ $('#btn-add-schedule').addEventListener('click', async () => {
   `;
 
   show(modal);
-
-  try {
-    const { data } = await supabase.from('profiles').select('id, full_name').eq('role', 'user');
-    const select = $('#schedule-user');
-    (data || []).forEach(u => {
-      const opt = document.createElement('option');
-      opt.value = u.id;
-      opt.textContent = u.full_name;
-      select.appendChild(opt);
-    });
-  } catch (err) {
-    console.error('Load users error:', err);
-  }
 
   $('#form-add-schedule').addEventListener('submit', async (e) => {
     e.preventDefault();
