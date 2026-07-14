@@ -2607,6 +2607,18 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 
 .btn-make-admin-action { margin-left: 12px; }
 
+.btn-icon-only {
+  width: 26px;
+  height: 26px;
+  padding: 0 !important;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.btn-icon-only svg { width: 13px; height: 13px; }
+
 .table-actions-cell button {
   padding: 4px 9px;
   border-radius: 14px;
@@ -2939,15 +2951,66 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 .status-rejected, .status-failed { background: #ffdfe0; color: #b21e2b; }
 .status-in_progress { background: #d0f3fa; color: #0a7488; }
 
+/* Badge progres dokumen (X/11) dan tombol APPROVE final di tabel Kelola Peserta */
+.status-progress { background: #dbeafe; color: #1d4ed8; }
+
+.status-approve-btn {
+  border: none;
+  background: var(--red-500);
+  color: var(--white);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.status-approve-btn:hover:not(:disabled) { background: #b91c1c; }
+.status-approve-btn.disabled,
+.status-approve-btn:disabled {
+  background: var(--gray-300);
+  color: var(--gray-600);
+  cursor: not-allowed;
+}
+
 .priority-urgent { border-left: 4px solid var(--red-500); }
 .priority-high { border-left: 4px solid var(--orange-500); }
 .priority-normal { border-left: 4px solid var(--blue-500); }
 .priority-low { border-left: 4px solid var(--gray-400); }
 
 /* ============================================ */
+/* MOBILE LOGOUT BUTTON (pojok kanan atas, HP saja) */
+/* ============================================ */
+.mobile-logout-btn {
+  display: none;
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top));
+  right: 14px;
+  z-index: 300;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.9);
+  backdrop-filter: blur(10px);
+  color: var(--red-500);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.mobile-logout-btn svg { width: 20px; height: 20px; }
+
+.mobile-logout-btn:hover { background: var(--red-500); color: var(--white); transform: translateY(-1px); }
+
+.mobile-logout-btn:active { transform: translateY(0); }
+
+[data-theme="dark"] .mobile-logout-btn { background: rgba(30,30,45,0.85); }
+
+/* ============================================ */
 /* RESPONSIVE */
 /* ============================================ */
 @media (max-width: 900px) {
+  .mobile-logout-btn { display: flex; }
+
   .dashboard-wrapper {
     grid-template-columns: 1fr;
     grid-template-areas: "topbar" "main";
