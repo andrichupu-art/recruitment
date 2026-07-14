@@ -1127,6 +1127,92 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 .stat-info p { font-size: 12px; color: var(--gray-600); margin-bottom: 2px; font-weight: 500; }
 .stat-info h3 { font-size: 22px; font-weight: 700; color: var(--gray-800); }
 
+/* Hero "Selamat Datang" ala desain baru: kartu navy penuh lebar dengan
+   logo perusahaan, menggantikan .view-header polos di halaman Beranda. */
+.home-hero {
+  background: var(--navy);
+  margin: -8px -32px 20px;
+  padding: 26px 28px 30px;
+  border-radius: 0 0 32px 32px;
+  box-shadow: var(--shadow-md);
+}
+.home-hero-text h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--cream);
+  margin-bottom: 4px;
+}
+.home-hero-text p {
+  font-size: 13px;
+  color: rgba(239, 229, 207, 0.75);
+}
+.home-hero-logo {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+.home-hero-logo img {
+  width: 170px;
+  height: auto;
+}
+
+/* Grid 2 kolom x 3 baris menyatukan kartu statistik & aksi cepat menjadi
+   satu set kartu seragam, sesuai desain baru. */
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--bento-gap);
+  margin-bottom: 22px;
+}
+
+.home-card {
+  background: var(--white);
+  border: none;
+  cursor: default;
+  padding: 20px 16px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  transition: var(--transition);
+  font-family: inherit;
+  text-align: left;
+}
+button.home-card { cursor: pointer; }
+.home-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.home-card:active { transform: translateY(0) scale(0.99); box-shadow: var(--shadow-press); }
+
+.home-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.home-card-icon svg { width: 21px; height: 21px; }
+
+.home-card.stat-blue { background: var(--tonal-blue); }
+.home-card.stat-blue .home-card-icon { background: linear-gradient(135deg, var(--blue-400), var(--blue-600)); color: var(--white); box-shadow: 0 6px 14px rgba(42,92,138,0.3); }
+.home-card.stat-orange { background: var(--tonal-orange); }
+.home-card.stat-orange .home-card-icon { background: linear-gradient(135deg, var(--gold-400), var(--gold-600)); color: var(--white); box-shadow: 0 6px 14px rgba(205,164,52,0.3); }
+.home-card.stat-green { background: var(--tonal-green); }
+.home-card.stat-green .home-card-icon { background: linear-gradient(135deg, var(--blue-300), var(--blue-600)); color: var(--white); box-shadow: 0 6px 14px rgba(42,92,138,0.3); }
+
+.home-card-icon.blue { background: linear-gradient(135deg, var(--blue-400), var(--blue-600)); color: var(--white); box-shadow: 0 6px 14px rgba(42,92,138,0.3); }
+.home-card-icon.green { background: linear-gradient(135deg, var(--blue-300), var(--blue-600)); color: var(--white); box-shadow: 0 6px 14px rgba(42,92,138,0.3); }
+.home-card-icon.purple { background: linear-gradient(135deg, var(--blue-500), var(--purple-600)); color: var(--white); box-shadow: 0 6px 14px rgba(28,61,92,0.35); }
+
+.home-card-label { font-size: 12px; color: var(--gray-600); font-weight: 500; }
+.home-card h3 { font-size: 22px; font-weight: 700; color: var(--gray-800); }
+.quick-card.home-card .home-card-label { font-size: 13px; font-weight: 600; color: var(--gray-700); }
+
+@media (max-width: 640px) {
+  .home-hero { margin: -16px -14px 20px; }
+}
+
 /* Bento 2x2 — ubin tonal seragam, tiap warna mengambil identitas ikonnya sendiri */
 .quick-actions {
   display: grid;
