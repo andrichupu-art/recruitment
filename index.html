@@ -10,10 +10,11 @@
   <meta name="apple-mobile-web-app-title" content="GlobalWork" />
   <title>GlobalWork - Agensi Penyalur Tenaga Kerja</title>
 
-  <!-- PWA Manifest Inline -->
-  <link rel="manifest" href='data:application/manifest+json,{"name":"GlobalWork","short_name":"GlobalWork","start_url":"./","display":"standalone","background_color":"%23f5f7fb","theme_color":"%231e40af","orientation":"portrait","icons":[{"src":"data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22><rect width=%22192%22 height=%22192%22 rx=%2240%22 fill=%22%231e40af%22/><circle cx=%2296%22 cy=%2296%22 r=%2260%22 fill=%22none%22 stroke=%22white%22 stroke-width=%228%22/><path d=%22M36 96h120M96 36a90 90 0 0 1 24 60 90 90 0 0 1-24 60 90 90 0 0 1-24-60 90 90 0 0 1 24-60z%22 fill=%22none%22 stroke=%22white%22 stroke-width=%228%22/></svg>","sizes":"192x192","type":"image/svg+xml"},{"src":"data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 512 512%22><rect width=%22512%22 height=%22512%22 rx=%22100%22 fill=%22%231e40af%22/><circle cx=%22256%22 cy=%22256%22 r=%22160%22 fill=%22none%22 stroke=%22white%22 stroke-width=%2220%22/></svg>","sizes":"512x512","type":"image/svg+xml"}]}' />
-  <link rel="icon" type="image/svg+xml" href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%231e40af"/><circle cx="50" cy="50" r="30" fill="none" stroke="white" stroke-width="5"/></svg>' />
-  <link rel="apple-touch-icon" href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180"><rect width="180" height="180" rx="40" fill="%231e40af"/><circle cx="90" cy="90" r="55" fill="none" stroke="white" stroke-width="8"/></svg>' />
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -57,6 +58,27 @@
       <line x1="12" y1="20" x2="12.01" y2="20"/>
     </svg>
     <span>Anda sedang offline. Beberapa fitur tidak tersedia.</span>
+  </div>
+
+  <!-- INSTALL PWA BANNER -->
+  <div id="install-banner" class="install-banner hidden">
+    <div class="install-banner-info">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      <span>Install GlobalWork ke perangkat Anda untuk akses lebih cepat</span>
+    </div>
+    <div class="install-banner-actions">
+      <button type="button" id="install-btn" class="btn btn-primary btn-sm">Install</button>
+      <button type="button" id="install-dismiss" class="icon-btn" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
   </div>
 
   <!-- TOAST NOTIFICATION -->
@@ -847,7 +869,7 @@
     </nav>
   </div>
 
-  <script src="script.js?v=3"></script>
+  <script src="script.js?v=4"></script>
   <script src="custom-select.js?v=3"></script>
 </body>
 </html>
