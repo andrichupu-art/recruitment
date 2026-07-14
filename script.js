@@ -154,7 +154,8 @@ const TIMELINE_STEPS = [
   { step: 2, title: 'Verifikasi', desc: 'Verifikasi dokumen dan data peserta' },
   { step: 3, title: 'Interview', desc: 'Wawancara dengan pihak agensi' },
   { step: 4, title: 'Administrasi', desc: 'Pengurusan dokumen administrasi' },
-  { step: 5, title: 'Medical', desc: 'Pemeriksaan kesehatan' }
+  { step: 5, title: 'Medical', desc: 'Pemeriksaan kesehatan' },
+  { step: 6, title: 'Penempatan', desc: 'Penempatan kerja dan pemberangkatan' }
 ];
 
 /* ============================================ */
@@ -2031,9 +2032,11 @@ async function loadAdminPeserta() {
     const statusMap = {};
     (statuses || []).forEach(s => { statusMap[s.user_id] = s.current_step; });
 
-    // Peserta yang sudah mencapai tahap akhir timeline (saat ini "Medical")
-    // dipindah otomatis ke tab Penempatan, jadi tidak lagi ditampilkan di
-    // sini supaya tabel Kelola Peserta fokus ke peserta yang masih berproses.
+    // Peserta yang sudah mencapai tahap akhir timeline (saat ini "Penempatan")
+    // dipindah ke tab Penempatan, jadi tidak lagi ditampilkan di sini supaya
+    // tabel Kelola Peserta fokus ke peserta yang masih berproses. Perpindahan
+    // ini baru terjadi saat admin memilih "Penempatan" dari dropdown Tahapan
+    // (bukan lagi otomatis saat mencapai "Medical").
     const finalStep = TIMELINE_STEPS[TIMELINE_STEPS.length - 1].step;
 
     state.adminTable.data = (profiles || [])
@@ -3480,7 +3483,8 @@ window.deletePosition = function(id) {
 /* ============================================ */
 /* ADMIN PENEMPATAN */
 /* Menampilkan peserta yang sudah mencapai tahap akhir timeline (saat ini
-   "Medical") beserta detail penempatan (tanggal pemberangkatan, tujuan
+   "Penempatan", dipilih manual oleh admin lewat dropdown Tahapan di Kelola
+   Peserta) beserta detail penempatan (tanggal pemberangkatan, tujuan
    negara, penempatan) yang bisa diisi/diedit admin. Detail tersimpan di
    tabel terpisah `placements` (satu baris per peserta, keyed by user_id)
    supaya tidak mencampur data operasional ke tabel profiles/participant_status. */
@@ -3546,6 +3550,7 @@ async function loadAdminPenempatan() {
           <td>${escapeHtml(pl?.placement || '-')}</td>
           <td>
             <div class="table-actions-cell">
+              <button class="btn-action" onclick="viewParticipantDetail('${p.id}')">Detail</button>
               <button class="btn-edit" onclick="openPenempatanModal('${p.id}', '${escapeHtml(p.full_name).replace(/'/g, "\\'")}')">Edit</button>
             </div>
           </td>
