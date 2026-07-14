@@ -3575,7 +3575,16 @@ function subscribeRealtime() {
         event: '*',
         schema: 'public',
         table: 'announcements'
-      }, () => {
+      }, (payload) => {
+        // Beritahu peserta (bukan admin) begitu ada pengumuman BARU yang
+        // langsung dipublikasikan, sama seperti notifikasi realtime lain
+        // (chat/jadwal/status) -> toast + notifikasi browser, tidak cuma
+        // diam-diam refresh list kalau lagi dibuka.
+        if (!state.isAdmin && payload.eventType === 'INSERT' && payload.new?.is_published) {
+          toast('info', 'Pengumuman Baru', payload.new.title || '');
+          showBrowserNotification('Pengumuman Baru', payload.new.title || '');
+        }
+
         if (state.currentPage === 'pengumuman') loadAnnouncements();
         if (state.currentPage === 'beranda') loadBeranda();
         if (state.currentPage === 'admin-pengumuman') loadAdminPengumuman();
