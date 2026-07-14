@@ -1201,9 +1201,8 @@ button.home-card { cursor: pointer; }
 }
 .home-card-icon svg { width: 18px; height: 18px; }
 
-.home-card-label { font-size: 11px; color: var(--gray-600); font-weight: 500; }
+.home-card-label { font-size: 12px; color: var(--gray-700); font-weight: 600; }
 .home-card h3 { font-size: 19px; font-weight: 700; color: var(--gray-800); }
-.quick-card.home-card .home-card-label { font-size: 12px; font-weight: 600; color: var(--gray-700); }
 
 @media (max-width: 640px) {
   .home-hero { margin: -16px -14px 20px; }
