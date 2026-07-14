@@ -2,61 +2,76 @@
 /* ROOT VARIABLES */
 /* ============================================ */
 :root {
-  /* "Horizon" palette — cakrawala laut ke fajar, terinspirasi perjalanan pekerja menuju negeri baru.
-     Redesign arah: Neo Material (tonal surfaces, elevation lunak) + Bento (grid modular) + Glass tipis. */
-  --bg: #f3f2fb;
+  /* "Horizon Gold" palette — hanya 5 warna inti (+ hitam/putih):
+     Navy #0A1E33, Blue #2A5C8A, Gold #CDA434 (dominan), Cream #EFE5CF, Slate #1F2937.
+     Semua warna lain di bawah adalah tint/shade turunan dari 5 warna ini, dicampur
+     hanya dengan hitam/putih — tidak ada hue baru yang diperkenalkan. */
+
+  /* Warna inti (persis seperti diberikan) */
+  --navy: #0a1e33;
+  --slate: #1f2937;
+  --brand-blue: #2a5c8a;
+  --gold: #cda434;
+  --cream: #efe5cf;
+
+  --bg: var(--cream);
   --white: #ffffff;
+  --black: #000000;
 
-  --gray-50: #faf9fb;
-  --gray-100: #f2f0f6;
-  --gray-200: #e4e0ec;
-  --gray-300: #cdc6da;
-  --gray-400: #9d94b0;
-  --gray-500: #726a87;
-  --gray-600: #514b64;
-  --gray-700: #383349;
-  --gray-800: #241f33;
-  --gray-900: #150f20;
+  /* Netral (skala navy → putih) */
+  --gray-50: #f5f6f8;
+  --gray-100: #e9ebef;
+  --gray-200: #d3d7de;
+  --gray-300: #adb4c0;
+  --gray-400: #7c8697;
+  --gray-500: #57637a;
+  --gray-600: #3d4a63;
+  --gray-700: #253347;
+  --gray-800: var(--slate);
+  --gray-900: var(--navy);
 
-  /* Ocean teal — warna utama (dulu blue) */
-  --blue-50: #ecfeff;
-  --blue-100: #cffafe;
-  --blue-200: #a2f0f8;
-  --blue-300: #67e3f0;
-  --blue-400: #22c8dd;
-  --blue-500: #06aec7;
-  --blue-600: #0891a8;
-  --blue-700: #0a7488;
-  --blue-800: #0d5b6c;
-  --blue-900: #0f4553;
+  /* Biru — warna sekunder (dulu teal) */
+  --blue-50: #eaf1f7;
+  --blue-100: #c9dbea;
+  --blue-200: #9fbfd8;
+  --blue-300: #6e9cbe;
+  --blue-400: #487da0;
+  --blue-500: var(--brand-blue);
+  --blue-600: #234c73;
+  --blue-700: #1c3d5c;
+  --blue-800: #152e45;
+  --blue-900: var(--navy);
 
-  /* Fajar coral & emas — aksen hangat */
-  --orange-500: #fb8b3d;
-  --orange-600: #f4650f;
-  --coral-500: #ff6b6b;
-  --coral-600: #f1494a;
-  --gold-500: #ffb020;
-  --gold-600: #f2960a;
+  /* Emas — warna utama/dominan (dulu orange/coral/gold) */
+  --orange-500: #dbb958;
+  --orange-600: #ad8a2a;
+  --coral-500: var(--navy);
+  --coral-600: #061421;
+  --gold-300: #e8c978;
+  --gold-400: #dbb958;
+  --gold-500: var(--gold);
+  --gold-600: #ad8a2a;
+  --gold-700: #8c7022;
 
-  /* Ungu senja — aksen ketiga untuk variasi */
-  --purple-500: #9455f4;
-  --purple-600: #7c3aed;
+  /* Aksen ketiga (dulu ungu) — dipetakan ke biru gelap supaya tetap 1 keluarga warna */
+  --purple-500: var(--blue-700);
+  --purple-600: var(--blue-800);
 
-  --green-500: #1fc47f;
-  --red-500: #f1494a;
-  --yellow-500: #ffb020;
+  --green-500: var(--brand-blue);
+  --red-500: var(--navy);
+  --yellow-500: var(--gold);
 
-  /* Tonal containers ala Material 3 — versi pucat dari tiap aksen, dipakai sbg latar kartu bento */
-  --tonal-blue: #e3f7fa;
-  --tonal-blue-ink: #075a68;
-  --tonal-orange: #fef1e2;
-  --tonal-orange-ink: #8a4a08;
-  --tonal-green: #e3faf0;
-  --tonal-green-ink: #0f7a4e;
-  --tonal-red: #fdeaea;
-  --tonal-red-ink: #a3282a;
-  --tonal-purple: #f2ebfe;
-  --tonal-purple-ink: #5a24b8;
+  /* Tonal containers — versi pucat dari tiap aksen, dipakai sbg latar kartu bento */
+  --tonal-blue: var(--blue-50);
+  --tonal-blue-ink: var(--blue-800);
+  --tonal-orange: #f8efd9;
+  --tonal-orange-ink: var(--gold-700);
+  --tonal-green: var(--blue-50);
+  --tonal-green-ink: var(--blue-800);
+  --tonal-red: #e7eaee;
+  --tonal-red-ink: var(--navy);
+  --tonal-purple: #e3e8ed;
+  --tonal-purple-ink: var(--blue-800);
 
   /* Skala radius lebih besar & konsisten — ciri khas Neo Material / Bento (kartu membulat generous) */
   --radius-xs: 10px;
@@ -65,21 +80,25 @@
   --radius-lg: 28px;
   --radius-xl: 32px;
 
-  /* Elevation Material — shadow bertona warna, bukan hitam datar */
-  --shadow-sm: 0 2px 8px rgba(36, 20, 70, 0.05);
-  --shadow-md: 0 10px 26px rgba(30, 20, 70, 0.09);
-  --shadow-lg: 0 20px 48px rgba(24, 16, 60, 0.16);
-  --shadow-press: 0 2px 6px rgba(24, 16, 60, 0.10);
+  /* Elevation Material — shadow bertona navy, bukan hitam datar */
+  --shadow-sm: 0 2px 8px rgba(10, 30, 51, 0.08);
+  --shadow-md: 0 10px 26px rgba(10, 30, 51, 0.12);
+  --shadow-lg: 0 20px 48px rgba(10, 30, 51, 0.2);
+  --shadow-press: 0 2px 6px rgba(10, 30, 51, 0.14);
 
-  --gradient-brand: linear-gradient(120deg, var(--blue-500) 0%, var(--blue-600) 45%, var(--purple-600) 100%);
-  --gradient-sunrise: linear-gradient(120deg, var(--coral-500) 0%, var(--orange-500) 50%, var(--gold-500) 100%);
-  --gradient-mesh: radial-gradient(circle at 8% 8%, rgba(6,174,199,0.14), transparent 42%),
-                   radial-gradient(circle at 92% 4%, rgba(255,107,107,0.14), transparent 40%),
-                   radial-gradient(circle at 88% 92%, rgba(148,85,244,0.12), transparent 45%),
-                   radial-gradient(circle at 4% 88%, rgba(255,176,32,0.13), transparent 40%),
+  --gradient-brand: linear-gradient(120deg, var(--gold-500) 0%, var(--gold-600) 45%, var(--navy) 100%);
+  --gradient-sunrise: linear-gradient(120deg, var(--gold-400) 0%, var(--gold-500) 50%, var(--gold-600) 100%);
+  --gradient-mesh: radial-gradient(circle at 8% 8%, rgba(42,92,138,0.12), transparent 42%),
+                   radial-gradient(circle at 92% 4%, rgba(205,164,52,0.16), transparent 40%),
+                   radial-gradient(circle at 88% 92%, rgba(10,30,51,0.10), transparent 45%),
+                   radial-gradient(circle at 4% 88%, rgba(205,164,52,0.14), transparent 40%),
                    var(--bg);
-  --glow-brand: 0 8px 22px rgba(8, 145, 168, 0.35);
-  --glow-sunrise: 0 8px 22px rgba(241, 73, 74, 0.3);
+  --glow-brand: 0 8px 22px rgba(205, 164, 52, 0.35);
+  --glow-sunrise: 0 8px 22px rgba(205, 164, 52, 0.3);
+
+  /* Gradient khusus avatar & ikon fokus/aktif — biru, senada dengan 5 kartu statistik */
+  --gradient-focus: linear-gradient(135deg, var(--blue-500), var(--blue-800));
+  --glow-focus: 0 6px 14px rgba(21, 46, 69, 0.35);
 
   /* Bento */
   --bento-gap: 14px;
@@ -163,7 +182,7 @@ svg { display: block; }
   color: var(--white);
   box-shadow: var(--glow-brand);
 }
-.btn-primary:hover { background-position: 100% 0; box-shadow: 0 12px 28px rgba(8,145,168,0.4); transform: translateY(-1px); }
+.btn-primary:hover { background-position: 100% 0; box-shadow: 0 12px 28px rgba(42,92,138,0.4); transform: translateY(-1px); }
 .btn-primary:active { transform: scale(0.98); box-shadow: var(--shadow-press); }
 
 .btn-outline {
@@ -488,7 +507,7 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   justify-content: center;
   padding: 20px;
   overflow: hidden;
-  background: linear-gradient(135deg, #fff3e6 0%, #eafcff 55%, #fdf1ff 100%);
+  background: linear-gradient(135deg, var(--cream) 0%, var(--blue-50) 55%, var(--gold-300) 100%);
 }
 
 .auth-bg {
@@ -686,9 +705,9 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 .dashboard-wrapper {
   display: grid;
   grid-template-columns: 264px 1fr;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas: "sidebar topbar" "sidebar main";
-  min-height: 100vh;
+  height: 100vh;
   gap: 16px;
   padding: 16px 16px 16px 16px;
 }
@@ -744,7 +763,7 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   height: 38px;
   border-radius: 50%;
   overflow: hidden;
-  background: var(--gradient-brand);
+  background: linear-gradient(135deg, var(--gold-400), var(--gold-600));
   flex-shrink: 0;
   cursor: pointer;
 }
@@ -831,9 +850,9 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   box-shadow: none;
 }
 .nav-item.active svg {
-  background: var(--gradient-brand);
+  background: var(--gradient-focus);
   color: var(--white);
-  box-shadow: 0 4px 10px rgba(8,145,168,0.35);
+  box-shadow: var(--glow-focus);
 }
 
 .nav-item.logout {
@@ -841,7 +860,7 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   color: var(--red-500);
 }
 .nav-item.logout:hover { background: transparent; }
-.nav-item.logout:hover svg { background: #fee2e2; }
+.nav-item.logout:hover svg { background: var(--tonal-red); }
 
 .nav-item-badge {
   margin-left: auto;
@@ -863,6 +882,9 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 .main-content {
   grid-area: main;
   padding: 8px 32px 40px;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
 }
 
 .bottom-nav {
@@ -900,9 +922,9 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 }
 .bottom-item.active { color: var(--tonal-blue-ink); font-weight: 700; }
 .bottom-item.active svg {
-  background: var(--gradient-brand);
+  background: var(--gradient-focus);
   color: var(--white);
-  box-shadow: 0 4px 10px rgba(8,145,168,0.35);
+  box-shadow: var(--glow-focus);
 }
 
 /* ============================================ */
@@ -978,11 +1000,11 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 
 /* Ikon tetap solid (aksen berani), badan kartu jadi tonal pucat — ciri Material 3 */
 .stat-blue { background: var(--tonal-blue); }
-.stat-blue .stat-icon { background: linear-gradient(135deg, var(--blue-400), var(--blue-600)); color: var(--white); box-shadow: 0 6px 14px rgba(8,145,168,0.3); }
+.stat-blue .stat-icon { background: linear-gradient(135deg, var(--blue-400), var(--blue-600)); color: var(--white); box-shadow: 0 6px 14px rgba(42,92,138,0.3); }
 .stat-orange { background: var(--tonal-orange); }
-.stat-orange .stat-icon { background: linear-gradient(135deg, var(--gold-500), var(--orange-600)); color: var(--white); box-shadow: 0 6px 14px rgba(244,101,15,0.3); }
+.stat-orange .stat-icon { background: linear-gradient(135deg, var(--gold-400), var(--gold-600)); color: var(--white); box-shadow: 0 6px 14px rgba(205,164,52,0.3); }
 .stat-green { background: var(--tonal-green); }
-.stat-green .stat-icon { background: linear-gradient(135deg, #4ade80, var(--green-500)); color: var(--white); box-shadow: 0 6px 14px rgba(31,196,127,0.3); }
+.stat-green .stat-icon { background: linear-gradient(135deg, var(--blue-300), var(--blue-600)); color: var(--white); box-shadow: 0 6px 14px rgba(42,92,138,0.3); }
 
 .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .stat-card:active { transform: translateY(0) scale(0.99); box-shadow: var(--shadow-press); }
@@ -1020,10 +1042,10 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 }
 .quick-icon svg { width: 22px; height: 22px; }
 
-.quick-icon.blue { background: linear-gradient(135deg, var(--blue-400), var(--blue-600)); color: var(--white); box-shadow: 0 6px 14px rgba(8,145,168,0.3); }
-.quick-icon.orange { background: linear-gradient(135deg, var(--coral-500), var(--orange-600)); color: var(--white); box-shadow: 0 6px 14px rgba(241,73,74,0.3); }
-.quick-icon.green { background: linear-gradient(135deg, #4ade80, var(--green-500)); color: var(--white); box-shadow: 0 6px 14px rgba(31,196,127,0.3); }
-.quick-icon.purple { background: linear-gradient(135deg, #b794f6, var(--purple-600)); color: var(--white); box-shadow: 0 6px 14px rgba(124,58,237,0.3); }
+.quick-icon.blue { background: linear-gradient(135deg, var(--blue-400), var(--blue-600)); color: var(--white); box-shadow: 0 6px 14px rgba(42,92,138,0.3); }
+.quick-icon.orange { background: linear-gradient(135deg, var(--gold-500), var(--gold-700)); color: var(--white); box-shadow: 0 6px 14px rgba(205,164,52,0.35); }
+.quick-icon.green { background: linear-gradient(135deg, var(--blue-300), var(--blue-600)); color: var(--white); box-shadow: 0 6px 14px rgba(42,92,138,0.3); }
+.quick-icon.purple { background: linear-gradient(135deg, var(--blue-500), var(--purple-600)); color: var(--white); box-shadow: 0 6px 14px rgba(28,61,92,0.35); }
 
 .quick-card span { font-size: 12px; font-weight: 600; color: var(--gray-700); }
 
@@ -1269,12 +1291,12 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 /* ============================================ */
 /* DARK MODE ADDITIONS (foundation) */
 /* ============================================ */
-[data-theme="dark"] .auth-wrapper { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+[data-theme="dark"] .auth-wrapper { background: linear-gradient(135deg, var(--navy) 0%, var(--slate) 100%); }
 [data-theme="dark"] .topbar,
 [data-theme="dark"] .sidebar,
-[data-theme="dark"] .chat-input { background: rgba(30, 41, 59, 0.9); }
+[data-theme="dark"] .chat-input { background: rgba(31, 41, 55, 0.9); }
 [data-theme="dark"] .nav-item:hover { background: var(--gray-100); }
-[data-theme="dark"] .nav-item.active { background: rgba(59, 130, 246, 0.15); }
+[data-theme="dark"] .nav-item.active { background: rgba(42, 92, 138, 0.15); }
 [data-theme="dark"] .chat-bubble { background: var(--gray-100); }
 [data-theme="dark"] .form-card,
 [data-theme="dark"] .toast { background: var(--white); }
@@ -1528,8 +1550,8 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   height: 64px;
   margin: 0 auto;
   border-radius: 50%;
-  background: #fef3c7;
-  color: #d97706;
+  background: var(--tonal-orange);
+  color: var(--gold-700);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1619,15 +1641,15 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   right: 0;
   z-index: 9998;
   padding: 10px 16px;
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--tonal-orange);
+  color: var(--gold-700);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   font-size: 13px;
   font-weight: 500;
-  border-bottom: 1px solid #fcd34d;
+  border-bottom: 1px solid var(--gold-300);
   animation: slideDown 0.3s ease-out;
 }
 
@@ -1650,11 +1672,11 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   max-width: 420px;
   margin: 0 auto;
   padding: 14px 14px 14px 16px;
-  background: #ffffff;
-  color: var(--gray-700, #374151);
+  background: var(--white);
+  color: var(--gray-700, #253347);
   border-radius: 14px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.18);
-  border: 1px solid var(--gray-200, #e5e7eb);
+  border: 1px solid var(--gray-200, #d3d7de);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1668,14 +1690,14 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   gap: 10px;
   font-size: 13px;
   font-weight: 500;
-  color: var(--gray-700, #374151);
+  color: var(--gray-700, #253347);
 }
 
 .install-banner-info svg {
   width: 22px;
   height: 22px;
   flex-shrink: 0;
-  color: #1e40af;
+  color: var(--blue-600);
 }
 
 .install-banner-actions {
@@ -1698,12 +1720,12 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 
 [data-theme="dark"] .install-banner {
   background: var(--gray-800, #1f2937);
-  border-color: var(--gray-700, #374151);
-  color: var(--gray-100, #f3f4f6);
+  border-color: var(--gray-700, #253347);
+  color: var(--gray-100, #e9ebef);
 }
 
 [data-theme="dark"] .install-banner-info {
-  color: var(--gray-100, #f3f4f6);
+  color: var(--gray-100, #e9ebef);
 }
 
 @media (max-width: 480px) {
@@ -1720,20 +1742,20 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 /* DARK MODE */
 /* ============================================ */
 [data-theme="dark"] {
-  --bg: #0f172a;
-  --white: #1e293b;
-  --gray-50: #1e293b;
-  --gray-100: #334155;
-  --gray-200: #475569;
-  --gray-300: #64748b;
-  --gray-400: #94a3b8;
-  --gray-500: #cbd5e1;
-  --gray-600: #e2e8f0;
-  --gray-700: #f1f5f9;
-  --gray-800: #f8fafc;
+  --bg: #05101c;
+  --white: #13233a;
+  --gray-50: #13233a;
+  --gray-100: #1f3350;
+  --gray-200: #2c4763;
+  --gray-300: #45607d;
+  --gray-400: #66809c;
+  --gray-500: #93a8bd;
+  --gray-600: #c2d0dc;
+  --gray-700: #dde5eb;
+  --gray-800: #eef1f4;
   --gray-900: #ffffff;
-  --blue-50: rgba(59, 130, 246, 0.1);
-  --blue-100: rgba(59, 130, 246, 0.2);
+  --blue-50: rgba(42, 92, 138, 0.15);
+  --blue-100: rgba(42, 92, 138, 0.25);
 }
 
 [data-theme="dark"] body {
@@ -1742,12 +1764,12 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 }
 
 [data-theme="dark"] .glass {
-  background: rgba(30, 41, 59, 0.8);
-  border-color: rgba(71, 85, 105, 0.5);
+  background: rgba(31, 41, 55, 0.8);
+  border-color: rgba(37, 51, 71, 0.5);
 }
 
 [data-theme="dark"] .auth-wrapper {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  background: linear-gradient(135deg, var(--navy) 0%, var(--slate) 100%);
 }
 
 [data-theme="dark"] .auth-logo h1 { color: var(--gray-900); }
@@ -1787,13 +1809,13 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 }
 
 [data-theme="dark"] .splash-screen {
-  background: linear-gradient(135deg, #0f172a, #1e293b);
+  background: linear-gradient(135deg, var(--navy), var(--slate));
 }
 
 [data-theme="dark"] .offline-banner {
-  background: #78350f;
-  color: #fef3c7;
-  border-color: #92400e;
+  background: var(--gold-700);
+  color: var(--gold-300);
+  border-color: var(--gold-600);
 }
 
 [data-theme="dark"] .icon-sun { display: none; }
@@ -1830,7 +1852,7 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 .input-group.error select,
 .input-group.error textarea {
   border-color: var(--red-500);
-  background: rgba(239, 68, 68, 0.05);
+  background: rgba(10, 30, 51, 0.05);
 }
 
 .input-group.success input {
@@ -1998,10 +2020,10 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 .doc-item-reason {
   margin-top: 10px;
   padding: 10px;
-  background: #fee2e2;
+  background: var(--tonal-red);
   border-radius: var(--radius-sm);
   font-size: 12px;
-  color: #991b1b;
+  color: var(--navy);
 }
 
 .doc-item-reason strong { display: block; margin-bottom: 4px; }
@@ -2020,7 +2042,7 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 
 .upload-zone:hover,
 .upload-zone.dragover {
-  border-color: var(--blue-600, #3b5bfd);
+  border-color: var(--blue-600, #234c73);
   background: var(--gray-50);
 }
 
@@ -2063,7 +2085,7 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 .ocr-status .spinner {
   width: 14px; height: 14px;
   border: 2px solid var(--gray-300);
-  border-top-color: var(--blue-600, #3b5bfd);
+  border-top-color: var(--blue-600, #234c73);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
@@ -2073,9 +2095,9 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   margin: 12px 0;
   padding: 12px 14px;
   border-radius: var(--radius-sm);
-  background: #fff7ed;
-  border: 1px solid #fdba74;
-  color: #9a3412;
+  background: var(--tonal-orange);
+  border: 1px solid var(--gold-300);
+  color: var(--gold-700);
   font-size: 13px;
 }
 .ocr-warning strong { display: block; margin-bottom: 4px; font-size: 13.5px; }
@@ -2358,9 +2380,8 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 }
 
 .admin-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(2, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: var(--bento-gap);
   margin-bottom: 0;
   flex: 1;
@@ -2368,12 +2389,13 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 }
 
 .admin-stat-card {
-  padding: 22px;
+  padding: 22px 26px;
   border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
-  gap: 16px;
-  height: 100%;
+  gap: 18px;
+  flex: 1;
+  min-height: 0;
   transition: var(--transition);
 }
 
@@ -2385,8 +2407,8 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 .admin-stat-card.clickable-stat { cursor: pointer; }
 
 .admin-stat-icon {
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
@@ -2394,18 +2416,20 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   flex-shrink: 0;
 }
 
-.admin-stat-icon svg { width: 28px; height: 28px; }
+.admin-stat-icon svg { width: 26px; height: 26px; }
 
-.admin-stat-icon.blue { background: linear-gradient(135deg, var(--blue-400), var(--blue-600)); color: var(--white); box-shadow: 0 6px 14px rgba(8,145,168,0.3); }
-.admin-stat-icon.orange { background: linear-gradient(135deg, var(--gold-500), var(--orange-600)); color: var(--white); box-shadow: 0 6px 14px rgba(244,101,15,0.3); }
-.admin-stat-icon.green { background: linear-gradient(135deg, #4ade80, var(--green-500)); color: var(--white); box-shadow: 0 6px 14px rgba(31,196,127,0.3); }
-.admin-stat-icon.red { background: linear-gradient(135deg, #fb7185, var(--red-500)); color: var(--white); box-shadow: 0 6px 14px rgba(241,73,74,0.3); }
+.admin-stat-icon.blue { background: linear-gradient(135deg, var(--blue-500), var(--blue-800)); color: var(--white); box-shadow: 0 6px 14px rgba(21,46,69,0.35); }
+.admin-stat-icon.purple { background: linear-gradient(135deg, var(--blue-500), var(--blue-800)); color: var(--white); box-shadow: 0 6px 14px rgba(21,46,69,0.35); }
+.admin-stat-icon.orange { background: linear-gradient(135deg, var(--blue-500), var(--blue-800)); color: var(--white); box-shadow: 0 6px 14px rgba(21,46,69,0.35); }
+.admin-stat-icon.green { background: linear-gradient(135deg, var(--blue-500), var(--blue-800)); color: var(--white); box-shadow: 0 6px 14px rgba(21,46,69,0.35); }
+.admin-stat-icon.red { background: linear-gradient(135deg, var(--blue-500), var(--blue-800)); color: var(--white); box-shadow: 0 6px 14px rgba(21,46,69,0.35); }
 
 /* Tonal container per kartu, mengikuti warna ikon di dalamnya */
-.admin-stat-card:has(.admin-stat-icon.blue) { background: var(--tonal-blue); }
-.admin-stat-card:has(.admin-stat-icon.orange) { background: var(--tonal-orange); }
-.admin-stat-card:has(.admin-stat-icon.green) { background: var(--tonal-green); }
-.admin-stat-card:has(.admin-stat-icon.red) { background: var(--tonal-red); }
+.admin-stat-card:has(.admin-stat-icon.blue) { background: var(--tonal-purple); }
+.admin-stat-card:has(.admin-stat-icon.purple) { background: var(--tonal-purple); }
+.admin-stat-card:has(.admin-stat-icon.orange) { background: var(--tonal-purple); }
+.admin-stat-card:has(.admin-stat-icon.green) { background: var(--tonal-purple); }
+.admin-stat-card:has(.admin-stat-icon.red) { background: var(--tonal-purple); }
 
 .admin-stat-info p {
   font-size: 13px;
@@ -2415,16 +2439,9 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 }
 
 .admin-stat-info h3 {
-  font-size: 30px;
+  font-size: 28px;
   font-weight: 700;
   color: var(--gray-800);
-}
-
-@media (max-width: 900px) {
-  .admin-stats-grid { grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 480px) {
-  .admin-stats-grid { grid-template-columns: 1fr; }
 }
 
 /* ============================================ */
@@ -2467,7 +2484,7 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(15, 10, 30, 0.38);
+  background: rgba(10, 30, 51, 0.38);
   color: var(--white);
   opacity: 0;
   transition: opacity 0.18s ease;
@@ -2651,13 +2668,13 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 }
 
 .btn-approve { background: var(--green-500); color: var(--white); }
-.btn-approve:hover { background: #059669; }
+.btn-approve:hover { background: var(--blue-700); }
 
 .btn-reject { background: var(--red-500); color: var(--white); }
-.btn-reject:hover { background: #dc2626; }
+.btn-reject:hover { background: var(--black); }
 
 .btn-pending { background: var(--yellow-500); color: var(--white); }
-.btn-pending:hover { background: #ca8a04; }
+.btn-pending:hover { background: var(--gold-700); }
 
 .btn-view-detail { background: var(--blue-500); color: var(--white); }
 .btn-view-detail:hover { background: var(--blue-600); }
@@ -2665,8 +2682,8 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 .btn-edit { background: var(--orange-500); color: var(--white); }
 .btn-edit:hover { background: var(--orange-600); }
 
-.btn-make-admin { background: #7c3aed; color: var(--white); }
-.btn-make-admin:hover { background: #6d28d9; }
+.btn-make-admin { background: var(--blue-700); color: var(--white); }
+.btn-make-admin:hover { background: var(--blue-800); }
 
 .btn-action {
   background: var(--blue-500);
@@ -2679,7 +2696,7 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 .btn-action-incomplete {
   background: var(--red-500) !important;
 }
-.btn-action-incomplete:hover { background: #d63c3d !important; }
+.btn-action-incomplete:hover { background: var(--black) !important; }
 
 .btn-delete { background: var(--gray-400); color: var(--white); }
 .btn-delete:hover { background: var(--red-500); }
@@ -2806,9 +2823,9 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 }
 
 .schedule-card.type-Interview .schedule-card-type { background: var(--blue-100); color: var(--blue-700); }
-.schedule-card.type-Medical .schedule-card-type { background: #d1fae5; color: #065f46; }
-.schedule-card.type-Pelatihan .schedule-card-type { background: #fed7aa; color: #9a3412; }
-.schedule-card.type-Pemberangkatan .schedule-card-type { background: #fee2e2; color: #991b1b; }
+.schedule-card.type-Medical .schedule-card-type { background: var(--tonal-blue); color: var(--tonal-blue-ink); }
+.schedule-card.type-Pelatihan .schedule-card-type { background: var(--tonal-orange); color: var(--tonal-orange-ink); }
+.schedule-card.type-Pemberangkatan .schedule-card-type { background: var(--tonal-red); color: var(--tonal-red-ink); }
 
 .schedule-card-details {
   display: flex;
@@ -2975,13 +2992,13 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   text-align: center;
 }
 
-.status-pending { background: #fff1c9; color: #9a5b00; }
-.status-approved, .status-completed { background: #d3fae4; color: #05714a; }
-.status-rejected, .status-failed { background: #ffdfe0; color: #b21e2b; }
-.status-in_progress { background: #d0f3fa; color: #0a7488; }
+.status-pending { background: var(--tonal-orange); color: var(--tonal-orange-ink); }
+.status-approved, .status-completed { background: var(--tonal-blue); color: var(--tonal-blue-ink); }
+.status-rejected, .status-failed { background: var(--tonal-red); color: var(--tonal-red-ink); }
+.status-in_progress { background: var(--blue-100); color: var(--blue-700); }
 
 /* Badge progres dokumen (X/11) dan tombol APPROVE final di tabel Kelola Peserta */
-.status-progress { background: #dbeafe; color: #1d4ed8; }
+.status-progress { background: var(--blue-100); color: var(--blue-800); }
 
 .status-approve-btn {
   border: none;
@@ -2990,7 +3007,7 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   cursor: pointer;
   transition: var(--transition);
 }
-.status-approve-btn:hover:not(:disabled) { background: #b91c1c; }
+.status-approve-btn:hover:not(:disabled) { background: var(--black); }
 .status-approve-btn.disabled,
 .status-approve-btn:disabled {
   background: var(--gray-300);
@@ -3032,7 +3049,7 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 
 .mobile-logout-btn:active { transform: translateY(0); }
 
-[data-theme="dark"] .mobile-logout-btn { background: rgba(30,30,45,0.85); }
+[data-theme="dark"] .mobile-logout-btn { background: rgba(31,41,55,0.85); }
 
 /* ============================================ */
 /* RESPONSIVE */
@@ -3074,10 +3091,9 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 
   .admin-stats-grid {
     flex: none;
-    grid-template-rows: none;
   }
 
-  .admin-stat-card { height: auto; }
+  .admin-stat-card { min-height: 90px; }
 
   #view-admin-peserta.active {
     display: block;
@@ -3098,8 +3114,6 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   .docs-checklist { grid-template-columns: 1fr; }
   .lowongan-grid { grid-template-columns: 1fr; }
   
-  .admin-stats-grid { grid-template-columns: 1fr 1fr; }
-  
   .table-controls { flex-direction: column; align-items: stretch; }
   .table-filters { flex-direction: column; }
   .table-actions { justify-content: flex-end; }
@@ -3111,8 +3125,6 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 }
 
 @media (max-width: 480px) {
-  .admin-stats-grid { grid-template-columns: 1fr; }
-  
   .modal-content { max-height: 95vh; }
   .modal-body iframe { height: 400px; }
   
