@@ -2628,6 +2628,19 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 }
 .btn-icon-only svg { width: 13px; height: 13px; }
 
+.btn-chat-action { position: relative; }
+.btn-chat-action.has-unread::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red-500);
+  border: 1.5px solid var(--white);
+}
+
 .table-actions-cell button {
   padding: 4px 9px;
   border-radius: 14px;
