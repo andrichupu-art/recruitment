@@ -3,7 +3,7 @@
 /* ============================================ */
 :root {
   /* "Horizon Gold" palette — hanya 5 warna inti (+ hitam/putih):
-     Navy #0A1E33, Blue #2A5C8A, Gold #CDA434 (dominan), Cream #EFE5CF, Slate #1F2937.
+     Navy #0A1E33, Blue #2a5c8a, Gold #CDA434 (dominan), Cream #EFE5CF, Slate #1F2937.
      Semua warna lain di bawah adalah tint/shade turunan dari 5 warna ini, dicampur
      hanya dengan hitam/putih — tidak ada hue baru yang diperkenalkan. */
 
@@ -100,6 +100,11 @@
   --gradient-focus: linear-gradient(135deg, var(--blue-500), var(--blue-800));
   --glow-focus: 0 6px 14px rgba(21, 46, 69, 0.35);
 
+  /* Watermark motif latar belakang (logo_3.svg) — ukuran ubin & kekuatan gradasi */
+  --watermark-image: url('logo_3.svg');
+  --watermark-tile: 190px;
+  --watermark-opacity: 0.4;
+
   /* Bento */
   --bento-gap: 14px;
 
@@ -116,11 +121,25 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* FIX: browser (terutama Chrome/WebView mobile) memberi default focus
+   outline/ring pada <a> dan <button> setelah di-tap, yang tampak seperti
+   "bayangan" menempel di elemen (mis. nav-item) sampai elemen lain
+   difokus. Outline default dimatikan di sini, diganti indikator focus
+   yang rapi lewat :focus-visible supaya aksesibilitas keyboard tetap ada. */
+a, button {
+  outline: none;
+}
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--blue-500);
+  outline-offset: 2px;
+}
+
 html, body {
   height: 100%;
 }
 
 body {
+  position: relative;
   font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--gradient-mesh);
   background-attachment: fixed;
@@ -129,6 +148,39 @@ body {
   line-height: 1.5;
   overflow-x: hidden;
   overscroll-behavior-y: none;
+}
+
+/* ============================================ */
+/* BACKGROUND WATERMARK (motif logo_3.svg)       */
+/* Ditumpuk di atas gradient-mesh, memudar/gradasi */
+/* menuju warna background polos di area tengah   */
+/* (tempat konten utama berada), makin terlihat    */
+/* ke arah tepi layar — konsisten di semua halaman */
+/* (auth, dashboard peserta & admin). */
+/* ============================================ */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--watermark-image);
+  background-repeat: repeat;
+  background-size: var(--watermark-tile) auto;
+  background-position: center top;
+  opacity: var(--watermark-opacity);
+  mix-blend-mode: multiply;
+  -webkit-mask-image: radial-gradient(ellipse 75% 70% at 50% 42%, transparent 0%, transparent 35%, rgba(0,0,0,0.9) 100%);
+  mask-image: radial-gradient(ellipse 75% 70% at 50% 42%, transparent 0%, transparent 35%, rgba(0,0,0,0.9) 100%);
+}
+
+[data-theme="dark"] body::before {
+  mix-blend-mode: soft-light;
+  opacity: calc(var(--watermark-opacity) * 0.7);
+}
+
+@media (max-width: 640px) {
+  body::before { --watermark-tile: 140px; }
 }
 
 a { text-decoration: none; color: inherit; }
@@ -594,13 +646,13 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   width: 64px;
   height: 64px;
   margin: 0 auto 14px;
-  background: var(--gradient-brand);
+  background: var(--gradient-focus);
   border-radius: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--white);
-  box-shadow: var(--glow-brand);
+  box-shadow: var(--glow-focus);
 }
 
 .logo-icon svg { width: 32px; height: 32px; }
@@ -612,6 +664,21 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   margin: 0;
 }
 .logo-icon.small svg { width: 20px; height: 20px; }
+
+/* Logo asli perusahaan (gambar), bukan ikon generik: tanpa kotak
+   warna/bayangan, ukuran menyesuaikan lebar kartu login. */
+.logo-icon.brand-logo {
+  width: 190px;
+  height: auto;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+.logo-icon.brand-logo img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
 
 .auth-logo h1 {
   font-size: 22px;
@@ -641,6 +708,18 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   font-size: 13px;
   color: var(--gray-600);
   margin-top: 20px;
+}
+
+/* FIX: tombol submit di halaman login/register/lupa-password/reset-password
+   sebelumnya ikut var(--gradient-brand) (emas -> navy), sehingga terlihat
+   dominan kuning. Disamakan dengan warna navy seperti ikon-ikon lain
+   (var(--gradient-focus)) sesuai permintaan. */
+.auth-card .btn-primary {
+  background: var(--gradient-focus);
+  box-shadow: var(--glow-focus);
+}
+.auth-card .btn-primary:hover {
+  box-shadow: 0 12px 28px rgba(21, 46, 69, 0.4);
 }
 
 /* ============================================ */
@@ -763,7 +842,7 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   height: 38px;
   border-radius: 50%;
   overflow: hidden;
-  background: linear-gradient(135deg, var(--gold-400), var(--gold-600));
+  background: var(--gradient-focus);
   flex-shrink: 0;
   cursor: pointer;
 }
@@ -784,6 +863,23 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   height: calc(100vh - 32px);
   position: sticky;
   top: 16px;
+  /* FIX: kombinasi position:sticky + overflow:hidden + border-radius dikenal
+     memicu bug ghosting/stale-paint di Chromium (termasuk WebView Android) —
+     repaint sebagian meninggalkan pixel lama sehingga terlihat seperti "bekas
+     shadow" di elemen di dalamnya. Paksa sidebar jadi compositing layer sendiri
+     supaya selalu full-repaint. */
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* FIX: sidebar pakai class .glass (background putih tembus pandang 0.72),
+   sehingga watermark logo dari body::before (mix-blend-mode: multiply,
+   z-index -1) ikut tembus dan terlihat seperti "bekas bayangan" yang
+   menempel di belakang tiap nav-item. Sidebar adalah panel navigasi
+   permanen, jadi dibuat lebih solid supaya watermark tidak bocor,
+   sementara efek glass di elemen lain (kartu, modal) tetap dipertahankan. */
+.sidebar.glass {
+  background: rgb(255, 255, 255);
 }
 
 .sidebar-header { padding: 0 18px 18px; }
@@ -794,7 +890,7 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   gap: 12px;
   padding: 12px;
   border-radius: var(--radius);
-  background: var(--tonal-blue);
+  background: var(--gold-500);
   overflow: hidden;
 }
 
@@ -815,6 +911,16 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   padding: 4px 12px;
   flex: 1;
   overflow-y: auto;
+  /* FIX: kotak shadow "bekas" yang masih terlihat di bawah nav-item meski
+     box-shadow sudah none — ini bukan soal nilai CSS, tapi stale-paint /
+     ghosting bug Chromium (sering muncul di WebView Android & saat scroll)
+     pada kontainer overflow:auto yang isinya sering berubah class (hover,
+     active). Browser kadang tidak repaint ulang area lama saat child
+     berubah, meninggalkan pixel lama. Paksa kontainer ini jadi layer
+     compositing sendiri supaya browser selalu repaint penuh, bukan parsial. */
+  transform: translateZ(0);
+  will-change: transform;
+  contain: paint;
 }
 
 .nav-item {
@@ -826,7 +932,15 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   color: var(--gray-600);
   font-size: 13.5px;
   font-weight: 500;
-  transition: var(--transition);
+  box-shadow: none;
+  /* FIX: sebelumnya pakai `transition: var(--transition)` (all 0.2s), yang ikut
+     meng-animasikan box-shadow milik .active. Saat class active dipindah ke
+     item lain, browser (terutama WebView Android) kadang menyisakan frame
+     transisi box-shadow itu sehingga terlihat seperti "bekas shadow" menempel
+     di item yang sudah tidak aktif. Batasi transition ke properti yang benar-
+     benar berubah (background/color) supaya box-shadow langsung snap ke none
+     tanpa fase animasi yang bisa nyangkut. */
+  transition: background-color 0.2s ease, color 0.2s ease, font-weight 0.2s ease;
 }
 
 .nav-item svg {
@@ -837,15 +951,16 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   box-sizing: content-box;
   border-radius: var(--radius-sm);
   background: transparent;
-  transition: var(--transition);
+  box-shadow: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .nav-item:hover { color: var(--blue-700); }
 .nav-item:hover svg { background: var(--blue-50); }
 
 .nav-item.active {
-  background: var(--tonal-blue);
-  color: var(--tonal-blue-ink);
+  background: var(--gold-500);
+  color: var(--navy);
   font-weight: 600;
   box-shadow: none;
 }
@@ -1829,8 +1944,8 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 .role-badge {
   display: inline-block;
   padding: 2px 8px;
-  background: var(--blue-100);
-  color: var(--blue-700);
+  background: var(--gradient-focus);
+  color: var(--white);
   border-radius: 14px;
   font-size: 11px;
   font-weight: 600;
