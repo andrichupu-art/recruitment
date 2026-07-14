@@ -42,8 +42,7 @@ const state = {
 
 const DOC_TYPES = [
   'KTP', 'KK', 'Akta', 'Ijazah', 'Paspor', 
-  'SKCK', 'Surat Izin Orang Tua', 'Buku Nikah', 
-  'Sertifikat', 'Foto Full Body', 'Foto Close Up'
+  'SKCK', 'Sertifikat', 'Foto Close Up'
 ];
 
 // Keyword cek OCR ringan (client-side, Tesseract.js). Bukan validasi resmi/legal —
@@ -56,8 +55,6 @@ const DOC_OCR_KEYWORDS = {
   'Ijazah': [['IJAZAH', 'IJASAH']],
   'Paspor': [['PASPOR', 'PASSPORT'], ['REPUBLIK INDONESIA']],
   'SKCK': [['SKCK', 'KEPOLISIAN']],
-  'Surat Izin Orang Tua': [['SURAT IZIN', 'IZIN ORANG TUA']],
-  'Buku Nikah': [['NIKAH']],
   'Sertifikat': [['SERTIFIKAT', 'CERTIFICATE']]
 };
 
@@ -756,6 +753,17 @@ $('#btn-logout').addEventListener('click', (e) => {
   });
 });
 
+// Tombol logout khusus tampilan HP (pojok kanan atas). Pakai logic yang
+// sama persis dengan logout di sidebar, supaya setelah logout langsung
+// kembali ke halaman login (location.reload() menampilkan layar auth).
+$('#mobile-logout-btn')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  confirmDialog('Logout', 'Yakin ingin keluar dari akun?', async () => {
+    await supabase.auth.signOut();
+    location.reload();
+  });
+});
+
 /* ============================================ */
 /* DASHBOARD INIT */
 /* ============================================ */
@@ -845,7 +853,7 @@ async function loadBeranda() {
 
     const docs = docsRes.data || [];
     const completedDocs = docs.filter(d => d.status === 'approved').length;
-    $('#stat-docs').textContent = `${completedDocs}/11`;
+    $('#stat-docs').textContent = `${completedDocs}/${DOC_TYPES.length}`;
     
     const currentStep = progressRes.data?.current_step || 1;
     const percent = Math.round(((currentStep - 1) / 10) * 100);
@@ -1142,9 +1150,9 @@ async function loadDocumentsChecklist() {
     (docs || []).forEach(d => { docsMap[d.doc_type] = d; });
 
     const completedCount = (docs || []).filter(d => d.status === 'approved').length;
-    const percent = Math.round((completedCount / 11) * 100);
+    const percent = Math.round((completedCount / DOC_TYPES.length) * 100);
     
-    $('#doc-progress-text').textContent = `${completedCount}/11 Lengkap`;
+    $('#doc-progress-text').textContent = `${completedCount}/${DOC_TYPES.length} Lengkap`;
     $('#doc-progress-bar').style.width = percent + '%';
 
     const container = $('#docs-checklist');
@@ -1897,18 +1905,21 @@ async function loadAdminPeserta() {
       const docs = p.documents || [];
       const hasRejected = docs.some(d => d.status === 'rejected');
       const allApproved = docs.length > 0 && docs.every(d => d.status === 'approved');
-      
+      const approvedCount = docs.filter(d => d.status === 'approved').length;
+
       let status = 'pending';
       if (hasRejected) status = 'rejected';
       else if (allApproved) status = 'approved';
-      
+
       return {
         id: p.id,
         full_name: p.full_name,
         email: p.email,
         phone: p.phone,
         current_step: statusMap[p.id] || 1,
-        status
+        status,
+        approvedDocs: approvedCount,
+        totalDocs: DOC_TYPES.length
       };
     });
 
@@ -1975,6 +1986,27 @@ function applyAdminFilters() {
   renderAdminTable();
 }
 
+// Badge kolom Status di tabel Kelola Peserta:
+// - Selama dokumen belum lengkap (approvedDocs < totalDocs): tampil progress "X/N" (N = jumlah dokumen wajib).
+// - Kalau sudah lengkap semua tapi belum di-approve final (current_step masih di Verifikasi/step 2
+//   atau lebih rendah): tampil tombol MERAH "APPROVE" yang bisa diklik.
+// - Kalau sudah di-approve final (current_step sudah lanjut ke Interview/step 3 ke atas):
+//   tombol jadi ABU-ABU dan tidak bisa diklik lagi.
+function renderPesertaStatusBadge(p) {
+  const { approvedDocs, totalDocs, current_step, id, full_name } = p;
+
+  if (approvedDocs < totalDocs) {
+    return `<span class="status-badge status-progress">${approvedDocs}/${totalDocs}</span>`;
+  }
+
+  const alreadyFinalized = current_step >= 3;
+  if (alreadyFinalized) {
+    return `<button class="status-badge status-approve-btn disabled" disabled>APPROVE</button>`;
+  }
+
+  return `<button class="status-badge status-approve-btn" onclick="finalizeApproveParticipant('${id}', '${escapeHtml(full_name).replace(/'/g, "\\'")}')">APPROVE</button>`;
+}
+
 function renderAdminTable() {
   const { filtered, page, perPage } = state.adminTable;
   const start = (page - 1) * perPage;
@@ -1984,29 +2016,29 @@ function renderAdminTable() {
   const tbody = $('#admin-table-body');
   
   if (pageData.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="table-loading">Tidak ada data</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="table-loading">Tidak ada data</td></tr>';
   } else {
     tbody.innerHTML = pageData.map((p, i) => `
       <tr>
         <td>${start + i + 1}</td>
         <td>${escapeHtml(p.full_name)}</td>
-        <td>${escapeHtml(p.phone || '-')}</td>
         <td>
           <select class="tahapan-inline-select" data-cs-skip="1" data-user-id="${p.id}" data-current-step="${p.current_step}" ${p.status !== 'approved' ? 'disabled title="Approve dokumen dulu sebelum mengubah tahapan"' : ''}>
             ${TIMELINE_STEPS.map(s => `<option value="${s.step}" ${s.step === p.current_step ? 'selected' : ''}>${s.title}</option>`).join('')}
           </select>
         </td>
-        <td><span class="status-badge status-${p.status}">${statusLabel(p.status)}</span></td>
+        <td>${renderPesertaStatusBadge(p)}</td>
         <td>
           <div class="table-actions-cell">
             <div class="table-actions-group">
               <button class="btn-action" onclick="viewParticipantDetail('${p.id}')">Detail</button>
-              ${p.status === 'pending' ? `
-                <button class="btn-action" onclick="approveParticipant('${p.id}')">Approve</button>
-                <button class="btn-action" onclick="rejectParticipant('${p.id}')">Reject</button>
-              ` : ''}
+              <!-- Sementara disembunyikan: fungsi Approve/Reject akan dipindahkan ke tempat lain.
+                   Fungsi approveParticipant()/rejectParticipant() masih ada di script.js,
+                   tinggal dipanggil lagi dari sini kalau mau diaktifkan ulang. -->
             </div>
-            <button class="btn-action btn-make-admin-action" onclick="makeAdmin('${p.id}', '${escapeHtml(p.full_name).replace(/'/g, "\\'")}')">Jadikan Admin</button>
+            <button class="btn-action btn-make-admin-action btn-icon-only" onclick="makeAdmin('${p.id}', '${escapeHtml(p.full_name).replace(/'/g, "\\'")}')" title="Jadikan Admin" aria-label="Jadikan Admin">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3.5v5.5c0 5-3.4 8.7-8 11-4.6-2.3-8-6-8-11V5.5L12 2z"/><path d="m9 12 2 2 4-4"/></svg>
+            </button>
           </div>
         </td>
       </tr>
@@ -2411,6 +2443,44 @@ window.viewParticipantDetail = async function(userId) {
   }
 };
 
+// Dipanggil dari tombol APPROVE merah di tabel Kelola Peserta, muncul setelah
+// seluruh dokumen disetujui satu-satu (lihat approveDocument). Memindahkan
+// peserta dari tahap Verifikasi langsung ke Interview.
+window.finalizeApproveParticipant = async function(userId, fullName) {
+  confirmDialog('Approve Peserta', `Lanjutkan ${fullName} ke tahap Interview?`, async () => {
+    try {
+      const { error: stepErr } = await supabase
+        .from('participant_status')
+        .upsert({
+          user_id: userId,
+          current_step: 3,
+          step_verifikasi: true,
+          updated_by: state.user.id,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+
+      if (stepErr) {
+        console.error('Update tahapan gagal:', stepErr);
+        toast('error', 'Gagal Update Tahapan', stepErr.message);
+        return;
+      }
+
+      await supabase.from('notifications').insert({
+        user_id: userId,
+        title: 'Selamat, Anda Lolos Verifikasi',
+        message: 'Seluruh dokumen Anda telah disetujui. Silakan lanjut ke tahap interview.',
+        type: 'success'
+      });
+
+      toast('success', 'Peserta Diapprove', 'Tahapan berpindah ke Interview');
+      loadAdminPeserta();
+    } catch (err) {
+      console.error('finalizeApproveParticipant error:', err);
+      toast('error', 'Error', err.message || 'Gagal mengapprove');
+    }
+  });
+};
+
 window.approveParticipant = async function(userId) {
   confirmDialog('Approve Peserta', 'Approve seluruh dokumen peserta ini?', async () => {
     try {
@@ -2625,7 +2695,7 @@ function renderParticipantDocumentsModal(participant) {
             </div>
             ${d.status === 'pending' ? `
               <div class="table-actions-cell">
-                <button class="btn-approve" onclick="approveDocument('${d.id}', '${d.user_id}')">Approve</button>
+                <button class="btn-approve" onclick="approveDocument('${d.id}', '${d.user_id}')">OK</button>
                 <button class="btn-reject" onclick="rejectDocument('${d.id}', '${d.user_id}')">Reject</button>
               </div>
             ` : ''}
@@ -2659,6 +2729,27 @@ window.approveDocument = async function(docId, userId) {
         reviewed_by: state.user.id,
         reviewed_at: new Date().toISOString()
       }).eq('id', docId);
+
+      // Kalau ini dokumen pertama yang di-OK (tahapan peserta masih di Pendaftaran/
+      // belum pernah dibuat), otomatis majukan ke Verifikasi. Pemanggilan berikutnya
+      // aman diulang karena hanya bergerak maju kalau current_step masih 1.
+      const { data: statusRow } = await supabase
+        .from('participant_status')
+        .select('current_step')
+        .eq('user_id', userId)
+        .single();
+
+      if (!statusRow || statusRow.current_step === 1) {
+        await supabase
+          .from('participant_status')
+          .upsert({
+            user_id: userId,
+            current_step: 2,
+            step_verifikasi: true,
+            updated_by: state.user.id,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id' });
+      }
 
       await supabase.from('notifications').insert({
         user_id: userId,
