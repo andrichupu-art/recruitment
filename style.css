@@ -1351,6 +1351,15 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   text-align: center;
 }
 
+/* Form yang dirender dinamis di dalam modal (Tambah Jadwal, Pengumuman, Negara,
+   Posisi, dll) tidak boleh ikut rata-tengah dari .modal-body — itu bikin label
+   dan field kelihatan berantakan/lebar aneh seolah tidak berfungsi. */
+.modal-body form,
+.modal-body .input-group,
+.modal-body .form-grid {
+  text-align: left;
+}
+
 .modal-body img {
   max-width: 100%;
   display: block;
