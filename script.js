@@ -31,7 +31,8 @@ const state = {
     filterStatus: '',
     filterStep: ''
   },
-  adminDocs: { data: [], search: '', filterStatus: '' },
+  adminDocs: { data: [], search: '', filterStatus: '', grouped: {}, activeUserId: null },
+  adminVerifikasi: { data: [], search: '' },
   scheduleFilter: 'all',
   theme: localStorage.getItem('theme') || 'light',
   autoSaveTimers: {}
@@ -106,7 +107,7 @@ function toast(type, title, message = '') {
   }, 3500);
 }
 
-function confirmDialog(title, message, onConfirm) {
+function confirmDialog(title, message, onConfirm, onCancel) {
   $('#confirm-title').textContent = title;
   $('#confirm-message').textContent = message;
   show($('#confirm-modal'));
@@ -121,7 +122,7 @@ function confirmDialog(title, message, onConfirm) {
   };
   
   const handleOk = () => { cleanup(); onConfirm(); };
-  const handleCancel = () => { cleanup(); };
+  const handleCancel = () => { cleanup(); if (typeof onCancel === 'function') onCancel(); };
   
   okBtn.addEventListener('click', handleOk);
   cancelBtn.addEventListener('click', handleCancel);
@@ -185,6 +186,53 @@ function statusLabel(s) {
 }
 
 /* ============================================ */
+/* TITLE CASE AUTO-FORMAT UNTUK INPUT NAMA */
+/* ============================================ */
+function toTitleCase(str) {
+  return str.replace(/\S+/g, function (word) {
+    // Jaga huruf kecil di depan tanda kurung/kutip, dsb tetap wajar
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  });
+}
+
+function bindTitleCaseInput(input) {
+  if (!input || input.__titleCaseBound) return;
+  input.__titleCaseBound = true;
+  input.addEventListener('input', function () {
+    const start = this.selectionStart;
+    const end = this.selectionEnd;
+    const formatted = toTitleCase(this.value);
+    if (formatted !== this.value) {
+      this.value = formatted;
+      this.setSelectionRange(start, end);
+    }
+  });
+}
+
+// Terapkan ke semua input nama yang sudah ada di halaman (statis)
+function initTitleCaseInputs(root) {
+  (root || document).querySelectorAll(
+    'input[data-titlecase], #register-name, #profile-fullname, input[id*="fullname" i], input[id*="full-name" i], input[id*="nama" i]:not([id*="username" i])'
+  ).forEach(bindTitleCaseInput);
+}
+
+initTitleCaseInputs(document);
+
+// Modal/form dinamis (mis. via innerHTML) ikut otomatis ter-format title case
+new MutationObserver(function (mutations) {
+  mutations.forEach(function (m) {
+    m.addedNodes.forEach(function (node) {
+      if (node.nodeType !== 1) return;
+      initTitleCaseInputs(node);
+      if (node.matches && node.matches('input') &&
+          (node.dataset.titlecase !== undefined || /fullname|full-name|nama/i.test(node.id || ''))) {
+        bindTitleCaseInput(node);
+      }
+    });
+  });
+}).observe(document.body, { childList: true, subtree: true });
+
+/* ============================================ */
 /* THEME (DARK MODE) */
 /* ============================================ */
 function applyTheme(theme) {
@@ -192,11 +240,6 @@ function applyTheme(theme) {
   state.theme = theme;
   localStorage.setItem('theme', theme);
 }
-
-$('#theme-toggle').addEventListener('click', () => {
-  const newTheme = state.theme === 'light' ? 'dark' : 'light';
-  applyTheme(newTheme);
-});
 
 applyTheme(state.theme);
 
@@ -620,6 +663,7 @@ function navigateTo(page) {
     'lowongan': loadLowongan,
     'admin-dashboard': loadAdminDashboard,
     'admin-peserta': loadAdminPeserta,
+    'admin-verifikasi': loadAdminVerifikasi,
     'admin-dokumen': loadAdminDokumen,
     'admin-jadwal': loadAdminJadwal,
     'admin-pengumuman': loadAdminPengumuman,
@@ -650,8 +694,22 @@ $$('.quick-card[data-page]').forEach(item => {
   item.addEventListener('click', () => navigateTo(item.dataset.page));
 });
 
-$('#menu-toggle').addEventListener('click', () => {
-  $('#sidebar').classList.toggle('open');
+// Kartu statistik Dashboard Admin: klik untuk lompat ke halaman terkait,
+// dan otomatis set filter status kalau kartunya punya data-filter-status
+// (mis. "Menunggu Review" -> Review Dokumen dengan filter "pending").
+$$('.admin-stat-card[data-page]').forEach(item => {
+  item.addEventListener('click', () => {
+    const page = item.dataset.page;
+    const filterStatus = item.dataset.filterStatus;
+
+    if (filterStatus !== undefined && page === 'admin-dokumen') {
+      state.adminDocs.filterStatus = filterStatus;
+      const filterSelect = $('#admin-doc-filter');
+      if (filterSelect) filterSelect.value = filterStatus;
+    }
+
+    navigateTo(page);
+  });
 });
 
 $('#btn-logout').addEventListener('click', (e) => {
@@ -693,14 +751,13 @@ async function initDashboard() {
     $('#sidebar-role').textContent = state.isAdmin ? 'Admin' : 'Peserta';
 
     if (avatarUrl) {
-      $('#user-avatar-img').src = avatarUrl;
       $('#sidebar-avatar').src = avatarUrl;
       $('#profile-avatar-img').src = avatarUrl;
     } else {
-      ['#user-avatar-img', '#sidebar-avatar', '#profile-avatar-img'].forEach(sel => {
+      ['#sidebar-avatar', '#profile-avatar-img'].forEach(sel => {
         const img = $(sel);
         if (img) {
-          img.src = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect width='100' height='100' fill='%232563eb'/><text x='50' y='60' font-size='48' text-anchor='middle' fill='white' font-family='Poppins'>${initial}</text></svg>`;
+          img.src = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect width='100' height='100' fill='%232563eb'/><g transform='translate(31,31) scale(1.6)' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></g></svg>`;
         }
       });
     }
@@ -896,7 +953,7 @@ $('#avatar-input').addEventListener('change', async (e) => {
     }
 
     state.profile.avatar_url = avatarUrl;
-    ['#user-avatar-img', '#sidebar-avatar', '#profile-avatar-img'].forEach(sel => {
+    ['#sidebar-avatar', '#profile-avatar-img'].forEach(sel => {
       const img = $(sel);
       if (img) img.src = avatarUrl;
     });
@@ -1109,11 +1166,12 @@ window.previewDocument = function(url, title) {
   show(modal);
 };
 
-$('#preview-close').addEventListener('click', () => hide($('#preview-modal')));
+$('#preview-close').addEventListener('click', () => { hide($('#preview-modal')); state.adminDocs.activeUserId = null; });
 $('.modal-overlay').addEventListener('click', (e) => {
   if (e.target.classList.contains('modal-overlay')) {
     hide($('#preview-modal'));
     hide($('#confirm-modal'));
+    state.adminDocs.activeUserId = null;
   }
 });
 
@@ -1512,8 +1570,10 @@ async function updateNotifBadge() {
       .eq('is_read', false);
 
     const badge = $('#notif-badge');
-    badge.textContent = count || 0;
-    badge.style.display = count > 0 ? 'flex' : 'none';
+    if (badge) {
+      badge.textContent = count || 0;
+      badge.style.display = count > 0 ? 'flex' : 'none';
+    }
   } catch (err) {
     console.error('Update badge error:', err);
   }
@@ -1532,8 +1592,6 @@ $('#btn-mark-all-read').addEventListener('click', async () => {
     toast('error', 'Error', 'Gagal menandai dibaca');
   }
 });
-
-$('#notif-btn').addEventListener('click', () => navigateTo('notifikasi'));
 
 /* ============================================ */
 /* CHAT DENGAN ATTACHMENT */
@@ -1732,12 +1790,11 @@ async function loadAnnouncements() {
 /* ============================================ */
 async function loadAdminDashboard() {
   try {
-    const [totalRes, pendingRes, approvedRes, rejectedRes, recentDocs] = await Promise.all([
+    const [totalRes, pendingRes, approvedRes, rejectedRes] = await Promise.all([
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'user'),
       supabase.from('documents').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
       supabase.from('documents').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
-      supabase.from('documents').select('id', { count: 'exact', head: true }).eq('status', 'rejected'),
-      supabase.from('documents').select('*, profiles!user_id(full_name)').order('created_at', { ascending: false }).limit(5)
+      supabase.from('documents').select('id', { count: 'exact', head: true }).eq('status', 'rejected')
     ]);
 
     $('#admin-stat-total').textContent = totalRes.count || 0;
@@ -1745,23 +1802,7 @@ async function loadAdminDashboard() {
     $('#admin-stat-approved').textContent = approvedRes.count || 0;
     $('#admin-stat-rejected').textContent = rejectedRes.count || 0;
 
-    const container = $('#admin-recent-activity');
-    if (!recentDocs.data || recentDocs.data.length === 0) {
-      container.innerHTML = '<div class="empty-state"><p>Belum ada aktivitas</p></div>';
-    } else {
-      container.innerHTML = recentDocs.data.map(d => `
-        <div class="card-item">
-          <div class="card-item-header">
-            <div>
-              <div class="card-item-title">${escapeHtml(d.profiles?.full_name || 'Peserta')}</div>
-              <div class="card-item-meta">${d.doc_type}</div>
-            </div>
-            <span class="status-badge status-${d.status}">${statusLabel(d.status)}</span>
-          </div>
-          <div class="card-item-meta">${formatDate(d.created_at)}</div>
-        </div>
-      `).join('');
-    }
+    updateUnverifiedBadge();
   } catch (err) {
     console.error('Load admin dashboard error:', err);
   }
@@ -1775,7 +1816,8 @@ async function loadAdminPeserta() {
     const { data: profiles, error: profilesErr } = await supabase
       .from('profiles')
       .select('*, documents!user_id(status)')
-      .eq('role', 'user');
+      .eq('role', 'user')
+      .eq('email_verified', true);
 
     if (profilesErr) {
       console.error('Profiles query error:', profilesErr);
@@ -1811,6 +1853,31 @@ async function loadAdminPeserta() {
         status
       };
     });
+
+    // Self-heal: kalau dokumen sudah disetujui semua tapi tahapan masih tersangkut
+    // di step 1 (kasus lama karena participant_status belum pernah dibuat/ter-update),
+    // betulkan otomatis di sini karena tombol Approve sudah tidak muncul lagi untuk
+    // peserta yang statusnya sudah "approved".
+    const stuck = state.adminTable.data.filter(p => p.status === 'approved' && p.current_step < 2);
+    if (stuck.length > 0) {
+      for (const p of stuck) {
+        const { error: healErr } = await supabase
+          .from('participant_status')
+          .upsert({
+            user_id: p.id,
+            current_step: 2,
+            step_verifikasi: true,
+            updated_by: state.user.id,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id' });
+
+        if (healErr) {
+          console.error('Gagal sinkronkan tahapan untuk', p.full_name, healErr);
+        } else {
+          p.current_step = 2;
+        }
+      }
+    }
 
     applyAdminFilters();
   } catch (err) {
@@ -1861,21 +1928,27 @@ function renderAdminTable() {
   if (pageData.length === 0) {
     tbody.innerHTML = '<tr><td colspan="6" class="table-loading">Tidak ada data</td></tr>';
   } else {
-    tbody.innerHTML = pageData.map(p => `
+    tbody.innerHTML = pageData.map((p, i) => `
       <tr>
+        <td>${start + i + 1}</td>
         <td>${escapeHtml(p.full_name)}</td>
-        <td>${escapeHtml(p.email)}</td>
         <td>${escapeHtml(p.phone || '-')}</td>
-        <td>${TIMELINE_STEPS.find(s => s.step === p.current_step)?.title || '-'}</td>
+        <td>
+          <select class="tahapan-inline-select" data-cs-skip="1" data-user-id="${p.id}" data-current-step="${p.current_step}" ${p.status !== 'approved' ? 'disabled title="Approve dokumen dulu sebelum mengubah tahapan"' : ''}>
+            ${TIMELINE_STEPS.map(s => `<option value="${s.step}" ${s.step === p.current_step ? 'selected' : ''}>${s.title}</option>`).join('')}
+          </select>
+        </td>
         <td><span class="status-badge status-${p.status}">${statusLabel(p.status)}</span></td>
         <td>
           <div class="table-actions-cell">
-            <button class="btn-view-detail" onclick="viewParticipantDetail('${p.id}')">Detail</button>
-            ${p.status === 'pending' ? `
-              <button class="btn-approve" onclick="approveParticipant('${p.id}')">Approve</button>
-              <button class="btn-reject" onclick="rejectParticipant('${p.id}')">Reject</button>
-            ` : ''}
-            <button class="btn-make-admin" onclick="makeAdmin('${p.id}', '${escapeHtml(p.full_name).replace(/'/g, "\\'")}')">Jadikan Admin</button>
+            <div class="table-actions-group">
+              <button class="btn-action" onclick="viewParticipantDetail('${p.id}')">Detail</button>
+              ${p.status === 'pending' ? `
+                <button class="btn-action" onclick="approveParticipant('${p.id}')">Approve</button>
+                <button class="btn-action" onclick="rejectParticipant('${p.id}')">Reject</button>
+              ` : ''}
+            </div>
+            <button class="btn-action btn-make-admin-action" onclick="makeAdmin('${p.id}', '${escapeHtml(p.full_name).replace(/'/g, "\\'")}')">Jadikan Admin</button>
           </div>
         </td>
       </tr>
@@ -1884,6 +1957,70 @@ function renderAdminTable() {
 
   renderPagination();
 }
+
+// Ganti tahapan peserta lewat dropdown inline di tabel Kelola Peserta.
+// Delegasi event supaya tetap berfungsi walau tbody di-render ulang.
+$('#admin-table-body').addEventListener('change', (e) => {
+  const select = e.target.closest('.tahapan-inline-select');
+  if (!select) return;
+
+  const userId = select.dataset.userId;
+  const oldStep = parseInt(select.dataset.currentStep);
+  const newStep = parseInt(select.value);
+  if (newStep === oldStep) return;
+
+  const participant = state.adminTable.data.find(p => p.id === userId);
+  const fullName = participant?.full_name || 'peserta ini';
+  const oldTitle = TIMELINE_STEPS.find(s => s.step === oldStep)?.title || '-';
+  const newTitle = TIMELINE_STEPS.find(s => s.step === newStep)?.title || '-';
+
+  confirmDialog(
+    'Ubah Tahapan',
+    `Pindahkan ${fullName} dari tahap "${oldTitle}" ke "${newTitle}"?`,
+    () => updateParticipantStage(userId, newStep, select),
+    () => { select.value = oldStep; }
+  );
+});
+
+window.updateParticipantStage = async function(userId, newStep, selectEl) {
+  try {
+    const { error } = await supabase
+      .from('participant_status')
+      .upsert({
+        user_id: userId,
+        current_step: newStep,
+        updated_by: state.user.id,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+
+    if (error) {
+      toast('error', 'Gagal Update Tahapan', error.message);
+      if (selectEl) selectEl.value = selectEl.dataset.currentStep;
+      return;
+    }
+
+    const stepTitle = TIMELINE_STEPS.find(s => s.step === newStep)?.title || '-';
+
+    await supabase.from('notifications').insert({
+      user_id: userId,
+      title: 'Tahapan Diperbarui',
+      message: `Tahapan Anda saat ini: ${stepTitle}`,
+      type: 'success'
+    });
+
+    // update state lokal supaya konsisten sebelum reload penuh
+    const participant = state.adminTable.data.find(p => p.id === userId);
+    if (participant) participant.current_step = newStep;
+    if (selectEl) selectEl.dataset.currentStep = newStep;
+
+    toast('success', 'Tahapan Diperbarui', `${stepTitle}`);
+    loadAdminPeserta();
+  } catch (err) {
+    console.error('Update tahapan gagal:', err);
+    toast('error', 'Gagal Update Tahapan', 'Terjadi kesalahan, coba lagi.');
+    if (selectEl) selectEl.value = selectEl.dataset.currentStep;
+  }
+};
 
 function renderPagination() {
   const { filtered, page, perPage } = state.adminTable;
@@ -1954,6 +2091,111 @@ $$('.modern-table th[data-sort]').forEach(th => {
   });
 });
 
+/* ============================================ */
+/* ADMIN VERIFIKASI EMAIL */
+/* ============================================ */
+async function updateUnverifiedBadge() {
+  try {
+    const { count, error } = await supabase
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('role', 'user')
+      .eq('email_verified', false);
+
+    if (error) {
+      console.error('Gagal hitung peserta belum verifikasi:', error);
+      return;
+    }
+
+    const badge = $('#badge-unverified');
+    if (!badge) return;
+    if (count > 0) {
+      badge.textContent = count;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  } catch (err) {
+    console.error('updateUnverifiedBadge error:', err);
+  }
+}
+
+async function loadAdminVerifikasi() {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', 'user')
+      .eq('email_verified', false)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Load admin verifikasi error:', error);
+      toast('error', 'Gagal Memuat Data', error.message);
+    }
+
+    state.adminVerifikasi.data = data || [];
+    renderAdminVerifikasi();
+    updateUnverifiedBadge();
+  } catch (err) {
+    console.error('Load admin verifikasi error:', err);
+  }
+}
+
+function renderAdminVerifikasi() {
+  let filtered = [...state.adminVerifikasi.data];
+
+  if (state.adminVerifikasi.search) {
+    const search = state.adminVerifikasi.search.toLowerCase();
+    filtered = filtered.filter(p =>
+      (p.full_name || '').toLowerCase().includes(search) ||
+      (p.email || '').toLowerCase().includes(search)
+    );
+  }
+
+  const tbody = $('#admin-verifikasi-body');
+  if (!tbody) return;
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="table-loading">Tidak ada peserta yang belum verifikasi email</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map((p, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${escapeHtml(p.full_name || '-')}</td>
+      <td>${escapeHtml(p.email || '-')}</td>
+      <td>${escapeHtml(p.phone || '-')}</td>
+      <td>${formatDate(p.created_at)}</td>
+      <td>
+        <div class="table-actions-cell">
+          <button class="btn-action" onclick="resendVerificationEmail('${escapeHtml(p.email).replace(/'/g, "\\'")}')">Kirim Ulang Verifikasi</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+window.resendVerificationEmail = async function(email) {
+  try {
+    const { error } = await supabase.auth.resend({ type: 'signup', email });
+    if (error) {
+      toast('error', 'Gagal Mengirim', error.message);
+      return;
+    }
+    toast('success', 'Email Terkirim', `Email verifikasi dikirim ulang ke ${email}`);
+  } catch (err) {
+    console.error('resendVerificationEmail error:', err);
+    toast('error', 'Error', 'Gagal mengirim ulang email verifikasi');
+  }
+};
+
+$('#admin-verifikasi-search')?.addEventListener('input', (e) => {
+  state.adminVerifikasi.search = e.target.value;
+  renderAdminVerifikasi();
+});
+
 $('#btn-export-excel').addEventListener('click', () => {
   if (typeof XLSX === 'undefined') {
     toast('error', 'Library tidak tersedia');
@@ -2021,20 +2263,74 @@ window.viewParticipantDetail = async function(userId) {
 
     const docsStatus = docs.some(d => d.status === 'rejected') ? 'rejected' : docs.every(d => d.status === 'approved') ? 'approved' : 'pending';
 
+    const initial = (profile.full_name || '?').charAt(0).toUpperCase();
+    const fields = [
+      { icon: 'phone', tone: 'blue', label: 'Telepon', value: escapeHtml(profile.phone || '-') },
+      { icon: 'calendar', tone: 'blue', label: 'Tgl Lahir', value: profile.birth_date ? formatDate(profile.birth_date) : '-' },
+      { icon: 'user', tone: 'blue', label: 'Jenis Kelamin', value: escapeHtml(profile.gender || '-') },
+      { icon: 'book', tone: 'blue', label: 'Pendidikan', value: escapeHtml(profile.education || '-') },
+      { icon: 'heart', tone: 'blue', label: 'Status Nikah', value: escapeHtml(profile.marital_status || '-') },
+      { icon: 'star', tone: 'blue', label: 'Agama', value: escapeHtml(profile.religion || '-') },
+      { icon: 'briefcase', tone: 'blue', label: 'Pekerjaan Diminati', value: escapeHtml(profile.job_interest || '-') },
+      { icon: 'flag', tone: 'blue', label: 'Tahapan', value: TIMELINE_STEPS.find(s => s.step === status?.current_step)?.title || '-' }
+    ];
+
+    const fieldIcons = {
+      mail: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/>',
+      phone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',
+      calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+      user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+      book: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+      heart: '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>',
+      star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+      briefcase: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+      'map-pin': '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+      flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>'
+    };
+    const docIcons = {
+      approved: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+      pending: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+      rejected: '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>'
+    };
+    const svgIcon = paths => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+
     body.innerHTML = `
-      <div style="padding: 10px;">
-        <h3 style="margin-bottom: 16px;">${escapeHtml(profile.full_name)}</h3>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
-          <div><strong>Email:</strong> ${escapeHtml(profile.email)}</div>
-          <div><strong>Telepon:</strong> ${escapeHtml(profile.phone || '-')}</div>
-          <div><strong>Tahapan:</strong> ${TIMELINE_STEPS.find(s => s.step === status?.current_step)?.title || '-'}</div>
-          <div><strong>Status:</strong> <span class="status-badge status-${docsStatus}">${statusLabel(docsStatus)}</span></div>
+      <div class="detail-peserta">
+        <div class="detail-hero">
+          <div class="detail-hero-avatar">${escapeHtml(initial)}</div>
+          <div class="detail-hero-info">
+            <h3>${escapeHtml(profile.full_name)}</h3>
+            <p>${escapeHtml(profile.email)}</p>
+          </div>
+          <span class="status-badge status-${docsStatus} detail-hero-status">${statusLabel(docsStatus)}</span>
         </div>
-        <h4 style="margin-bottom: 12px;">Dokumen:</h4>
-        <div style="display: grid; gap: 8px;">
+
+        <div class="detail-grid">
+          ${fields.map(f => `
+            <div class="detail-field">
+              <div class="detail-field-icon tone-${f.tone}">${svgIcon(fieldIcons[f.icon])}</div>
+              <div>
+                <strong>${f.label}</strong>
+                <span>${f.value}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="detail-field detail-field-full">
+          <div class="detail-field-icon tone-blue">${svgIcon(fieldIcons['map-pin'])}</div>
+          <div>
+            <strong>Alamat</strong>
+            <span>${escapeHtml(profile.address || '-')}</span>
+          </div>
+        </div>
+
+        <h4 class="detail-docs-title">Dokumen</h4>
+        <div class="detail-docs-grid">
           ${docs.map(d => `
-            <div style="padding: 10px; background: var(--gray-50); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
-              <span>${d.doc_type}</span>
+            <div class="detail-doc-item status-${d.status}">
+              <div class="detail-doc-icon status-${d.status}">${svgIcon(docIcons[d.status] || docIcons.pending)}</div>
+              <span class="detail-doc-name">${d.doc_type}</span>
               <span class="status-badge status-${d.status}">${statusLabel(d.status)}</span>
             </div>
           `).join('') || '<p style="color: var(--gray-500);">Belum ada dokumen</p>'}
@@ -2051,16 +2347,33 @@ window.viewParticipantDetail = async function(userId) {
 window.approveParticipant = async function(userId) {
   confirmDialog('Approve Peserta', 'Approve seluruh dokumen peserta ini?', async () => {
     try {
-      await supabase
+      const { error: docErr } = await supabase
         .from('documents')
         .update({ status: 'approved', reviewed_by: state.user.id, reviewed_at: new Date().toISOString() })
         .eq('user_id', userId)
         .eq('status', 'pending');
 
-      await supabase
+      if (docErr) {
+        console.error('Update dokumen gagal:', docErr);
+        toast('error', 'Gagal Approve Dokumen', docErr.message);
+        return;
+      }
+
+      const { error: stepErr } = await supabase
         .from('participant_status')
-        .update({ current_step: 2, step_verifikasi: true, updated_by: state.user.id, updated_at: new Date().toISOString() })
-        .eq('user_id', userId);
+        .upsert({
+          user_id: userId,
+          current_step: 2,
+          step_verifikasi: true,
+          updated_by: state.user.id,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+
+      if (stepErr) {
+        console.error('Update tahapan gagal:', stepErr);
+        toast('error', 'Gagal Update Tahapan', stepErr.message);
+        return;
+      }
 
       await supabase.from('notifications').insert({
         user_id: userId,
@@ -2072,7 +2385,8 @@ window.approveParticipant = async function(userId) {
       toast('success', 'Peserta Diapprove');
       loadAdminPeserta();
     } catch (err) {
-      toast('error', 'Error', 'Gagal mengapprove');
+      console.error('approveParticipant error:', err);
+      toast('error', 'Error', err.message || 'Gagal mengapprove');
     }
   });
 };
@@ -2130,69 +2444,134 @@ window.makeAdmin = async function(userId, fullName) {
 /* ============================================ */
 async function loadAdminDokumen() {
   try {
-    let query = supabase
+    const { data, error } = await supabase
       .from('documents')
       .select('*, profiles!user_id(full_name, email)')
       .order('created_at', { ascending: false });
-
-    if (state.adminDocs.filterStatus) {
-      query = query.eq('status', state.adminDocs.filterStatus);
-    }
-
-    const { data, error } = await query;
 
     if (error) {
       console.error('Load admin dokumen error:', error);
       toast('error', 'Gagal Memuat Dokumen', error.message);
     }
 
-    let filtered = data || [];
+    // Kelompokkan dokumen berdasarkan peserta (user_id)
+    const grouped = {};
+    (data || []).forEach(d => {
+      if (!grouped[d.user_id]) {
+        grouped[d.user_id] = {
+          user_id: d.user_id,
+          full_name: d.profiles?.full_name || 'Peserta',
+          email: d.profiles?.email || '',
+          docs: []
+        };
+      }
+      grouped[d.user_id].docs.push(d);
+    });
+    state.adminDocs.grouped = grouped;
+
+    let participants = Object.values(grouped);
+
     if (state.adminDocs.search) {
       const search = state.adminDocs.search.toLowerCase();
-      filtered = filtered.filter(d => 
-        d.profiles?.full_name.toLowerCase().includes(search) ||
-        d.profiles?.email.toLowerCase().includes(search)
+      participants = participants.filter(p =>
+        p.full_name.toLowerCase().includes(search) ||
+        p.email.toLowerCase().includes(search)
       );
     }
 
+    if (state.adminDocs.filterStatus) {
+      participants = participants.filter(p => p.docs.some(d => d.status === state.adminDocs.filterStatus));
+    }
+
+    participants.sort((a, b) => a.full_name.localeCompare(b.full_name));
+
     const container = $('#admin-docs-list');
-    if (filtered.length === 0) {
+    if (participants.length === 0) {
       container.innerHTML = '<div class="empty-state"><h4>Tidak ada dokumen</h4></div>';
       return;
     }
 
-    container.innerHTML = filtered.map(d => `
-      <div class="card-item">
-        <div class="card-item-header">
-          <div>
-            <div class="card-item-title">${escapeHtml(d.profiles?.full_name || 'Peserta')}</div>
-            <div class="card-item-meta">${d.doc_type} • ${escapeHtml(d.profiles?.email || '')}</div>
-          </div>
-          <span class="status-badge status-${d.status}">${statusLabel(d.status)}</span>
+    container.innerHTML = participants.map(p => {
+      const total = p.docs.length;
+      const pendingCount = p.docs.filter(d => d.status === 'pending').length;
+      const rejectedCount = p.docs.filter(d => d.status === 'rejected').length;
+      const overall = rejectedCount > 0 ? 'rejected' : pendingCount > 0 ? 'pending' : 'approved';
+      const summary = pendingCount > 0
+        ? `${pendingCount} dari ${total} menunggu`
+        : rejectedCount > 0
+          ? `${rejectedCount} dari ${total} ditolak`
+          : `${total} dokumen disetujui`;
+
+      return `
+      <div class="doc-participant-card" onclick="viewParticipantDocuments('${p.user_id}')">
+        <div class="doc-participant-info">
+          <div class="doc-participant-name">${escapeHtml(p.full_name)}</div>
+          <div class="card-item-meta">${escapeHtml(p.email)} • ${summary}</div>
         </div>
-        <div style="margin: 10px 0;">
-          <button class="btn-view" onclick="previewDocument('${d.file_url}', '${d.doc_type}')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-            Preview
-          </button>
-        </div>
-        ${d.status === 'pending' ? `
-          <div class="table-actions-cell">
-            <button class="btn-approve" onclick="approveDocument('${d.id}', '${d.user_id}')">Approve</button>
-            <button class="btn-reject" onclick="rejectDocument('${d.id}', '${d.user_id}')">Reject</button>
-          </div>
-        ` : ''}
-        ${d.status === 'rejected' && d.rejection_reason ? `
-          <div class="doc-item-reason" style="margin-top: 10px;">
-            <strong>Alasan:</strong> ${escapeHtml(d.rejection_reason)}
-          </div>
-        ` : ''}
-        <div class="card-item-meta" style="margin-top: 8px;">${formatDate(d.created_at)}</div>
+        <span class="status-badge status-${overall}">${statusLabel(overall)}</span>
+        <svg class="doc-participant-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
-    `).join('');
+    `;
+    }).join('');
+
+    // Kalau modal dokumen peserta sedang terbuka, refresh isinya juga
+    if (state.adminDocs.activeUserId && grouped[state.adminDocs.activeUserId]) {
+      renderParticipantDocumentsModal(grouped[state.adminDocs.activeUserId]);
+    }
   } catch (err) {
     console.error('Load admin dokumen error:', err);
   }
+}
+
+window.viewParticipantDocuments = function(userId) {
+  const participant = state.adminDocs.grouped[userId];
+  if (!participant) return;
+  state.adminDocs.activeUserId = userId;
+  renderParticipantDocumentsModal(participant);
+  show($('#preview-modal'));
+};
+
+function renderParticipantDocumentsModal(participant) {
+  const body = $('#preview-body');
+  $('#preview-title').textContent = participant.full_name;
+
+  body.innerHTML = `
+    <div style="padding: 4px; text-align: left;">
+      <p class="card-item-meta" style="margin-bottom: 14px;">${escapeHtml(participant.email)}</p>
+      <div class="doc-review-grid docs-checklist">
+        ${participant.docs.map(d => {
+          const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(d.file_url || '');
+          return `
+          <div class="doc-item status-${d.status}">
+            <div class="doc-item-header">
+              <div class="doc-item-title">${d.doc_type}</div>
+              <div class="doc-item-status ${d.status}">${statusLabel(d.status)}</div>
+            </div>
+            <div class="doc-item-preview">
+              <div class="doc-thumb" onclick="previewDocument('${d.file_url}', '${d.doc_type}')" title="Lihat dokumen">
+                ${isImg
+                  ? `<img src="${d.file_url}" alt="${escapeHtml(d.doc_type)}" loading="lazy" />`
+                  : `<div class="doc-thumb-file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>`
+                }
+                <span class="doc-thumb-zoom"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span>
+              </div>
+            </div>
+            ${d.status === 'pending' ? `
+              <div class="table-actions-cell">
+                <button class="btn-approve" onclick="approveDocument('${d.id}', '${d.user_id}')">Approve</button>
+                <button class="btn-reject" onclick="rejectDocument('${d.id}', '${d.user_id}')">Reject</button>
+              </div>
+            ` : ''}
+            ${d.status === 'rejected' && d.rejection_reason ? `
+              <div class="doc-item-reason" style="margin-top: 8px;"><strong>Alasan:</strong> ${escapeHtml(d.rejection_reason)}</div>
+            ` : ''}
+            <div class="card-item-meta" style="margin-top: 6px;">${formatDate(d.created_at)}</div>
+          </div>
+        `;
+        }).join('')}
+      </div>
+    </div>
+  `;
 }
 
 $('#admin-doc-search').addEventListener('input', (e) => {
