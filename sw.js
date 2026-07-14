@@ -1,0 +1,93 @@
+/* ============================================================
+   SERVICE WORKER - GlobalWork PWA
+   ============================================================ */
+const CACHE_NAME = 'globalwork-v2';
+const URLS_TO_CACHE = [
+  './',
+  './index.html',
+  './style.css?v=3',
+  './script.js',
+  './custom-select.js',
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png',
+  './apple-touch-icon.png',
+  './favicon-32.png',
+  './favicon-16.png'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(URLS_TO_CACHE))
+      .then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys
+          .filter((key) => key !== CACHE_NAME)
+          .map((key) => caches.delete(key))
+      )
+    ).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+
+  // Jangan cache request ke Supabase / API eksternal, biarkan selalu network
+  if (
+    req.url.includes('supabase') ||
+    req.url.includes('googleapis') ||
+    req.url.includes('gstatic') ||
+    req.url.includes('cdn.jsdelivr.net') ||
+    req.url.includes('cdnjs.cloudflare.com') ||
+    req.url.includes('cdn.sheetjs.com') ||
+    req.method !== 'GET'
+  ) {
+    return;
+  }
+
+  event.respondWith(
+    caches.match(req).then((cached) => {
+      const networkFetch = fetch(req)
+        .then((res) => {
+          if (res && res.status === 200) {
+            const resClone = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
+          }
+          return res;
+        })
+        .catch(() => cached || caches.match('./index.html'));
+
+      // Stale-while-revalidate: pakai cache dulu kalau ada, update di background
+      return cached || networkFetch;
+    })
+  );
+});
+
+self.addEventListener('push', (event) => {
+  const data = event.data ? event.data.json() : {};
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'GlobalWork', {
+      body: data.body || 'Notifikasi baru',
+      icon: './icon-192.png',
+      badge: './favicon-32.png'
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window' }).then((clientsArr) => {
+      const existing = clientsArr.find((c) => c.url.includes(self.location.origin));
+      if (existing) return existing.focus();
+      return self.clients.openWindow('./index.html');
+    })
+  );
+});
