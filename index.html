@@ -135,14 +135,9 @@
     <div id="page-login" class="auth-page active">
       <div class="auth-card glass">
         <div class="auth-logo">
-          <div class="logo-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-            </svg>
+          <div class="logo-icon brand-logo">
+            <img src="LOGO_JD.svg" alt="PT. Juara" />
           </div>
-          <h1>GlobalWork</h1>
-          <p class="tagline">Karier Global Dimulai Di Sini</p>
         </div>
 
         <form id="form-login" class="auth-form" novalidate>
@@ -199,11 +194,8 @@
     <div id="page-register" class="auth-page">
       <div class="auth-card glass">
         <div class="auth-logo">
-          <div class="logo-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-            </svg>
+          <div class="logo-icon brand-logo">
+            <img src="LOGO_JD.svg" alt="PT. Juara" />
           </div>
           <h1>Buat Akun Baru</h1>
           <p class="tagline">Mulai perjalanan karier globalmu</p>
@@ -276,11 +268,8 @@
     <div id="page-forgot" class="auth-page">
       <div class="auth-card glass">
         <div class="auth-logo">
-          <div class="logo-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>
-            </svg>
+          <div class="logo-icon brand-logo">
+            <img src="LOGO_JD.svg" alt="PT. Juara" />
           </div>
           <h1>Lupa Password</h1>
           <p class="tagline">Kami akan kirim link reset ke email Anda</p>
@@ -314,11 +303,8 @@
     <div id="page-reset" class="auth-page">
       <div class="auth-card glass">
         <div class="auth-logo">
-          <div class="logo-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
+          <div class="logo-icon brand-logo">
+            <img src="LOGO_JD.svg" alt="PT. Juara" />
           </div>
           <h1>Buat Password Baru</h1>
           <p class="tagline">Masukkan password baru untuk akun Anda</p>
@@ -479,6 +465,13 @@
           </svg>
           <span>Kelola Peserta</span>
         </a>
+        <a href="#" class="nav-item" data-page="admin-verifikasi">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="4" width="20" height="16" rx="2"/>
+            <path d="M22 6l-10 7L2 6"/>
+          </svg>
+          <span>Confirmasi Email</span>
+        </a>
         <a href="#" class="nav-item" data-page="admin-penempatan">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
@@ -486,13 +479,6 @@
             <line x1="12" y1="22.08" x2="12" y2="12"/>
           </svg>
           <span>Penempatan</span>
-        </a>
-        <a href="#" class="nav-item nav-item-center" data-page="admin-verifikasi">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="4" width="20" height="16" rx="2"/>
-            <path d="M22 6l-10 7L2 6"/>
-          </svg>
-          <span>Verifikasi Email</span>
         </a>
         <a href="#" class="nav-item" data-page="admin-jadwal">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -784,7 +770,7 @@
       <!-- ADMIN: VERIFIKASI EMAIL -->
       <section id="view-admin-verifikasi" class="view">
         <div class="view-header">
-          <h1>Verifikasi Email</h1>
+          <h1>Confirmasi Email</h1>
           <p>Peserta yang belum melakukan verifikasi email</p>
         </div>
         <div class="table-controls glass">
