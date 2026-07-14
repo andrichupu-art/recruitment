@@ -815,17 +815,26 @@ $$('.quick-card[data-page]').forEach(item => {
 });
 
 // Kartu statistik Dashboard Admin: klik untuk lompat ke halaman terkait,
-// dan otomatis set filter status kalau kartunya punya data-filter-status
-// (mis. "Menunggu Review" -> Kelola Peserta dengan filter "pending").
+// dan otomatis set filter status/tahapan kalau kartunya punya
+// data-filter-status atau data-filter-step (mis. "Disetujui" -> Kelola
+// Peserta dengan filter tahapan "Penempatan").
 $$('.admin-stat-card[data-page]').forEach(item => {
   item.addEventListener('click', () => {
     const page = item.dataset.page;
     const filterStatus = item.dataset.filterStatus;
+    const filterStep = item.dataset.filterStep;
 
     if (filterStatus !== undefined && page === 'admin-peserta') {
       state.adminTable.filterStatus = filterStatus;
       const filterSelect = $('#admin-filter-status');
       if (filterSelect) filterSelect.value = filterStatus;
+      applyAdminFilters();
+    }
+
+    if (filterStep !== undefined && page === 'admin-peserta') {
+      state.adminTable.filterStep = filterStep;
+      const stepSelect = $('#admin-filter-step');
+      if (stepSelect) stepSelect.value = filterStep;
       applyAdminFilters();
     }
 
@@ -897,7 +906,7 @@ async function initDashboard() {
       ['#sidebar-avatar', '#profile-avatar-img'].forEach(sel => {
         const img = $(sel);
         if (img) {
-          img.src = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect width='100' height='100' fill='%232563eb'/><g transform='translate(31,31) scale(1.6)' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></g></svg>`;
+          img.src = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect width='100' height='100' fill='%23cda434'/><g transform='translate(31,31) scale(1.6)' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></g></svg>`;
         }
       });
     }
@@ -1997,17 +2006,44 @@ async function loadAnnouncements() {
 /* ============================================ */
 async function loadAdminDashboard() {
   try {
-    const [totalRes, pendingRes, approvedRes, rejectedRes] = await Promise.all([
-      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'user'),
-      supabase.from('documents').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-      supabase.from('documents').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
-      supabase.from('documents').select('id', { count: 'exact', head: true }).eq('status', 'rejected')
+    const [profilesRes, statusesRes] = await Promise.all([
+      supabase.from('profiles').select('id, documents!user_id(status)').eq('role', 'user'),
+      supabase.from('participant_status').select('user_id, current_step')
     ]);
 
-    $('#admin-stat-total').textContent = totalRes.count || 0;
-    $('#admin-stat-pending').textContent = pendingRes.count || 0;
-    $('#admin-stat-approved').textContent = approvedRes.count || 0;
-    $('#admin-stat-rejected').textContent = rejectedRes.count || 0;
+    if (profilesRes.error) console.error('Dashboard profiles error:', profilesRes.error);
+    if (statusesRes.error) console.error('Dashboard statuses error:', statusesRes.error);
+
+    const profiles = profilesRes.data || [];
+    const statusMap = {};
+    (statusesRes.data || []).forEach(s => { statusMap[s.user_id] = s.current_step; });
+
+    // Tahap akhir timeline (saat ini "Penempatan") dihitung dinamis dari
+    // TIMELINE_STEPS supaya tetap konsisten kalau daftar tahapan berubah lagi.
+    const finalStep = TIMELINE_STEPS[TIMELINE_STEPS.length - 1].step;
+
+    let countPendaftaran = 0; // masih di tahap Pendaftaran (step 1 / belum ada participant_status)
+    let countReview = 0;      // Verifikasi s.d. sebelum tahap akhir (step 2 s.d. finalStep - 1)
+    let countPenempatan = 0;  // sudah mencapai tahap akhir (Penempatan)
+    let countDitolak = 0;     // punya minimal 1 dokumen yang ditolak
+
+    profiles.forEach(p => {
+      const step = statusMap[p.id] || 1;
+      const docs = p.documents || [];
+      const hasRejected = docs.some(d => d.status === 'rejected');
+
+      if (hasRejected) countDitolak++;
+
+      if (step <= 1) countPendaftaran++;
+      else if (step < finalStep) countReview++;
+      else countPenempatan++;
+    });
+
+    $('#admin-stat-total').textContent = profiles.length;
+    $('#admin-stat-pendaftaran').textContent = countPendaftaran;
+    $('#admin-stat-review').textContent = countReview;
+    $('#admin-stat-approved').textContent = countPenempatan;
+    $('#admin-stat-rejected').textContent = countDitolak;
 
     updateUnverifiedBadge();
   } catch (err) {
