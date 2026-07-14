@@ -1626,6 +1626,84 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 }
 
 /* ============================================ */
+/* INSTALL PWA BANNER */
+/* ============================================ */
+.install-banner {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 9998;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 14px 14px 14px 16px;
+  background: #ffffff;
+  color: var(--gray-700, #374151);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+  border: 1px solid var(--gray-200, #e5e7eb);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  animation: slideUp 0.3s ease-out;
+}
+
+.install-banner-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-700, #374151);
+}
+
+.install-banner-info svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  color: #1e40af;
+}
+
+.install-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.install-banner .btn-sm {
+  padding: 8px 16px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(120%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+[data-theme="dark"] .install-banner {
+  background: var(--gray-800, #1f2937);
+  border-color: var(--gray-700, #374151);
+  color: var(--gray-100, #f3f4f6);
+}
+
+[data-theme="dark"] .install-banner-info {
+  color: var(--gray-100, #f3f4f6);
+}
+
+@media (max-width: 480px) {
+  .install-banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .install-banner-actions {
+    justify-content: flex-end;
+  }
+}
+
+/* ============================================ */
 /* DARK MODE */
 /* ============================================ */
 [data-theme="dark"] {
