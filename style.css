@@ -1475,8 +1475,9 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 
 .detail-doc-item {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
   padding: 10px 12px;
   background: var(--white);
   border-radius: var(--radius-sm);
@@ -1490,6 +1491,14 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 .detail-doc-item.status-approved { border-left-color: var(--green-500); }
 .detail-doc-item.status-pending { border-left-color: var(--yellow-500); }
 .detail-doc-item.status-rejected { border-left-color: var(--red-500); }
+
+.detail-doc-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.detail-doc-main:hover .detail-doc-name { text-decoration: underline; }
 
 .detail-doc-icon {
   width: 26px;
@@ -2651,6 +2660,13 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   color: var(--white);
 }
 .btn-action:hover { background: var(--blue-600); }
+
+/* Tombol "Detail" jadi merah kalau data profil peserta dan/atau dokumen belum
+   lengkap (masih ada field kosong / jenis dokumen yang belum diupload). */
+.btn-action-incomplete {
+  background: var(--red-500) !important;
+}
+.btn-action-incomplete:hover { background: #d63c3d !important; }
 
 .btn-delete { background: var(--gray-400); color: var(--white); }
 .btn-delete:hover { background: var(--red-500); }
