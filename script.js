@@ -1845,6 +1845,26 @@ async function loadChat() {
   }
 }
 
+// FIX: kolom `attachment_name` tidak ada di tabel `chat_messages` (skema
+// Supabase belum punya kolom ini), jadi nama file diturunkan dari URL saja
+// supaya tampilan lampiran tetap punya label yang masuk akal tanpa perlu
+// menyimpan kolom tambahan yang bisa memicu error "Could not find the
+// 'attachment_name' column of 'chat_messages' in the schema cache".
+function getAttachmentDisplayName(m) {
+  if (m.attachment_name) return m.attachment_name;
+  if (!m.attachment_url) return 'File';
+  try {
+    const clean = m.attachment_url.split('?')[0];
+    const rawName = decodeURIComponent(clean.substring(clean.lastIndexOf('/') + 1));
+    // Nama file diupload dengan pola "chat-<timestamp>.<ext>"; buang prefix itu
+    // supaya yang tampil ke user cuma "Lampiran.<ext>" yang lebih rapi.
+    const m2 = rawName.match(/^chat-\d+\.(.+)$/i);
+    return m2 ? `Lampiran.${m2[1]}` : (rawName || 'File');
+  } catch (e) {
+    return 'File';
+  }
+}
+
 function renderChatBubble(m) {
   const isUser = m.sender_role === 'user';
   let attachmentHtml = '';
@@ -1856,7 +1876,7 @@ function renderChatBubble(m) {
       attachmentHtml = `
         <a href="${m.attachment_url}" target="_blank" class="attachment">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          <span>${escapeHtml(m.attachment_name || 'File')}</span>
+          <span>${escapeHtml(getAttachmentDisplayName(m))}</span>
         </a>
       `;
     }
@@ -1944,8 +1964,7 @@ $('#form-chat').addEventListener('submit', async (e) => {
       sender_role: 'user',
       message: message || '[Lampiran]',
       attachment_url: attachmentUrl,
-      attachment_type: attachmentType,
-      attachment_name: attachmentName
+      attachment_type: attachmentType
     });
 
     if (error) throw error;
@@ -2494,7 +2513,7 @@ function renderAdminChatBubble(m) {
       attachmentHtml = `
         <a href="${m.attachment_url}" target="_blank" class="attachment">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          <span>${escapeHtml(m.attachment_name || 'File')}</span>
+          <span>${escapeHtml(getAttachmentDisplayName(m))}</span>
         </a>
       `;
     }
