@@ -14,12 +14,12 @@
    install/activate — akibatnya file lama yang sudah di-cache browser
    akan terus dipakai selamanya, walau file di server sudah baru.
    ============================================================ */
-const CACHE_NAME = 'globalwork-v4';
+const CACHE_NAME = 'globalwork-v6';
 const URLS_TO_CACHE = [
   './',
   './index.html',
   './style.css?v=7',
-  './script.js?v=10',
+  './script.js?v=12',
   './custom-select.js?v=3',
   './manifest.json',
   './icon-192.png',
