@@ -1379,6 +1379,264 @@ button.home-card { cursor: pointer; }
 .dragover { outline: 2px dashed var(--blue-500); outline-offset: -4px; }
 
 /* ============================================ */
+/* ADMIN CHAT (tab navbar, ala WhatsApp) */
+/* ============================================ */
+.admin-chat-wrap {
+  display: flex;
+  height: 72vh;
+  min-height: 460px;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.admin-chat-sidebar {
+  width: 320px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--gray-200);
+  background: var(--white);
+}
+
+.admin-chat-sidebar-head {
+  padding: 14px 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-bottom: 1px solid var(--gray-100);
+  flex-shrink: 0;
+}
+.admin-chat-sidebar-head .table-search { width: 100%; }
+
+.admin-chat-new-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.admin-chat-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.admin-chat-list-empty {
+  padding: 30px 16px;
+  text-align: center;
+  color: var(--gray-400);
+  font-size: 12.5px;
+}
+
+.admin-chat-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--gray-50);
+  transition: background-color 0.15s ease;
+  position: relative;
+}
+.admin-chat-list-item:hover { background: var(--gray-50); }
+.admin-chat-list-item.active { background: var(--tonal-blue); }
+
+.admin-chat-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--gradient-focus, var(--blue-600));
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 15px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.admin-chat-list-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-chat-list-item-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.admin-chat-list-item-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--gray-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-chat-list-item-time {
+  font-size: 10.5px;
+  color: var(--gray-400);
+  flex-shrink: 0;
+}
+
+.admin-chat-list-item-preview {
+  font-size: 12px;
+  color: var(--gray-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.admin-chat-list-item.has-unread .admin-chat-list-item-preview {
+  color: var(--gray-800);
+  font-weight: 600;
+}
+
+.admin-chat-unread-dot {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--red-500);
+  color: var(--white);
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.admin-chat-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--gray-50);
+}
+
+.admin-chat-panel-empty {
+  margin: auto;
+  text-align: center;
+  color: var(--gray-400);
+  padding: 0 30px;
+  max-width: 320px;
+}
+.admin-chat-panel-empty svg { width: 52px; height: 52px; margin: 0 auto 12px; opacity: 0.5; }
+.admin-chat-panel-empty p { font-size: 13px; }
+
+.admin-chat-panel-active {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.admin-chat-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--white);
+  border-bottom: 1px solid var(--gray-200);
+  flex-shrink: 0;
+}
+
+.admin-chat-back-btn { display: none; }
+
+.admin-chat-header-info h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin: 0;
+}
+.admin-chat-header-info p {
+  font-size: 11.5px;
+  color: var(--gray-500);
+  margin: 0;
+}
+
+.admin-chat-panel-active .chat-messages { flex: 1; }
+
+/* Picker overlay: pilih peserta untuk memulai chat baru */
+.admin-chat-picker {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-chat-picker-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 30, 51, 0.45);
+}
+
+.admin-chat-picker-box {
+  position: relative;
+  width: 420px;
+  max-width: calc(100vw - 32px);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius);
+  padding: 18px;
+  gap: 12px;
+}
+
+.admin-chat-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.admin-chat-picker-head h3 { font-size: 16px; font-weight: 700; color: var(--gray-800); }
+
+.admin-chat-picker-list {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0 -18px;
+  padding: 0 18px;
+}
+
+.admin-chat-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.admin-chat-picker-item:hover { background: var(--gray-50); }
+.admin-chat-picker-item-name { font-size: 13px; font-weight: 600; color: var(--gray-800); }
+.admin-chat-picker-item-email { font-size: 11.5px; color: var(--gray-500); }
+.admin-chat-picker-empty { padding: 24px 6px; text-align: center; color: var(--gray-400); font-size: 12.5px; }
+
+@media (max-width: 900px) {
+  .admin-chat-wrap { height: 78vh; }
+  .admin-chat-sidebar { width: 100%; position: absolute; inset: 0; z-index: 2; }
+  .admin-chat-wrap.has-active .admin-chat-sidebar { display: none; }
+  .admin-chat-panel { position: absolute; inset: 0; z-index: 1; }
+  .admin-chat-wrap { position: relative; }
+  .admin-chat-back-btn { display: inline-flex; }
+}
+
+[data-theme="dark"] .admin-chat-sidebar { background: var(--gray-800); border-color: var(--gray-700); }
+[data-theme="dark"] .admin-chat-list-item:hover { background: rgba(255,255,255,0.04); }
+[data-theme="dark"] .admin-chat-list-item.active { background: rgba(42, 92, 138, 0.2); }
+[data-theme="dark"] .admin-chat-list-item-name { color: var(--gray-50); }
+[data-theme="dark"] .admin-chat-panel { background: var(--gray-900); }
+[data-theme="dark"] .admin-chat-panel-header { background: var(--gray-800); border-color: var(--gray-700); }
+[data-theme="dark"] .admin-chat-header-info h4 { color: var(--gray-50); }
+
+/* ============================================ */
 /* TIMELINE (Progress) */
 /* ============================================ */
 .progress-overview {
@@ -2638,6 +2896,7 @@ button.home-card { cursor: pointer; }
   gap: 18px;
   flex: 1;
   min-height: 0;
+  box-shadow: var(--shadow-sm);
   transition: var(--transition);
 }
 
@@ -2666,12 +2925,12 @@ button.home-card { cursor: pointer; }
 .admin-stat-icon.green { background: linear-gradient(135deg, var(--blue-500), var(--blue-800)); color: var(--white); box-shadow: 0 6px 14px rgba(21,46,69,0.35); }
 .admin-stat-icon.red { background: linear-gradient(135deg, var(--blue-500), var(--blue-800)); color: var(--white); box-shadow: 0 6px 14px rgba(21,46,69,0.35); }
 
-/* Tonal container per kartu, mengikuti warna ikon di dalamnya */
-.admin-stat-card:has(.admin-stat-icon.blue) { background: var(--tonal-purple); }
-.admin-stat-card:has(.admin-stat-icon.purple) { background: var(--tonal-purple); }
-.admin-stat-card:has(.admin-stat-icon.orange) { background: var(--tonal-purple); }
-.admin-stat-card:has(.admin-stat-icon.green) { background: var(--tonal-purple); }
-.admin-stat-card:has(.admin-stat-icon.red) { background: var(--tonal-purple); }
+/* Kartu solid putih, senada dengan warna sidebar/navbar */
+.admin-stat-card:has(.admin-stat-icon.blue) { background: var(--white); }
+.admin-stat-card:has(.admin-stat-icon.purple) { background: var(--white); }
+.admin-stat-card:has(.admin-stat-icon.orange) { background: var(--white); }
+.admin-stat-card:has(.admin-stat-icon.green) { background: var(--white); }
+.admin-stat-card:has(.admin-stat-icon.red) { background: var(--white); }
 
 .admin-stat-info p {
   font-size: 13px;
