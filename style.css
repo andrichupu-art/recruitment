@@ -2143,8 +2143,8 @@ button.home-card { cursor: pointer; }
   height: 64px;
   margin: 0 auto;
   border-radius: 50%;
-  background: var(--tonal-orange);
-  color: var(--gold-700);
+  background: var(--tonal-blue);
+  color: var(--tonal-blue-ink);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2156,6 +2156,18 @@ button.home-card { cursor: pointer; }
   justify-content: center;
 }
 .confirm-actions .btn { min-width: 110px; }
+
+/* FIX: tombol OK/Ya-Lanjutkan di confirm-modal sebelumnya ikut var(--gradient-brand)
+   (emas -> navy) lewat .btn-primary global, sehingga terlihat dominan kuning.
+   Disamakan dengan warna navy seperti ikon-ikon lain di dashboard
+   (var(--gradient-focus)) sesuai permintaan. */
+.confirm-actions .btn-primary {
+  background: var(--gradient-focus);
+  box-shadow: var(--glow-focus);
+}
+.confirm-actions .btn-primary:hover {
+  box-shadow: 0 12px 28px rgba(21, 46, 69, 0.4);
+}
 
 /* ============================================ */
 /* SPLASH SCREEN */
