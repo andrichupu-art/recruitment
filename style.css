@@ -1746,18 +1746,16 @@ button.home-card { cursor: pointer; }
 }
 
 .splash-logo {
-  width: 80px;
-  height: 80px;
+  width: 160px;
+  height: auto;
   margin: 0 auto 20px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   animation: pulse 2s infinite;
 }
 
-.splash-logo svg { width: 40px; height: 40px; color: var(--white); }
+.splash-logo img { width: 100%; height: auto; }
 
 .splash-content h1 {
   font-size: 28px;
