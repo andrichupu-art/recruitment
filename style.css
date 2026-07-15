@@ -1264,24 +1264,53 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 }
 
 .home-card {
+  position: relative;
+  overflow: hidden;
   background: var(--white);
   border: none;
   cursor: default;
   width: 100%;
-  height: 122px;
-  padding: 16px 16px;
+  height: 150px;
+  padding: 18px 18px;
   border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-start;
-  gap: 6px;
+  gap: 7px;
   transition: var(--transition);
   font-family: inherit;
   text-align: left;
   box-sizing: border-box;
 }
 button.home-card { cursor: pointer; }
+
+/* Watermark ikon raksasa & transparan di tiap kartu, memakai ikon yang
+   sama dengan kartu itu sendiri tapi diperbesar. Rotasi & posisi dibuat
+   bervariasi per kartu (ganjil/genap serta tiap kartu ke-3) supaya grid
+   terasa hidup dan tidak seperti kartu yang di-copy-paste identik. */
+.home-card-watermark {
+  position: absolute;
+  z-index: 0;
+  width: 108px;
+  height: 108px;
+  right: -22px;
+  bottom: -22px;
+  color: var(--navy);
+  opacity: 0.07;
+  pointer-events: none;
+}
+.home-card-watermark svg { width: 100%; height: 100%; }
+
+.home-card:nth-child(odd) .home-card-watermark { transform: rotate(-16deg); right: -26px; bottom: -20px; }
+.home-card:nth-child(even) .home-card-watermark { transform: rotate(13deg); right: -16px; bottom: -26px; }
+.home-card:nth-child(3n) .home-card-watermark { color: var(--gold); opacity: 0.11; width: 118px; height: 118px; }
+.home-card:nth-child(3n+1) .home-card-watermark { color: var(--brand-blue); }
+
+.home-card-icon, .home-card-label, .home-card h3 {
+  position: relative;
+  z-index: 1;
+}
 
 /* Shadow arah kiri/kanan seperti kartu pengumuman: kolom kiri grid
    bayangannya condong ke kiri, kolom kanan condong ke kanan, memberi
@@ -1294,8 +1323,8 @@ button.home-card { cursor: pointer; }
 .home-card:active { transform: translateY(0) scale(0.99); box-shadow: var(--shadow-press); }
 
 .home-card-icon {
-  width: 52px;
-  height: 52px;
+  width: 60px;
+  height: 60px;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
@@ -1305,7 +1334,7 @@ button.home-card { cursor: pointer; }
   color: var(--white);
   box-shadow: var(--glow-focus);
 }
-.home-card-icon svg { width: 26px; height: 26px; }
+.home-card-icon svg { width: 30px; height: 30px; }
 
 .home-card-label { font-size: 12px; color: var(--gray-700); font-weight: 600; }
 .home-card h3 { font-size: 19px; font-weight: 700; color: var(--gray-800); }
