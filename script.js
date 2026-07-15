@@ -4266,7 +4266,7 @@ async function openPositionModal(existing = null) {
     <form id="form-position" style="display: flex; flex-direction: column; gap: 14px;" novalidate>
       <div class="input-group">
         <label>Negara</label>
-        <select id="position-country" data-cs-skip="true" required>${countriesHtml}</select>
+        <select id="position-country" required>${countriesHtml}</select>
         <span class="field-error"></span>
       </div>
       <div class="input-group">
@@ -4557,7 +4557,7 @@ async function loadAdminPenempatan() {
       const [schedRes, countryRes, posRes] = await Promise.all([
         supabase.from('departure_schedules').select('schedule_date, note').eq('is_active', true).order('schedule_date'),
         supabase.from('countries').select('name').eq('is_active', true).order('name'),
-        supabase.from('job_positions').select('title, countries(name)').eq('is_active', true).order('title')
+        supabase.from('job_positions').select('title, category, countries(name)').eq('is_active', true).order('title')
       ]);
       if (schedRes.error) console.error('Load departure_schedules error:', schedRes.error);
       if (countryRes.error) console.error('Load countries error:', countryRes.error);
@@ -4599,9 +4599,9 @@ async function loadAdminPenempatan() {
       const filtered = countryName ? positions.filter(p => p.countries?.name === countryName) : positions;
       let opts = '<option value="">Pilih posisi/penempatan...</option>';
       opts += filtered.map(p =>
-        `<option value="${escapeHtml(p.title)}" ${selected === p.title ? 'selected' : ''}>${escapeHtml(p.title)}</option>`
+        `<option value="${escapeHtml(p.category)}" ${selected === p.category ? 'selected' : ''}>${escapeHtml(p.category)}</option>`
       ).join('');
-      if (selected && !filtered.some(p => p.title === selected)) {
+      if (selected && !filtered.some(p => p.category === selected)) {
         opts += `<option value="${escapeHtml(selected)}" selected>${escapeHtml(selected)} (tidak aktif)</option>`;
       }
       return opts;
