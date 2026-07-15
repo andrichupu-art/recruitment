@@ -1845,16 +1845,42 @@ async function loadChat() {
   }
 }
 
+// FIX: tabel `chat_messages` di Supabase ternyata tidak punya kolom
+// `attachment_name` MAUPUN `attachment_type`/`attachment_url` (keduanya
+// memicu error "Could not find the '...' column of 'chat_messages' in the
+// schema cache" saat insert). Daripada terus menambah/mengurangi kolom yang
+// belum tentu ada di skema, info lampiran sekarang "ditumpangkan" di dalam
+// teks `message` itu sendiri lewat penanda [[ATT:type|url]] di baris
+// terakhir, lalu diuraikan lagi saat render. Dengan begitu fitur lampiran
+// tetap jalan tanpa butuh kolom tambahan apa pun di database.
+const CHAT_ATTACHMENT_MARKER = /\n?\[\[ATT:(image|pdf)\|([^\]]+)\]\]$/;
+
+function embedAttachmentMarker(message, type, url) {
+  const base = message || '';
+  return `${base}\n[[ATT:${type}|${url}]]`;
+}
+
+function parseChatMessage(m) {
+  // Kompatibel mundur: kalau suatu saat kolom attachment_url/attachment_type
+  // memang ada & terisi di baris tertentu, tetap dipakai duluan.
+  if (m.attachment_url) {
+    return { text: m.message || '', attachmentUrl: m.attachment_url, attachmentType: m.attachment_type || 'pdf' };
+  }
+  const raw = m.message || '';
+  const match = raw.match(CHAT_ATTACHMENT_MARKER);
+  if (!match) return { text: raw, attachmentUrl: null, attachmentType: null };
+  return { text: raw.replace(CHAT_ATTACHMENT_MARKER, ''), attachmentUrl: match[2], attachmentType: match[1] };
+}
+
 // FIX: kolom `attachment_name` tidak ada di tabel `chat_messages` (skema
 // Supabase belum punya kolom ini), jadi nama file diturunkan dari URL saja
 // supaya tampilan lampiran tetap punya label yang masuk akal tanpa perlu
 // menyimpan kolom tambahan yang bisa memicu error "Could not find the
 // 'attachment_name' column of 'chat_messages' in the schema cache".
-function getAttachmentDisplayName(m) {
-  if (m.attachment_name) return m.attachment_name;
-  if (!m.attachment_url) return 'File';
+function getAttachmentDisplayName(attachmentUrl) {
+  if (!attachmentUrl) return 'File';
   try {
-    const clean = m.attachment_url.split('?')[0];
+    const clean = attachmentUrl.split('?')[0];
     const rawName = decodeURIComponent(clean.substring(clean.lastIndexOf('/') + 1));
     // Nama file diupload dengan pola "chat-<timestamp>.<ext>"; buang prefix itu
     // supaya yang tampil ke user cuma "Lampiran.<ext>" yang lebih rapi.
@@ -1867,16 +1893,17 @@ function getAttachmentDisplayName(m) {
 
 function renderChatBubble(m) {
   const isUser = m.sender_role === 'user';
+  const { text, attachmentUrl, attachmentType } = parseChatMessage(m);
   let attachmentHtml = '';
   
-  if (m.attachment_url) {
-    if (m.attachment_type === 'image') {
-      attachmentHtml = `<div class="attachment" onclick="previewDocument('${m.attachment_url}', 'Lampiran')"><img src="${m.attachment_url}" alt="attachment" /></div>`;
+  if (attachmentUrl) {
+    if (attachmentType === 'image') {
+      attachmentHtml = `<div class="attachment" onclick="previewDocument('${attachmentUrl}', 'Lampiran')"><img src="${attachmentUrl}" alt="attachment" /></div>`;
     } else {
       attachmentHtml = `
-        <a href="${m.attachment_url}" target="_blank" class="attachment">
+        <a href="${attachmentUrl}" target="_blank" class="attachment">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          <span>${escapeHtml(getAttachmentDisplayName(m))}</span>
+          <span>${escapeHtml(getAttachmentDisplayName(attachmentUrl))}</span>
         </a>
       `;
     }
@@ -1884,7 +1911,7 @@ function renderChatBubble(m) {
   
   return `
     <div class="chat-bubble ${isUser ? 'user' : 'admin'}">
-      ${m.message ? escapeHtml(m.message) : ''}
+      ${text ? escapeHtml(text) : ''}
       ${attachmentHtml}
       <span class="chat-time">${formatTime(m.created_at)}</span>
     </div>
@@ -1938,7 +1965,6 @@ $('#form-chat').addEventListener('submit', async (e) => {
   try {
     let attachmentUrl = null;
     let attachmentType = null;
-    let attachmentName = null;
     
     if (state.chatAttachment) {
       const ext = state.chatAttachment.name.split('.').pop();
@@ -1955,16 +1981,15 @@ $('#form-chat').addEventListener('submit', async (e) => {
       const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path);
       attachmentUrl = urlData.publicUrl;
       attachmentType = isImage ? 'image' : 'pdf';
-      attachmentName = state.chatAttachment.name;
     }
 
     const { error } = await supabase.from('chat_messages').insert({
       user_id: state.user.id,
       sender_id: state.user.id,
       sender_role: 'user',
-      message: message || '[Lampiran]',
-      attachment_url: attachmentUrl,
-      attachment_type: attachmentType
+      message: attachmentUrl
+        ? embedAttachmentMarker(message, attachmentType, attachmentUrl)
+        : (message || '[Lampiran]')
     });
 
     if (error) throw error;
@@ -2504,16 +2529,17 @@ async function loadAdminChatMessages(userId) {
 
 function renderAdminChatBubble(m) {
   const isMine = m.sender_role === 'admin';
+  const { text, attachmentUrl, attachmentType } = parseChatMessage(m);
   let attachmentHtml = '';
 
-  if (m.attachment_url) {
-    if (m.attachment_type === 'image') {
-      attachmentHtml = `<div class="attachment" onclick="previewDocument('${m.attachment_url}', 'Lampiran')"><img src="${m.attachment_url}" alt="attachment" /></div>`;
+  if (attachmentUrl) {
+    if (attachmentType === 'image') {
+      attachmentHtml = `<div class="attachment" onclick="previewDocument('${attachmentUrl}', 'Lampiran')"><img src="${attachmentUrl}" alt="attachment" /></div>`;
     } else {
       attachmentHtml = `
-        <a href="${m.attachment_url}" target="_blank" class="attachment">
+        <a href="${attachmentUrl}" target="_blank" class="attachment">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          <span>${escapeHtml(getAttachmentDisplayName(m))}</span>
+          <span>${escapeHtml(getAttachmentDisplayName(attachmentUrl))}</span>
         </a>
       `;
     }
@@ -2521,7 +2547,7 @@ function renderAdminChatBubble(m) {
 
   return `
     <div class="chat-bubble ${isMine ? 'user' : ''}">
-      ${m.message ? escapeHtml(m.message) : ''}
+      ${text ? escapeHtml(text) : ''}
       ${attachmentHtml}
       <span class="chat-time">${formatTime(m.created_at)}</span>
     </div>
