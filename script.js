@@ -291,6 +291,18 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
+// Debounce sederhana: dipakai supaya event realtime yang datang beruntun
+// (mis. peserta upload banyak dokumen sekaligus, atau banyak pendaftar baru
+// dalam waktu berdekatan) tidak memicu reload berkali-kali dalam waktu
+// singkat -> cukup satu kali reload setelah jeda tenang.
+function debounce(fn, wait = 400) {
+  let t = null;
+  return function (...args) {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, args), wait);
+  };
+}
+
 function statusLabel(s) {
   const map = {
     pending: 'Menunggu',
@@ -1710,8 +1722,9 @@ async function loadProgress() {
 
     const container = $('#progress-timeline');
     container.innerHTML = TIMELINE_STEPS.map((step, idx) => {
-      const isCompleted = step.step < currentStep;
-      const isCurrent = step.step === currentStep;
+      const isFinalStepDone = step.step === finalStep && currentStep >= finalStep && !!departureDate;
+      const isCompleted = step.step < currentStep || isFinalStepDone;
+      const isCurrent = step.step === currentStep && !isFinalStepDone;
       const statusClass = isCompleted ? 'completed' : isCurrent ? 'current' : 'upcoming';
       const statusLabel = isCompleted ? 'Selesai' : isCurrent ? 'Sedang Diproses' : 'Menunggu';
 
@@ -2335,26 +2348,35 @@ function applyAdminFilters() {
 // readonly (lihat kolom Tahapan) — satu-satunya cara pindah tahap adalah lewat
 // tombol di kolom Status ini, sesuai urutan: Pendaftaran -> Verifikasi -> Interview
 // -> Administrasi -> Medical -> Penempatan.
-// - approvedDocs < totalDocs (masih di Pendaftaran/Verifikasi, dokumen belum lengkap
-//   disetujui semua): tampil progress "X/N" (N = jumlah dokumen wajib).
-// - Dokumen sudah lengkap semua tapi current_step belum sampai Interview (step 3):
-//   tampil tombol MERAH "APPROVE" -> panggil finalizeApproveParticipant (Verifikasi -> Interview).
+// - uploadedDocs < totalDocs ATAU biodata belum lengkap (!isDataComplete): tampil
+//   progress "X/N" (N = jumlah dokumen wajib, X = jumlah dokumen yang SUDAH DIUPLOAD,
+//   bukan yang sudah di-approve) -> naik tiap kali peserta upload dokumen baru.
+// - Semua dokumen sudah diupload (X/N penuh) DAN biodata sudah lengkap, tapi belum
+//   semua dokumen di-approve admin: tampil badge KUNING "REVIEW" (data sudah siap
+//   diperiksa oleh admin lewat modal Detail Peserta).
+// - Dokumen sudah lengkap semua DAN sudah disetujui semua tapi current_step belum
+//   sampai Interview (step 3): tampil tombol MERAH "APPROVE" -> panggil
+//   finalizeApproveParticipant (Verifikasi -> Interview).
 // - current_step Interview/Administrasi/Medical (3, 4, 5): tampil tombol "Lanjut ke ..."
 //   -> panggil advanceParticipantStage untuk memajukan SATU tahap saja (tidak bisa loncat).
 // - current_step sudah Penempatan (6): baris ini seharusnya sudah tersaring keluar dari
 //   tabel Kelola Peserta (lihat finalStep filter di loadAdminPeserta), badge ini jaga-jaga saja.
 const NEXT_STAGE_BUTTON = {
-  3: { next: 4, label: 'Lanjut ke Administrasi' },
-  4: { next: 5, label: 'Lanjut ke Medical' },
-  5: { next: 6, label: 'Lanjut ke Penempatan' }
+  3: { next: 4, label: 'Lanjut Administrasi' },
+  4: { next: 5, label: 'Lanjut Medical' },
+  5: { next: 6, label: 'Lanjut Penempatan' }
 };
 
 function renderPesertaStatusBadge(p) {
-  const { approvedDocs, totalDocs, current_step, id, full_name } = p;
+  const { approvedDocs, uploadedDocs, totalDocs, isDataComplete, current_step, id, full_name } = p;
   const safeName = escapeHtml(full_name).replace(/'/g, "\\'");
 
+  if (uploadedDocs < totalDocs || !isDataComplete) {
+    return `<span class="status-badge status-progress">${uploadedDocs}/${totalDocs}</span>`;
+  }
+
   if (approvedDocs < totalDocs) {
-    return `<span class="status-badge status-progress">${approvedDocs}/${totalDocs}</span>`;
+    return `<span class="status-badge status-pending">REVIEW</span>`;
   }
 
   if (current_step < 3) {
@@ -2395,9 +2417,7 @@ function renderAdminTable() {
               <button class="btn-action btn-chat-action btn-icon-only ${p.unreadChat > 0 ? 'has-unread' : ''}" data-user-id="${p.id}" onclick="goToAdminChat('${p.id}', '${escapeHtml(p.full_name).replace(/'/g, "\\'")}', '${escapeHtml(p.email).replace(/'/g, "\\'")}')" title="Chat dengan Peserta" aria-label="Chat dengan Peserta">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               </button>
-              <!-- Sementara disembunyikan: fungsi Approve/Reject akan dipindahkan ke tempat lain.
-                   Fungsi approveParticipant()/rejectParticipant() masih ada di script.js,
-                   tinggal dipanggil lagi dari sini kalau mau diaktifkan ulang. -->
+              <button class="btn-reject" onclick="rejectParticipant('${p.id}', '${escapeHtml(p.full_name).replace(/'/g, "\\'")}')" title="Tolak Peserta">Tolak</button>
             </div>
             <button class="btn-action btn-make-admin-action btn-icon-only" onclick="makeAdmin('${p.id}', '${escapeHtml(p.full_name).replace(/'/g, "\\'")}')" title="Jadikan Admin" aria-label="Jadikan Admin">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3.5v5.5c0 5-3.4 8.7-8 11-4.6-2.3-8-6-8-11V5.5L12 2z"/><path d="m9 12 2 2 4-4"/></svg>
@@ -3270,6 +3290,7 @@ function renderAdminVerifikasi() {
       <td>
         <div class="table-actions-cell">
           <button class="btn-action" onclick="resendVerificationEmail('${escapeHtml(p.email).replace(/'/g, "\\'")}')">Kirim Ulang Verifikasi</button>
+          <button class="btn-delete" onclick="deleteUnverifiedParticipant('${p.id}', '${escapeHtml(p.full_name || '-').replace(/'/g, "\\'")}')">Hapus</button>
         </div>
       </td>
     </tr>
@@ -3288,6 +3309,27 @@ window.resendVerificationEmail = async function(email) {
     console.error('resendVerificationEmail error:', err);
     toast('error', 'Error', 'Gagal mengirim ulang email verifikasi');
   }
+};
+
+// Hapus peserta yang belum verifikasi email dari daftar (tabel Confirmasi Email).
+// Hanya menghapus baris profil di tabel `profiles` — akun auth.users terkait
+// TIDAK ikut terhapus di sini karena penghapusan auth user butuh service_role
+// key (admin API), yang tidak boleh dipakai di client. Kalau perlu benar-benar
+// menghapus akun auth-nya juga, tambahkan Edge Function terpisah yang dipanggil
+// dari sini.
+window.deleteUnverifiedParticipant = function(userId, fullName) {
+  confirmDialog('Hapus Peserta', `Yakin ingin menghapus data pendaftaran "${fullName}"? Peserta harus mendaftar ulang jika ingin bergabung kembali.`, async () => {
+    try {
+      const { error } = await supabase.from('profiles').delete().eq('id', userId);
+      if (error) throw error;
+
+      toast('success', 'Peserta Dihapus');
+      loadAdminVerifikasi();
+    } catch (err) {
+      console.error('deleteUnverifiedParticipant error:', err);
+      toast('error', 'Error', 'Gagal menghapus. Periksa RLS policy tabel profiles.');
+    }
+  });
 };
 
 $('#admin-verifikasi-search')?.addEventListener('input', (e) => {
@@ -3550,29 +3592,31 @@ window.approveParticipant = async function(userId) {
   });
 };
 
-window.rejectParticipant = async function(userId) {
-  const reason = prompt('Alasan penolakan:');
-  if (!reason) return;
+window.rejectParticipant = async function(userId, fullName) {
+  confirmDialog('Tolak Peserta', `Tolak seluruh dokumen ${fullName || 'peserta ini'}?`, async () => {
+    const reason = prompt('Alasan penolakan:');
+    if (!reason) return;
 
-  try {
-    await supabase
-      .from('documents')
-      .update({ status: 'rejected', rejection_reason: reason, reviewed_by: state.user.id, reviewed_at: new Date().toISOString() })
-      .eq('user_id', userId)
-      .eq('status', 'pending');
+    try {
+      await supabase
+        .from('documents')
+        .update({ status: 'rejected', rejection_reason: reason, reviewed_by: state.user.id, reviewed_at: new Date().toISOString() })
+        .eq('user_id', userId)
+        .eq('status', 'pending');
 
-    await supabase.from('notifications').insert({
-      user_id: userId,
-      title: 'Dokumen Ditolak',
-      message: `Dokumen Anda ditolak. Alasan: ${reason}`,
-      type: 'error'
-    });
+      await supabase.from('notifications').insert({
+        user_id: userId,
+        title: 'Dokumen Ditolak',
+        message: `Dokumen Anda ditolak. Alasan: ${reason}`,
+        type: 'error'
+      });
 
-    toast('success', 'Peserta Ditolak');
-    loadAdminPeserta();
-  } catch (err) {
-    toast('error', 'Error', 'Gagal menolak');
-  }
+      toast('success', 'Peserta Ditolak');
+      loadAdminPeserta();
+    } catch (err) {
+      toast('error', 'Error', 'Gagal menolak');
+    }
+  });
 };
 
 window.makeAdmin = async function(userId, fullName) {
@@ -4577,6 +4621,28 @@ window.prosesPenempatan = async function(userId) {
 };
 
 /* ============================================ */
+/* REALTIME REFRESH HELPERS (ADMIN) */
+/* ============================================ */
+// Dipanggil setiap kali ada perubahan dari sisi peserta (pendaftaran baru,
+// upload dokumen, dsb). Cukup refresh halaman admin yang SEDANG dibuka +
+// badge global, tidak perlu reload semua halaman sekaligus.
+function refreshAdminViewsAfterParticipantChange() {
+  updateUnverifiedBadge();
+
+  if (state.currentPage === 'admin-dashboard') loadAdminDashboard();
+  if (state.currentPage === 'admin-peserta') loadAdminPeserta();
+  if (state.currentPage === 'admin-verifikasi') loadAdminVerifikasi();
+
+  // Kalau admin sedang membuka modal "Detail Peserta" untuk peserta tertentu,
+  // muat ulang modal itu juga supaya dokumen/data terbaru langsung terlihat
+  // tanpa perlu menutup lalu membuka modalnya lagi.
+  if (state.adminDetail.activeUserId) {
+    window.viewParticipantDetail(state.adminDetail.activeUserId);
+  }
+}
+const debouncedRefreshAdminViews = debounce(refreshAdminViewsAfterParticipantChange, 500);
+
+/* ============================================ */
 /* REALTIME SUBSCRIPTIONS */
 /* ============================================ */
 function subscribeRealtime() {
@@ -4634,6 +4700,68 @@ function subscribeRealtime() {
         .subscribe();
 
       state.realtimeChannels.push(adminChatGlobalChannel);
+
+      // Pendaftar baru / perubahan profil peserta (mis. verifikasi email,
+      // edit data diri) -> Kelola Peserta, Verifikasi, dan Dashboard admin
+      // harus ikut ter-update otomatis tanpa perlu refresh manual.
+      const adminProfilesChannel = supabase
+        .channel('admin-profiles-' + state.user.id)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'profiles'
+        }, (payload) => {
+          const row = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
+          if (!row || row.role !== 'user') return;
+
+          if (payload.eventType === 'INSERT') {
+            toast('info', 'Pendaftar Baru', `${row.full_name || row.email || 'Peserta baru'} baru saja mendaftar`);
+            playNotificationSound();
+            showBrowserNotification('Pendaftar Baru', `${row.full_name || row.email || 'Peserta baru'} baru saja mendaftar`);
+          }
+
+          debouncedRefreshAdminViews();
+        })
+        .subscribe();
+
+      state.realtimeChannels.push(adminProfilesChannel);
+
+      // Upload dokumen baru dari peserta (checklist dokumen) -> tabel
+      // Kelola Peserta (progress dokumen), Verifikasi, dan Dashboard admin.
+      const adminDocumentsChannel = supabase
+        .channel('admin-documents-' + state.user.id)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'documents'
+        }, (payload) => {
+          if (payload.eventType === 'INSERT') {
+            toast('info', 'Dokumen Baru Diunggah', 'Ada peserta yang baru saja mengunggah dokumen');
+            playNotificationSound();
+            showBrowserNotification('Dokumen Baru Diunggah', 'Ada peserta yang baru saja mengunggah dokumen');
+          }
+
+          debouncedRefreshAdminViews();
+        })
+        .subscribe();
+
+      state.realtimeChannels.push(adminDocumentsChannel);
+
+      // Perubahan tahapan peserta (participant_status) -> ikut memperbarui
+      // Kelola Peserta & Dashboard bila sedang dibuka (mis. tahapan berubah
+      // dari sesi/perangkat admin lain, atau proses self-heal dari sesi lain).
+      const adminStatusChannel = supabase
+        .channel('admin-status-' + state.user.id)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'participant_status'
+        }, () => {
+          debouncedRefreshAdminViews();
+        })
+        .subscribe();
+
+      state.realtimeChannels.push(adminStatusChannel);
     }
 
     // Notifications realtime
