@@ -790,6 +790,9 @@ function navigateTo(page) {
   $$('.bottom-item').forEach(n => n.classList.remove('active'));
   $$('.bottom-item[data-page="' + page + '"]').forEach(n => n.classList.add('active'));
 
+  const topbarChatBtn = $('#topbar-chat-btn');
+  if (topbarChatBtn) topbarChatBtn.classList.toggle('active', page === 'chat' || page === 'admin-chat');
+
   // Load data per page
   const loaders = {
     'beranda': loadBeranda,
@@ -804,7 +807,6 @@ function navigateTo(page) {
     'admin-dashboard': loadAdminDashboard,
     'admin-peserta': loadAdminPeserta,
     'admin-verifikasi': loadAdminVerifikasi,
-    'admin-jadwal': loadAdminJadwal,
     'admin-pengumuman': loadAdminPengumuman,
     'admin-negara': loadAdminNegara,
     'admin-posisi': loadAdminPosisi,
@@ -830,6 +832,10 @@ $$('.bottom-item[data-page]').forEach(item => {
     e.preventDefault();
     navigateTo(item.dataset.page);
   });
+});
+
+$('#topbar-chat-btn').addEventListener('click', () => {
+  navigateTo(state.isAdmin ? 'admin-chat' : 'chat');
 });
 
 $$('.quick-card[data-page]').forEach(item => {
@@ -2205,8 +2211,8 @@ async function loadAdminPeserta() {
     // Peserta yang sudah mencapai tahap akhir timeline (saat ini "Penempatan")
     // dipindah ke tab Penempatan, jadi tidak lagi ditampilkan di sini supaya
     // tabel Kelola Peserta fokus ke peserta yang masih berproses. Perpindahan
-    // ini baru terjadi saat admin memilih "Penempatan" dari dropdown Tahapan
-    // (bukan lagi otomatis saat mencapai "Medical").
+    // ini baru terjadi saat admin menekan tombol "Lanjut ke Penempatan" di
+    // kolom Status (bukan lagi otomatis saat mencapai "Medical").
     const finalStep = TIMELINE_STEPS[TIMELINE_STEPS.length - 1].step;
 
     state.adminTable.data = (profiles || [])
@@ -2325,25 +2331,42 @@ function applyAdminFilters() {
   renderAdminTable();
 }
 
-// Badge kolom Status di tabel Kelola Peserta:
-// - Selama dokumen belum lengkap (approvedDocs < totalDocs): tampil progress "X/N" (N = jumlah dokumen wajib).
-// - Kalau sudah lengkap semua tapi belum di-approve final (current_step masih di Verifikasi/step 2
-//   atau lebih rendah): tampil tombol MERAH "APPROVE" yang bisa diklik.
-// - Kalau sudah di-approve final (current_step sudah lanjut ke Interview/step 3 ke atas):
-//   tombol jadi ABU-ABU dan tidak bisa diklik lagi.
+// Badge kolom Status di tabel Kelola Peserta. Tahapan sekarang murni linear dan
+// readonly (lihat kolom Tahapan) — satu-satunya cara pindah tahap adalah lewat
+// tombol di kolom Status ini, sesuai urutan: Pendaftaran -> Verifikasi -> Interview
+// -> Administrasi -> Medical -> Penempatan.
+// - approvedDocs < totalDocs (masih di Pendaftaran/Verifikasi, dokumen belum lengkap
+//   disetujui semua): tampil progress "X/N" (N = jumlah dokumen wajib).
+// - Dokumen sudah lengkap semua tapi current_step belum sampai Interview (step 3):
+//   tampil tombol MERAH "APPROVE" -> panggil finalizeApproveParticipant (Verifikasi -> Interview).
+// - current_step Interview/Administrasi/Medical (3, 4, 5): tampil tombol "Lanjut ke ..."
+//   -> panggil advanceParticipantStage untuk memajukan SATU tahap saja (tidak bisa loncat).
+// - current_step sudah Penempatan (6): baris ini seharusnya sudah tersaring keluar dari
+//   tabel Kelola Peserta (lihat finalStep filter di loadAdminPeserta), badge ini jaga-jaga saja.
+const NEXT_STAGE_BUTTON = {
+  3: { next: 4, label: 'Lanjut ke Administrasi' },
+  4: { next: 5, label: 'Lanjut ke Medical' },
+  5: { next: 6, label: 'Lanjut ke Penempatan' }
+};
+
 function renderPesertaStatusBadge(p) {
   const { approvedDocs, totalDocs, current_step, id, full_name } = p;
+  const safeName = escapeHtml(full_name).replace(/'/g, "\\'");
 
   if (approvedDocs < totalDocs) {
     return `<span class="status-badge status-progress">${approvedDocs}/${totalDocs}</span>`;
   }
 
-  const alreadyFinalized = current_step >= 3;
-  if (alreadyFinalized) {
-    return `<button class="status-badge status-approve-btn disabled" disabled>APPROVE</button>`;
+  if (current_step < 3) {
+    return `<button class="status-badge status-approve-btn" onclick="finalizeApproveParticipant('${id}', '${safeName}')">APPROVE</button>`;
   }
 
-  return `<button class="status-badge status-approve-btn" onclick="finalizeApproveParticipant('${id}', '${escapeHtml(full_name).replace(/'/g, "\\'")}')">APPROVE</button>`;
+  const advance = NEXT_STAGE_BUTTON[current_step];
+  if (advance) {
+    return `<button class="status-badge status-advance-btn" onclick="advanceParticipantStage('${id}', ${current_step}, ${advance.next}, '${safeName}')">${advance.label}</button>`;
+  }
+
+  return `<span class="status-badge status-approved">Selesai</span>`;
 }
 
 function renderAdminTable() {
@@ -2362,9 +2385,7 @@ function renderAdminTable() {
         <td>${start + i + 1}</td>
         <td>${escapeHtml(p.full_name)}</td>
         <td>
-          <select class="tahapan-inline-select" data-cs-skip="1" data-user-id="${p.id}" data-current-step="${p.current_step}" ${p.status !== 'approved' ? 'disabled title="Approve dokumen dulu sebelum mengubah tahapan"' : ''}>
-            ${TIMELINE_STEPS.map(s => `<option value="${s.step}" ${s.step === p.current_step ? 'selected' : ''}>${s.title}</option>`).join('')}
-          </select>
+          <span class="status-tahap status-tahap-${p.current_step}">${TIMELINE_STEPS.find(s => s.step === p.current_step)?.title || '-'}</span>
         </td>
         <td>${renderPesertaStatusBadge(p)}</td>
         <td>
@@ -2390,68 +2411,53 @@ function renderAdminTable() {
   renderPagination();
 }
 
-// Ganti tahapan peserta lewat dropdown inline di tabel Kelola Peserta.
-// Delegasi event supaya tetap berfungsi walau tbody di-render ulang.
-$('#admin-table-body').addEventListener('change', (e) => {
-  const select = e.target.closest('.tahapan-inline-select');
-  if (!select) return;
-
-  const userId = select.dataset.userId;
-  const oldStep = parseInt(select.dataset.currentStep);
-  const newStep = parseInt(select.value);
-  if (newStep === oldStep) return;
-
-  const participant = state.adminTable.data.find(p => p.id === userId);
-  const fullName = participant?.full_name || 'peserta ini';
-  const oldTitle = TIMELINE_STEPS.find(s => s.step === oldStep)?.title || '-';
-  const newTitle = TIMELINE_STEPS.find(s => s.step === newStep)?.title || '-';
+// Majukan peserta SATU tahap (dipanggil dari tombol "Lanjut ke ..." di kolom
+// Status pada tabel Kelola Peserta — lihat NEXT_STAGE_BUTTON di
+// renderPesertaStatusBadge). Tahapan tidak lagi bisa diubah manual/loncat
+// lewat dropdown; urutannya selalu linear: Interview -> Administrasi -> Medical
+// -> Penempatan.
+window.advanceParticipantStage = async function(userId, fromStep, toStep, fullName) {
+  const fromTitle = TIMELINE_STEPS.find(s => s.step === fromStep)?.title || '-';
+  const toTitle = TIMELINE_STEPS.find(s => s.step === toStep)?.title || '-';
 
   confirmDialog(
-    'Ubah Tahapan',
-    `Pindahkan ${fullName} dari tahap "${oldTitle}" ke "${newTitle}"?`,
-    () => updateParticipantStage(userId, newStep, select),
-    () => { select.value = oldStep; }
-  );
-});
+    'Lanjutkan Tahapan',
+    `Pindahkan ${fullName} dari tahap "${fromTitle}" ke "${toTitle}"?`,
+    async () => {
+      try {
+        const { error } = await supabase
+          .from('participant_status')
+          .upsert({
+            user_id: userId,
+            current_step: toStep,
+            updated_by: state.user.id,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id' });
 
-window.updateParticipantStage = async function(userId, newStep, selectEl) {
-  try {
-    const { error } = await supabase
-      .from('participant_status')
-      .upsert({
-        user_id: userId,
-        current_step: newStep,
-        updated_by: state.user.id,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' });
+        if (error) {
+          toast('error', 'Gagal Update Tahapan', error.message);
+          return;
+        }
 
-    if (error) {
-      toast('error', 'Gagal Update Tahapan', error.message);
-      if (selectEl) selectEl.value = selectEl.dataset.currentStep;
-      return;
+        await supabase.from('notifications').insert({
+          user_id: userId,
+          title: 'Tahapan Diperbarui',
+          message: `Tahapan Anda saat ini: ${toTitle}`,
+          type: 'success'
+        });
+
+        // update state lokal supaya konsisten sebelum reload penuh
+        const participant = state.adminTable.data.find(p => p.id === userId);
+        if (participant) participant.current_step = toStep;
+
+        toast('success', 'Tahapan Diperbarui', toTitle);
+        loadAdminPeserta();
+      } catch (err) {
+        console.error('Update tahapan gagal:', err);
+        toast('error', 'Gagal Update Tahapan', 'Terjadi kesalahan, coba lagi.');
+      }
     }
-
-    const stepTitle = TIMELINE_STEPS.find(s => s.step === newStep)?.title || '-';
-
-    await supabase.from('notifications').insert({
-      user_id: userId,
-      title: 'Tahapan Diperbarui',
-      message: `Tahapan Anda saat ini: ${stepTitle}`,
-      type: 'success'
-    });
-
-    // update state lokal supaya konsisten sebelum reload penuh
-    const participant = state.adminTable.data.find(p => p.id === userId);
-    if (participant) participant.current_step = newStep;
-    if (selectEl) selectEl.dataset.currentStep = newStep;
-
-    toast('success', 'Tahapan Diperbarui', `${stepTitle}`);
-    loadAdminPeserta();
-  } catch (err) {
-    console.error('Update tahapan gagal:', err);
-    toast('error', 'Gagal Update Tahapan', 'Terjadi kesalahan, coba lagi.');
-    if (selectEl) selectEl.value = selectEl.dataset.currentStep;
-  }
+  );
 };
 
 /* ============================================ */
@@ -2754,14 +2760,18 @@ function renderAdminChatList() {
 
 function updateAdminChatNavBadge() {
   const badge = $('#admin-chat-nav-badge');
-  if (!badge) return;
+  const topbarBadge = $('#topbar-chat-badge');
   const total = (state.adminChatTab.conversations || []).reduce((sum, c) => sum + (c.unreadCount || 0), 0);
-  if (total > 0) {
-    badge.textContent = total > 99 ? '99+' : total;
-    show(badge);
-  } else {
-    hide(badge);
-  }
+  const text = total > 99 ? '99+' : String(total);
+  [badge, topbarBadge].forEach(el => {
+    if (!el) return;
+    if (total > 0) {
+      el.textContent = text;
+      show(el);
+    } else {
+      hide(el);
+    }
+  });
 }
 
 $('#admin-chat-search').addEventListener('input', (e) => {
@@ -3109,7 +3119,17 @@ function renderPagination() {
 
   const container = $('#admin-pagination');
   if (totalPages === 0) {
-    container.innerHTML = '';
+    // Sebelumnya innerHTML dikosongkan total saat tidak ada data, sehingga
+    // bar pagination "menyusut" (hanya sisa padding) dan tingginya beda
+    // dibanding saat ada data. Sekarang tetap render info "0 dari 0" tanpa
+    // tombol halaman, supaya tinggi bar selalu konsisten.
+    container.innerHTML = `
+      <div class="pagination-info">Menampilkan 0 dari 0 peserta</div>
+      <div class="pagination-controls">
+        <button disabled>← Prev</button>
+        <button disabled>Next →</button>
+      </div>
+    `;
     return;
   }
   
@@ -3656,160 +3676,6 @@ window.rejectDocument = async function(docId, userId) {
     toast('error', 'Error', 'Gagal menolak');
   }
 };
-
-/* ============================================ */
-/* ADMIN KELOLA JADWAL */
-/* ============================================ */
-async function loadAdminJadwal() {
-  try {
-    const { data, error } = await supabase
-      .from('schedules')
-      .select('*, profiles(full_name)')
-      .order('schedule_date', { ascending: true });
-
-    const container = $('#admin-schedules-list');
-    if (error || !data || data.length === 0) {
-      container.innerHTML = '<div class="empty-state"><h4>Belum ada jadwal</h4></div>';
-      return;
-    }
-
-    container.innerHTML = data.map(s => `
-      <div class="schedule-card type-${s.schedule_type}">
-        <div class="schedule-card-header">
-          <div>
-            <div class="schedule-card-title">${escapeHtml(s.title)}</div>
-            <div class="card-item-meta">${escapeHtml(s.profiles?.full_name || 'Peserta')}</div>
-          </div>
-          <div class="schedule-card-type">${s.schedule_type}</div>
-        </div>
-        <div class="schedule-card-details">
-          <div>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            ${formatDate(s.schedule_date)} ${s.schedule_time ? '• ' + formatTime(s.schedule_date + ' ' + s.schedule_time) : ''}
-          </div>
-          ${s.location ? `
-            <div>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              ${escapeHtml(s.location)}
-            </div>
-          ` : ''}
-        </div>
-      </div>
-    `).join('');
-  } catch (err) {
-    console.error('Load admin jadwal error:', err);
-  }
-}
-
-$('#btn-add-schedule').addEventListener('click', async () => {
-  const modal = $('#preview-modal');
-  const body = $('#preview-body');
-  $('#preview-title').textContent = 'Tambah Jadwal';
-
-  // Ambil data peserta DULU, sebelum select dirender ke DOM.
-  // custom-select.js membangun panel dropdown begitu elemen <select> muncul
-  // di DOM, jadi opsi yang ditambahkan belakangan (setelah render) tidak
-  // pernah masuk ke panel yang sudah dibangun -> dropdown terlihat tapi
-  // tidak bisa dipilih.
-  let pesertaOptions = '<option value="">Pilih peserta...</option>';
-  try {
-    const { data: pesertaList } = await supabase.from('profiles').select('id, full_name').eq('role', 'user');
-    pesertaOptions += (pesertaList || []).map(u =>
-      `<option value="${u.id}">${escapeHtml(u.full_name)}</option>`
-    ).join('');
-  } catch (err) {
-    console.error('Load users error:', err);
-  }
-
-  body.innerHTML = `
-    <form id="form-add-schedule" style="display: flex; flex-direction: column; gap: 14px;" novalidate>
-      <div class="input-group">
-        <label>Peserta</label>
-        <select id="schedule-user" required>${pesertaOptions}</select>
-        <span class="field-error"></span>
-      </div>
-      <div class="input-group">
-        <label>Jenis Jadwal</label>
-        <select id="schedule-type" required>
-          <option value="Interview">Interview</option>
-          <option value="Medical">Medical</option>
-          <option value="Pelatihan">Pelatihan</option>
-          <option value="Pemberangkatan">Pemberangkatan</option>
-        </select>
-      </div>
-      <div class="input-group">
-        <label>Judul</label>
-        <input type="text" id="schedule-title" required />
-        <span class="field-error"></span>
-      </div>
-      <div class="input-group">
-        <label>Tanggal</label>
-        <input type="date" id="schedule-date" required />
-        <span class="field-error"></span>
-      </div>
-      <div class="input-group">
-        <label>Waktu</label>
-        <input type="time" id="schedule-time" />
-      </div>
-      <div class="input-group">
-        <label>Lokasi</label>
-        <input type="text" id="schedule-location" />
-      </div>
-      <div class="input-group">
-        <label>Deskripsi</label>
-        <textarea id="schedule-desc" rows="2"></textarea>
-      </div>
-      <button type="submit" class="btn btn-primary">
-        <span class="btn-text">Simpan Jadwal</span>
-        <span class="btn-loader hidden"></span>
-      </button>
-    </form>
-  `;
-
-  show(modal);
-
-  $('#form-add-schedule').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!validateForm(e.target)) return;
-    
-    const btn = e.target.querySelector('button[type="submit"]');
-    setLoading(btn, true);
-
-    try {
-      const { error } = await supabase.from('schedules').insert({
-        user_id: $('#schedule-user').value,
-        schedule_type: $('#schedule-type').value,
-        title: $('#schedule-title').value,
-        schedule_date: $('#schedule-date').value,
-        schedule_time: $('#schedule-time').value || null,
-        location: $('#schedule-location').value || null,
-        description: $('#schedule-desc').value || null,
-        created_by: state.user.id
-      });
-
-      setLoading(btn, false);
-
-      if (error) {
-        toast('error', 'Gagal', error.message);
-        return;
-      }
-
-      await supabase.from('notifications').insert({
-        user_id: $('#schedule-user').value,
-        title: `Jadwal ${$('#schedule-type').value}`,
-        message: `Anda memiliki jadwal ${$('#schedule-type').value} pada ${formatDate($('#schedule-date').value)}`,
-        type: 'info'
-      });
-
-      toast('success', 'Jadwal Ditambahkan');
-      hide(modal);
-      loadAdminJadwal();
-    } catch (err) {
-      setLoading(btn, false);
-      toast('error', 'Error', 'Terjadi kesalahan');
-    }
-  });
-});
 
 /* ============================================ */
 /* ADMIN PENGGUMAN CRUD */
@@ -4492,8 +4358,8 @@ window.deleteSchedule = function(id) {
 /* ============================================ */
 /* ADMIN PENEMPATAN */
 /* Menampilkan peserta yang sudah mencapai tahap akhir timeline (saat ini
-   "Penempatan", dipilih manual oleh admin lewat dropdown Tahapan di Kelola
-   Peserta) beserta detail penempatan (tanggal pemberangkatan, tujuan
+   "Penempatan", dipindahkan manual oleh admin lewat tombol "Lanjut ke
+   Penempatan" di kolom Status pada Kelola Peserta) beserta detail penempatan (tanggal pemberangkatan, tujuan
    negara, penempatan) yang bisa diisi/diedit admin. Detail tersimpan di
    tabel terpisah `placements` (satu baris per peserta, keyed by user_id)
    supaya tidak mencampur data operasional ke tabel profiles/participant_status. */
