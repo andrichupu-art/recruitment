@@ -552,7 +552,7 @@
           </div>
           <div class="home-card">
             <div class="home-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
-            <p class="home-card-label">Progress</p>
+            <p class="home-card-label" id="stat-progress-label">Progress</p>
             <h3 id="stat-progress">0%</h3>
           </div>
           <div class="home-card">
@@ -932,8 +932,8 @@
         <button class="btn btn-primary" id="btn-add-country"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tambah Negara</button>
         <div class="table-container glass" style="margin-top: 20px;">
           <table class="modern-table">
-            <thead><tr><th>Bendera</th><th>Nama Negara</th><th>Kode</th><th>Region</th><th>Mata Uang</th><th>Status</th><th>Aksi</th></tr></thead>
-            <tbody id="admin-countries-body"><tr class="skeleton-row"><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td></tr><tr class="skeleton-row"><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td></tr><tr class="skeleton-row"><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td></tr></tbody>
+            <thead><tr><th>Bendera</th><th>Nama Negara</th><th>Kode</th><th>Mata Uang</th><th>Aksi</th></tr></thead>
+            <tbody id="admin-countries-body"><tr class="skeleton-row"><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td></tr><tr class="skeleton-row"><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td></tr><tr class="skeleton-row"><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td></tr></tbody>
           </table>
         </div>
       </section>
@@ -944,8 +944,8 @@
         <button class="btn btn-primary" id="btn-add-position"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tambah Posisi</button>
         <div class="table-container glass" style="margin-top: 20px;">
           <table class="modern-table">
-            <thead><tr><th>Posisi</th><th>Negara</th><th>Kategori</th><th>Gaji</th><th>Kuota</th><th>Estimasi</th><th>Aksi</th></tr></thead>
-            <tbody id="admin-positions-body"><tr class="skeleton-row"><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td></tr><tr class="skeleton-row"><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td></tr><tr class="skeleton-row"><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td></tr></tbody>
+            <thead><tr><th>Bagian</th><th>Negara</th><th>Tempat</th><th>Aksi</th></tr></thead>
+            <tbody id="admin-positions-body"><tr class="skeleton-row"><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td></tr><tr class="skeleton-row"><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td></tr><tr class="skeleton-row"><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td></tr></tbody>
           </table>
         </div>
       </section>
@@ -991,7 +991,7 @@
     </nav>
   </div>
 
-  <script src="script.js?v=10"></script>
+  <script src="script.js?v=12"></script>
   <script src="custom-select.js?v=3"></script>
 </body>
 </html>
