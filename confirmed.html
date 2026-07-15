@@ -142,6 +142,34 @@
     color: var(--gray-500);
     opacity: 0.75;
   }
+
+  .close-btn {
+    margin-top: 22px;
+    width: 100%;
+    padding: 13px 16px;
+    border: none;
+    border-radius: 14px;
+    background: var(--gradient-focus);
+    color: var(--white);
+    font-family: inherit;
+    font-size: 14.5px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: var(--glow-focus);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .close-btn:active {
+    transform: scale(0.97);
+    box-shadow: 0 4px 10px rgba(21, 46, 69, 0.3);
+  }
+
+  .close-note {
+    margin-top: 10px;
+    font-size: 12.5px;
+    color: var(--gray-500);
+    display: none;
+  }
+  .close-note.show { display: block; }
 </style>
 </head>
 <body>
@@ -170,8 +198,22 @@
       Halaman ini boleh ditutup kapan saja. Tidak perlu menunggu — cukup buka aplikasi dari ikon di layar utama atau browser kamu, lalu login.
     </div>
 
+    <button type="button" class="close-btn" id="closeBtn">Tutup Halaman</button>
+    <div class="close-note" id="closeNote">Halaman tidak bisa ditutup otomatis dari sini. Silakan tutup tab/aplikasi browser kamu secara manual.</div>
+
     <div class="footer-brand">PT. Juara &middot; Agensi Penyalur Tenaga Kerja</div>
   </div>
+
+  <script>
+    document.getElementById('closeBtn').addEventListener('click', function () {
+      window.close();
+      // Jika masih di halaman ini setelah sesaat, berarti window.close() diblokir
+      // browser (umum terjadi jika tab tidak dibuka lewat script/window.open).
+      setTimeout(function () {
+        document.getElementById('closeNote').classList.add('show');
+      }, 300);
+    });
+  </script>
 
 </body>
 </html>
