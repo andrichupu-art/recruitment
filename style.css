@@ -61,6 +61,13 @@
   --red-500: var(--navy);
   --yellow-500: var(--gold);
 
+  /* Merah asli (bukan bagian dari palet Horizon Gold) — dipakai khusus untuk
+     tombol Tolak di Kelola Peserta, supaya benar-benar terlihat merah, beda
+     dari --red-500 di atas yang sengaja dipetakan ke navy demi konsistensi
+     palet di elemen lain (toast error, badge dokumen ditolak, dst). */
+  --true-red-500: #dc2626;
+  --true-red-600: #b91c1c;
+
   /* Tonal containers — versi pucat dari tiap aksen, dipakai sbg latar kartu bento */
   --tonal-blue: var(--blue-50);
   --tonal-blue-ink: var(--blue-800);
@@ -522,6 +529,39 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   background: var(--gray-50);
 }
 
+/* Tabel Penempatan: lebar tiap kolom dikunci supaya TIDAK berubah-ubah antar
+   baris (sebelumnya dropdown Tanggal/Negara/Penempatan melebar mengikuti
+   panjang teks yang sudah terpilih, mis. "31 Agu 2026 — Gelombang 1" jauh
+   lebih lebar daripada placeholder "Pilih tanggal...", sehingga kolom kolom
+   antar baris terlihat tidak konsisten). Dropdown diberi width:100% supaya
+   mengisi penuh lebar kolom yang sudah tetap itu; teks yang kepanjangan akan
+   terpotong dengan ellipsis (sudah diatur di .custom-select-label). */
+#admin-penempatan-table th:nth-child(2),
+#admin-penempatan-table td:nth-child(2) { width: 130px; text-align: left; }
+#admin-penempatan-table th:nth-child(3),
+#admin-penempatan-table td:nth-child(3) { width: 190px; }
+#admin-penempatan-table th:nth-child(4),
+#admin-penempatan-table td:nth-child(4) { width: 150px; }
+#admin-penempatan-table th:nth-child(5),
+#admin-penempatan-table td:nth-child(5) { width: 190px; }
+
+#admin-penempatan-table td .custom-select {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Nama peserta: font dikecilkan supaya tidak menumpuk jadi 2 baris di kolom
+   yang sekarang lebih sempit (kolom dibagi rata dengan 3 dropdown di
+   sebelahnya). Nama yang tetap kepanjangan akan terpotong dengan ellipsis
+   daripada membuat baris tabel jadi tinggi. */
+#admin-penempatan-table td:nth-child(2) strong {
+  display: block;
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Tahapan Peserta: badge readonly (bukan lagi <select> yang bisa diubah manual).
    Tahapan sekarang hanya bisa maju lewat tombol "APPROVE" / "Lanjut ke ..." di
    kolom Status, jadi kolom ini murni tampilan. Warna beda tiap tahap supaya
@@ -539,12 +579,12 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   background: var(--gray-100);
   border: 1.5px solid var(--gray-200);
 }
-.status-tahap-1 { background: var(--gray-100); color: var(--gray-700); border-color: var(--gray-200); }
-.status-tahap-2 { background: var(--tonal-orange); color: var(--tonal-orange-ink); border-color: transparent; }
+.status-tahap-1 { background: var(--blue-100); color: var(--blue-700); border-color: transparent; }
+.status-tahap-2 { background: var(--blue-100); color: var(--blue-700); border-color: transparent; }
 .status-tahap-3 { background: var(--blue-100); color: var(--blue-700); border-color: transparent; }
-.status-tahap-4 { background: var(--gold-300); color: var(--gold-700); border-color: transparent; }
-.status-tahap-5 { background: var(--blue-50); color: var(--purple-500); border-color: transparent; }
-.status-tahap-6 { background: var(--navy); color: var(--white); border-color: transparent; }
+.status-tahap-4 { background: var(--blue-100); color: var(--blue-700); border-color: transparent; }
+.status-tahap-5 { background: var(--blue-100); color: var(--blue-700); border-color: transparent; }
+.status-tahap-6 { background: var(--blue-100); color: var(--blue-700); border-color: transparent; }
 
 /* ============================================ */
 /* AUTH PAGES */
@@ -1958,10 +1998,10 @@ button.home-card { cursor: pointer; }
   gap: 14px;
   padding: 18px 20px;
   border-radius: var(--radius);
-  background: var(--gradient-brand);
+  background: linear-gradient(120deg, var(--blue-800) 0%, var(--navy) 100%);
   color: var(--white);
   margin-bottom: 18px;
-  box-shadow: var(--glow-brand);
+  box-shadow: 0 10px 24px rgba(10, 30, 51, 0.35);
 }
 
 .detail-hero-avatar {
@@ -3157,6 +3197,15 @@ button.home-card { cursor: pointer; }
 .modern-table tbody tr { transition: var(--transition); }
 .modern-table tbody tr:hover { background: var(--blue-50); }
 
+/* Kolom Status di tabel Kelola Peserta dikunci lebarnya (bukan auto-size)
+   supaya kolom tidak melebar/menyempit tidak konsisten tergantung isi badge
+   pada baris yang sedang tampil (mis. saat tombol "Lanjut ..." muncul di satu
+   baris sementara baris lain menampilkan badge X/8 yang lebih pendek). */
+#admin-table th:nth-child(4),
+#admin-table td:nth-child(4) {
+  width: 170px;
+}
+
 .table-loading {
   text-align: center;
   padding: 40px;
@@ -3222,8 +3271,8 @@ button.home-card { cursor: pointer; }
 .btn-approve { background: var(--green-500); color: var(--white); }
 .btn-approve:hover { background: var(--blue-700); }
 
-.btn-reject { background: var(--red-500); color: var(--white); }
-.btn-reject:hover { background: var(--black); }
+.btn-reject { background: var(--true-red-500); color: var(--white); }
+.btn-reject:hover { background: var(--true-red-600); }
 
 .btn-pending { background: var(--yellow-500); color: var(--white); }
 .btn-pending:hover { background: var(--gold-700); }
@@ -3567,13 +3616,17 @@ button.home-card { cursor: pointer; }
   cursor: not-allowed;
 }
 
-/* Tombol "Lanjut ke ..." (Interview -> Administrasi -> Medical -> Penempatan) di
-   kolom Status. Labelnya lebih panjang dari badge lain jadi lebar dilepas dari
-   .status-badge (yang defaultnya fixed 96px). */
+/* Tombol "Lanjut ..." (Interview -> Administrasi -> Medical -> Penempatan) di
+   kolom Status. Labelnya lebih panjang dari badge lain (X/8, REVIEW, APPROVE,
+   Selesai) jadi diberi lebar tetap sendiri (bukan width:auto) supaya kolom
+   Status tidak melebar tidak konsisten setiap kali tombol ini muncul di salah
+   satu baris tabel. Lebar 148px dipilih agar cukup untuk label terpanjang
+   ("Lanjut Administrasi") tanpa terpotong. */
 .status-advance-btn {
-  width: auto;
+  width: 148px;
   white-space: nowrap;
-  padding: 6px 14px;
+  padding: 6px 10px;
+  font-size: 10.5px;
   border: none;
   border-radius: 28px;
   background: var(--navy);
