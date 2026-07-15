@@ -235,6 +235,42 @@ function confirmDialog(title, message, onConfirm, onCancel) {
   activeConfirmCleanup = cleanup;
 }
 
+// Modal info dengan SATU tombol, dipakai untuk pesan penting yang tidak boleh
+// sampai terlewat (mis. "cek email untuk konfirmasi" setelah daftar) — beda
+// dengan toast() yang otomatis hilang dalam ~4 detik dan gampang tidak
+// kelihatan (muncul sekilas di pojok atas). Modal ini tetap tampil di tengah
+// layar sampai user menekan tombol "Mengerti", jadi pesannya pasti terbaca.
+// Reuse markup #confirm-modal yang sama dengan confirmDialog(), supaya tidak
+// perlu tambah modal baru di index.html — cuma tombol "Batal" disembunyikan
+// sementara & label tombol OK diganti jadi "Mengerti", lalu dikembalikan
+// seperti semula saat modal ditutup.
+function infoDialog(title, message, onOk) {
+  if (activeConfirmCleanup) activeConfirmCleanup();
+
+  const okBtn = $('#confirm-ok');
+  const cancelBtn = $('#confirm-cancel');
+  const originalOkLabel = okBtn.textContent;
+
+  $('#confirm-title').textContent = title;
+  $('#confirm-message').textContent = message;
+  hide(cancelBtn);
+  okBtn.textContent = 'Mengerti';
+  show($('#confirm-modal'));
+
+  const cleanup = () => {
+    hide($('#confirm-modal'));
+    show(cancelBtn); // kembalikan tombol Batal supaya confirmDialog() berikutnya normal lagi
+    okBtn.textContent = originalOkLabel;
+    okBtn.removeEventListener('click', handleOk);
+    activeConfirmCleanup = null;
+  };
+
+  const handleOk = () => { cleanup(); if (typeof onOk === 'function') onOk(); };
+
+  okBtn.addEventListener('click', handleOk);
+  activeConfirmCleanup = cleanup;
+}
+
 function setLoading(btn, loading) {
   if (!btn) return;
   const text = btn.querySelector('.btn-text');
@@ -713,8 +749,15 @@ $('#form-register').addEventListener('submit', async (e) => {
       return;
     }
 
-    toast('success', 'Registrasi Berhasil', 'Cek email Anda (termasuk folder spam) dan klik link konfirmasi sebelum login.');
+    // FIX: sebelumnya cuma pakai toast() yang otomatis hilang ~4 detik dan
+    // posisinya di pojok atas, jadi kebanyakan peserta tidak sempat baca
+    // instruksi "cek email"-nya. Sekarang pakai infoDialog() yang muncul di
+    // tengah layar dan tetap terbuka sampai peserta menekan "Mengerti".
     showAuthPage('login');
+    infoDialog(
+      'Registrasi Berhasil',
+      'Cek email Anda (termasuk folder spam) dan klik link konfirmasi di dalamnya sebelum login.'
+    );
   } catch (err) {
     setLoading(btn, false);
     toast('error', 'Error', 'Terjadi kesalahan. Silakan coba lagi.');
@@ -902,6 +945,47 @@ $('#mobile-logout-btn')?.addEventListener('click', (e) => {
 });
 
 /* ============================================ */
+/* BOTTOM NAV (HP) — SINKRON DENGAN ROLE         */
+/* ============================================ */
+// Bottom-nav cuma satu elemen fisik di HTML (beda dengan sidebar yang punya
+// #user-nav & #admin-nav terpisah). Supaya tidak perlu duplikasi markup,
+// di sini kita tukar data-page + label tab sesuai role setiap kali
+// initDashboard() jalan (login awal maupun re-init token refresh).
+function updateBottomNavForRole(isAdmin) {
+  const items = $$('#bottom-nav .bottom-item[data-page]');
+  if (!items.length) return;
+
+  const config = isAdmin
+    ? [
+        { page: 'admin-dashboard', label: 'Dashboard' },
+        { page: 'admin-peserta', label: 'Peserta' },
+        { page: 'admin-chat', label: 'Chat' },
+        { page: 'admin-verifikasi', label: 'Verifikasi' }
+      ]
+    : [
+        { page: 'beranda', label: 'Beranda' },
+        { page: 'progress', label: 'Progress' },
+        { page: 'chat', label: 'Chat' },
+        { page: 'profil', label: 'Profil' }
+      ];
+
+  items.forEach((item, i) => {
+    const cfg = config[i];
+    if (!cfg) return;
+    item.dataset.page = cfg.page;
+    const label = item.querySelector('span');
+    if (label) label.textContent = cfg.label;
+  });
+
+  // Re-highlight tab yang aktif memakai data-page yang baru saja diganti,
+  // supaya penanda "active" tetap konsisten dengan state.currentPage.
+  $$('#bottom-nav .bottom-item').forEach(n => n.classList.remove('active'));
+  if (state.currentPage) {
+    $$('#bottom-nav .bottom-item[data-page="' + state.currentPage + '"]').forEach(n => n.classList.add('active'));
+  }
+}
+
+/* ============================================ */
 /* DASHBOARD INIT */
 /* ============================================ */
 async function initDashboard() {
@@ -950,6 +1034,15 @@ async function initDashboard() {
         }
       });
     }
+
+    // FIX: bottom-nav (menu bawah khusus tampilan HP) sebelumnya hardcode
+    // untuk halaman peserta (beranda/progress/chat/profil). Akibatnya saat
+    // admin login lewat HP dan menekan tab di bottom-nav, ia dilempar ke
+    // halaman peserta ("beranda"), bukan "admin-dashboard" — padahal di PC
+    // sidebar admin (#admin-nav) sudah benar mengarah ke halaman admin.
+    // Di sini bottom-nav disinkronkan mengikuti role, persis seperti
+    // sidebar #user-nav / #admin-nav di atas.
+    updateBottomNavForRole(state.isAdmin);
 
     if (state.isAdmin) {
       hide($('#user-nav'));
