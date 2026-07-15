@@ -401,11 +401,10 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   transition: var(--transition);
 }
 
-.custom-select-trigger:hover { border-color: var(--blue-300); }
+.custom-select-trigger:hover { border-color: var(--navy); }
 
 .custom-select.open .custom-select-trigger {
-  border-color: var(--blue-500);
-  box-shadow: 0 0 0 3px var(--blue-50);
+  border-color: var(--navy);
 }
 
 .custom-select.disabled .custom-select-trigger {
@@ -430,7 +429,7 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   transition: transform 0.2s ease, color 0.2s ease;
 }
 
-.custom-select.open .custom-select-chevron { transform: rotate(180deg); color: var(--blue-600); }
+.custom-select.open .custom-select-chevron { transform: rotate(180deg); color: var(--navy); }
 
 .custom-select-panel {
   position: fixed;
@@ -472,10 +471,10 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 }
 
 .custom-select-option:hover,
-.custom-select-option.highlighted { background: var(--blue-50); color: var(--blue-700); }
+.custom-select-option.highlighted { background: var(--gray-100); color: var(--navy); }
 
 .custom-select-option.selected {
-  background: var(--gradient-brand);
+  background: var(--navy);
   color: var(--white);
   font-weight: 600;
 }
@@ -496,10 +495,12 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   width: 100%;
 }
 
-/* Konteks: filter tabel/kalender -> lebar mengikuti konten, min-width seperti sebelumnya */
+/* Konteks: filter tabel/kalender -> lebar mengikuti konten, min-width diperlebar
+   supaya label terpanjang ("Semua Tahapan") tidak menumpuk jadi 2 baris, baik di
+   trigger maupun di panel (lebar panel mengikuti lebar trigger via JS) */
 .table-filters .custom-select,
 .calendar-filters .custom-select {
-  min-width: 140px;
+  min-width: 180px;
 }
 .table-filters .custom-select-trigger,
 .calendar-filters .custom-select-trigger {
@@ -521,32 +522,29 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   background: var(--gray-50);
 }
 
-/* Tahapan Peserta: native <select> (data-cs-skip), bukan custom-select, supaya
-   dijamin selalu bisa dipilih di semua browser. Distyle manual biar tetap
-   konsisten dengan desain form lainnya. */
-.tahapan-inline-select {
-  min-width: 130px;
-  padding: 7px 28px 7px 10px;
-  border: 1.5px solid var(--gray-200);
+/* Tahapan Peserta: badge readonly (bukan lagi <select> yang bisa diubah manual).
+   Tahapan sekarang hanya bisa maju lewat tombol "APPROVE" / "Lanjut ke ..." di
+   kolom Status, jadi kolom ini murni tampilan. Warna beda tiap tahap supaya
+   gampang dipindai admin sekilas. */
+.status-tahap {
+  display: inline-flex;
+  align-items: center;
+  min-width: 110px;
+  padding: 6px 12px;
   border-radius: var(--radius-sm);
-  background: var(--white) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%236b7280" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>') no-repeat right 8px center;
-  background-size: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
   color: var(--gray-800);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  transition: var(--transition);
+  background: var(--gray-100);
+  border: 1.5px solid var(--gray-200);
 }
-.tahapan-inline-select:hover:not(:disabled) { border-color: var(--blue-300); }
-.tahapan-inline-select:focus { outline: none; border-color: var(--blue-500); box-shadow: 0 0 0 3px var(--blue-50); }
-.tahapan-inline-select:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  background-color: var(--gray-50);
-}
+.status-tahap-1 { background: var(--gray-100); color: var(--gray-700); border-color: var(--gray-200); }
+.status-tahap-2 { background: var(--tonal-orange); color: var(--tonal-orange-ink); border-color: transparent; }
+.status-tahap-3 { background: var(--blue-100); color: var(--blue-700); border-color: transparent; }
+.status-tahap-4 { background: var(--gold-300); color: var(--gold-700); border-color: transparent; }
+.status-tahap-5 { background: var(--blue-50); color: var(--purple-500); border-color: transparent; }
+.status-tahap-6 { background: var(--navy); color: var(--white); border-color: transparent; }
 
 /* ============================================ */
 /* AUTH PAGES */
@@ -1002,6 +1000,50 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 }
 
 .nav-item-center { justify-content: center; }
+
+/* Tombol Chat mengambang — pengganti item "Chat" di sidebar, khusus tampilan PC.
+   Default disembunyikan; dimunculkan lewat media query (min-width: 901px) di bawah,
+   supaya di HP item Chat tetap di dalam navbar/sidebar seperti semula. */
+.topbar-chat-btn {
+  display: none;
+  position: fixed;
+  top: 18px;
+  right: 28px;
+  z-index: 60;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: none;
+  background: var(--navy);
+  color: var(--white);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.topbar-chat-btn svg { width: 21px; height: 21px; }
+.topbar-chat-btn:hover { background: var(--brand-blue); box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+.topbar-chat-btn:active { transform: translateY(0) scale(0.96); }
+.topbar-chat-btn.active { background: var(--gold); color: var(--navy); }
+
+.topbar-chat-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--red-500);
+  color: var(--white);
+  font-size: 10.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg);
+}
 
 .main-content {
   grid-area: main;
@@ -3525,6 +3567,22 @@ button.home-card { cursor: pointer; }
   cursor: not-allowed;
 }
 
+/* Tombol "Lanjut ke ..." (Interview -> Administrasi -> Medical -> Penempatan) di
+   kolom Status. Labelnya lebih panjang dari badge lain jadi lebar dilepas dari
+   .status-badge (yang defaultnya fixed 96px). */
+.status-advance-btn {
+  width: auto;
+  white-space: nowrap;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 28px;
+  background: var(--navy);
+  color: var(--white);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.status-advance-btn:hover { background: var(--gold-600); }
+
 .priority-urgent { border-left: 4px solid var(--red-500); }
 .priority-high { border-left: 4px solid var(--orange-500); }
 .priority-normal { border-left: 4px solid var(--blue-500); }
@@ -3598,6 +3656,13 @@ button.home-card { cursor: pointer; }
 
 @media (min-width: 901px) {
   .menu-toggle { display: none; }
+
+  /* Pindahkan Chat keluar dari sidebar ke tombol mengambang pojok kanan atas.
+     Hanya berlaku di tampilan PC — di HP (bottom-nav / sidebar mobile) item
+     Chat tetap tampil seperti biasa. */
+  .topbar-chat-btn { display: flex; }
+  #user-nav .nav-item[data-page="chat"],
+  #admin-nav .nav-item[data-page="admin-chat"] { display: none; }
 }
 
 @media (max-width: 768px) {
