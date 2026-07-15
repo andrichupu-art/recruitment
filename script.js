@@ -270,6 +270,17 @@ function formatCurrency(amount, currency = 'IDR') {
   }).format(amount);
 }
 
+// Selisih hari (dibulatkan ke atas, berbasis tanggal kalender bukan jam) dari
+// hari ini menuju tanggal target. Dipakai untuk countdown keberangkatan di
+// Beranda & halaman Progress peserta.
+function daysUntilDate(dateStr) {
+  if (!dateStr) return null;
+  const target = new Date(dateStr + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.ceil((target - today) / 86400000);
+}
+
 function escapeHtml(str) {
   if (!str) return '';
   return String(str)
@@ -953,20 +964,39 @@ async function loadBeranda() {
   const userId = state.user.id;
 
   try {
-    const [docsRes, progressRes, schedulesRes] = await Promise.all([
+    const [docsRes, progressRes, schedulesRes, placementRes] = await Promise.all([
       supabase.from('documents').select('id, status').eq('user_id', userId),
       supabase.from('participant_status').select('current_step').eq('user_id', userId).maybeSingle(),
-      supabase.from('schedules').select('id').eq('user_id', userId).eq('status', 'scheduled')
+      supabase.from('schedules').select('id').eq('user_id', userId).eq('status', 'scheduled'),
+      supabase.from('placements').select('departure_date').eq('user_id', userId).maybeSingle()
     ]);
 
     const docs = docsRes.data || [];
     const completedDocs = docs.filter(d => d.status === 'approved').length;
     $('#stat-docs').textContent = `${completedDocs}/${DOC_TYPES.length}`;
-    
+
     const currentStep = progressRes.data?.current_step || 1;
+    const finalStep = TIMELINE_STEPS[TIMELINE_STEPS.length - 1].step;
     const percent = Math.round(((currentStep - 1) / (TIMELINE_STEPS.length - 1)) * 100);
-    $('#stat-progress').textContent = percent + '%';
-    
+
+    const progressLabel = $('#stat-progress-label');
+    const departureDate = placementRes.data?.departure_date || null;
+
+    if (currentStep >= finalStep && departureDate) {
+      // Admin sudah menekan tombol "Proses" di halaman Penempatan -> tampilkan
+      // hitung mundur menuju tanggal keberangkatan, bukan lagi persentase.
+      const days = daysUntilDate(departureDate);
+      if (progressLabel) progressLabel.textContent = 'Keberangkatan';
+      $('#stat-progress').textContent = days > 0 ? `H-${days}` : (days === 0 ? 'Hari H' : 'Berangkat');
+    } else if (currentStep >= finalStep) {
+      // Semua tahapan selesai tapi belum diproses admin (belum ada tanggal keberangkatan)
+      if (progressLabel) progressLabel.textContent = 'Progress';
+      $('#stat-progress').textContent = 'SELESAI';
+    } else {
+      if (progressLabel) progressLabel.textContent = 'Progress';
+      $('#stat-progress').textContent = percent + '%';
+    }
+
     $('#stat-schedules').textContent = schedulesRes.data?.length || 0;
 
     const { data: announcements } = await supabase
@@ -1641,22 +1671,36 @@ window.openUploadModal = function(docType) {
 /* ============================================ */
 async function loadProgress() {
   try {
-    const { data: statusData } = await supabase
-      .from('participant_status')
-      .select('*')
-      .eq('user_id', state.user.id)
-      .maybeSingle();
+    const [{ data: statusData }, { data: placementData }] = await Promise.all([
+      supabase.from('participant_status').select('*').eq('user_id', state.user.id).maybeSingle(),
+      supabase.from('placements').select('departure_date').eq('user_id', state.user.id).maybeSingle()
+    ]);
 
     const currentStep = statusData?.current_step || 1;
+    const finalStep = TIMELINE_STEPS[TIMELINE_STEPS.length - 1].step;
     const percent = Math.round(((currentStep - 1) / (TIMELINE_STEPS.length - 1)) * 100);
-    
+    const departureDate = placementData?.departure_date || null;
+
     $('#progress-fill').style.width = percent + '%';
-    $('#progress-percent').textContent = percent + '%';
-    
-    const currentStepInfo = TIMELINE_STEPS.find(s => s.step === currentStep);
-    $('#progress-status').textContent = currentStepInfo 
-      ? `Sedang: ${currentStepInfo.title}`
-      : (percent === 100 ? 'Semua tahapan selesai 🎉' : 'Memuat data...');
+
+    if (currentStep >= finalStep && departureDate) {
+      const days = daysUntilDate(departureDate);
+      $('#progress-percent').textContent = days > 0 ? `H-${days}` : (days === 0 ? 'Hari H' : 'Berangkat');
+      $('#progress-status').textContent = days > 0
+        ? `Keberangkatan dalam ${days} hari (${formatDate(departureDate)}) 🎉`
+        : days === 0
+        ? `Hari ini jadwal keberangkatan Anda (${formatDate(departureDate)}) 🎉`
+        : `Sudah melewati tanggal keberangkatan (${formatDate(departureDate)})`;
+    } else if (currentStep >= finalStep) {
+      $('#progress-percent').textContent = 'SELESAI';
+      $('#progress-status').textContent = 'Semua tahapan selesai — menunggu jadwal keberangkatan dari admin 🎉';
+    } else {
+      $('#progress-percent').textContent = percent + '%';
+      const currentStepInfo = TIMELINE_STEPS.find(s => s.step === currentStep);
+      $('#progress-status').textContent = currentStepInfo
+        ? `Sedang: ${currentStepInfo.title}`
+        : 'Memuat data...';
+    }
 
     const container = $('#progress-timeline');
     container.innerHTML = TIMELINE_STEPS.map((step, idx) => {
@@ -3921,7 +3965,7 @@ async function loadAdminNegara() {
 
     const tbody = $('#admin-countries-body');
     if (error || !data || data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="table-loading">Belum ada data</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="table-loading">Belum ada data</td></tr>';
       return;
     }
 
@@ -3930,9 +3974,7 @@ async function loadAdminNegara() {
         <td style="font-size: 24px;">${c.flag_emoji || '🌍'}</td>
         <td><strong>${escapeHtml(c.name)}</strong></td>
         <td>${escapeHtml(c.code || '-')}</td>
-        <td>${escapeHtml(c.region || '-')}</td>
         <td>${escapeHtml(c.currency || '-')}</td>
-        <td><span class="status-badge status-${c.is_active ? 'approved' : 'rejected'}">${c.is_active ? 'Aktif' : 'Nonaktif'}</span></td>
         <td>
           <div class="table-actions-cell">
             <button class="btn-edit" onclick="editCountry('${c.id}')">Edit</button>
@@ -3957,6 +3999,108 @@ window.editCountry = async function(id) {
   }
 };
 
+// =========================================================
+// Auto-deteksi emoji bendera berdasarkan nama negara (Indonesia/Inggris)
+// =========================================================
+const COUNTRY_ISO_MAP = {
+  'indonesia': 'ID', 'malaysia': 'MY', 'singapura': 'SG', 'singapore': 'SG',
+  'brunei': 'BN', 'thailand': 'TH', 'filipina': 'PH', 'philippines': 'PH',
+  'vietnam': 'VN', 'kamboja': 'KH', 'cambodia': 'KH', 'laos': 'LA',
+  'myanmar': 'MM', 'timor leste': 'TL',
+  'taiwan': 'TW', 'hong kong': 'HK', 'tiongkok': 'CN', 'china': 'CN',
+  'jepang': 'JP', 'japan': 'JP', 'korea selatan': 'KR', 'korea utara': 'KP',
+  'mongolia': 'MN',
+  'india': 'IN', 'pakistan': 'PK', 'bangladesh': 'BD', 'sri lanka': 'LK',
+  'nepal': 'NP', 'bhutan': 'BT', 'maladewa': 'MV', 'maldives': 'MV',
+  'arab saudi': 'SA', 'saudi arabia': 'SA', 'uni emirat arab': 'AE',
+  'uea': 'AE', 'united arab emirates': 'AE', 'qatar': 'QA', 'kuwait': 'KW',
+  'bahrain': 'BH', 'oman': 'OM', 'yordania': 'JO', 'jordan': 'JO',
+  'lebanon': 'LB', 'suriah': 'SY', 'syria': 'SY', 'irak': 'IQ', 'iraq': 'IQ',
+  'iran': 'IR', 'israel': 'IL', 'palestina': 'PS', 'palestine': 'PS',
+  'turki': 'TR', 'turkey': 'TR', 'yaman': 'YE', 'yemen': 'YE',
+  'mesir': 'EG', 'egypt': 'EG', 'maroko': 'MA', 'morocco': 'MA',
+  'aljazair': 'DZ', 'algeria': 'DZ', 'tunisia': 'TN', 'libya': 'LY',
+  'sudan': 'SD', 'ethiopia': 'ET', 'kenya': 'KE', 'nigeria': 'NG',
+  'afrika selatan': 'ZA', 'south africa': 'ZA', 'ghana': 'GH',
+  'tanzania': 'TZ', 'uganda': 'UG',
+  'rusia': 'RU', 'russia': 'RU', 'ukraina': 'UA', 'ukraine': 'UA',
+  'belarus': 'BY', 'polandia': 'PL', 'poland': 'PL',
+  'republik ceko': 'CZ', 'czech republic': 'CZ', 'slowakia': 'SK',
+  'slovakia': 'SK', 'hungaria': 'HU', 'hungary': 'HU', 'rumania': 'RO',
+  'romania': 'RO', 'bulgaria': 'BG', 'yunani': 'GR', 'greece': 'GR',
+  'serbia': 'RS', 'kroasia': 'HR', 'croatia': 'HR',
+  'jerman': 'DE', 'germany': 'DE', 'prancis': 'FR', 'france': 'FR',
+  'inggris': 'GB', 'united kingdom': 'GB', 'uk': 'GB', 'italia': 'IT',
+  'italy': 'IT', 'spanyol': 'ES', 'spain': 'ES', 'portugal': 'PT',
+  'belanda': 'NL', 'netherlands': 'NL', 'belgia': 'BE', 'belgium': 'BE',
+  'swiss': 'CH', 'switzerland': 'CH', 'austria': 'AT', 'swedia': 'SE',
+  'sweden': 'SE', 'norwegia': 'NO', 'norway': 'NO', 'denmark': 'DK',
+  'finlandia': 'FI', 'finland': 'FI', 'irlandia': 'IE', 'ireland': 'IE',
+  'islandia': 'IS', 'iceland': 'IS', 'luksemburg': 'LU', 'luxembourg': 'LU',
+  'malta': 'MT', 'siprus': 'CY', 'cyprus': 'CY',
+  'amerika serikat': 'US', 'united states': 'US', 'usa': 'US',
+  'kanada': 'CA', 'canada': 'CA', 'meksiko': 'MX', 'mexico': 'MX',
+  'brazil': 'BR', 'brasil': 'BR', 'argentina': 'AR', 'chile': 'CL',
+  'peru': 'PE', 'kolombia': 'CO', 'colombia': 'CO', 'venezuela': 'VE',
+  'ekuador': 'EC', 'ecuador': 'EC', 'bolivia': 'BO', 'paraguay': 'PY',
+  'uruguay': 'UY',
+  'australia': 'AU', 'selandia baru': 'NZ', 'new zealand': 'NZ',
+  'fiji': 'FJ', 'papua nugini': 'PG', 'papua new guinea': 'PG',
+  'afghanistan': 'AF', 'kazakhstan': 'KZ', 'uzbekistan': 'UZ',
+  'turkmenistan': 'TM', 'kirgistan': 'KG', 'kyrgyzstan': 'KG',
+  'tajikistan': 'TJ', 'azerbaijan': 'AZ', 'armenia': 'AM', 'georgia': 'GE'
+};
+
+function isoToFlagEmoji(iso2) {
+  if (!iso2 || iso2.length !== 2) return '';
+  return String.fromCodePoint(...iso2.toUpperCase().split('').map(c => 127397 + c.charCodeAt(0)));
+}
+
+function guessCountryFlag(name) {
+  const key = (name || '').trim().toLowerCase();
+  if (!key) return '';
+  if (COUNTRY_ISO_MAP[key]) return isoToFlagEmoji(COUNTRY_ISO_MAP[key]);
+  // Coba cocokkan sebagian (mis. "Korea Selatan (Baru)" tetap kedeteksi)
+  for (const k in COUNTRY_ISO_MAP) {
+    if (key.includes(k)) return isoToFlagEmoji(COUNTRY_ISO_MAP[k]);
+  }
+  return '';
+}
+
+const CURRENCY_ISO_MAP = {
+  ID: 'IDR', MY: 'MYR', SG: 'SGD', BN: 'BND', TH: 'THB', PH: 'PHP',
+  VN: 'VND', KH: 'KHR', LA: 'LAK', MM: 'MMK', TL: 'USD',
+  TW: 'TWD', HK: 'HKD', CN: 'CNY', JP: 'JPY', KR: 'KRW', KP: 'KPW', MN: 'MNT',
+  IN: 'INR', PK: 'PKR', BD: 'BDT', LK: 'LKR', NP: 'NPR', BT: 'BTN', MV: 'MVR',
+  SA: 'SAR', AE: 'AED', QA: 'QAR', KW: 'KWD', BH: 'BHD', OM: 'OMR',
+  JO: 'JOD', LB: 'LBP', SY: 'SYP', IQ: 'IQD', IR: 'IRR', IL: 'ILS',
+  PS: 'ILS', TR: 'TRY', YE: 'YER',
+  EG: 'EGP', MA: 'MAD', DZ: 'DZD', TN: 'TND', LY: 'LYD', SD: 'SDG',
+  ET: 'ETB', KE: 'KES', NG: 'NGN', ZA: 'ZAR', GH: 'GHS', TZ: 'TZS', UG: 'UGX',
+  RU: 'RUB', UA: 'UAH', BY: 'BYN', PL: 'PLN', CZ: 'CZK', SK: 'EUR',
+  HU: 'HUF', RO: 'RON', BG: 'BGN', GR: 'EUR', RS: 'RSD', HR: 'EUR',
+  DE: 'EUR', FR: 'EUR', GB: 'GBP', IT: 'EUR', ES: 'EUR', PT: 'EUR',
+  NL: 'EUR', BE: 'EUR', CH: 'CHF', AT: 'EUR', SE: 'SEK', NO: 'NOK',
+  DK: 'DKK', FI: 'EUR', IE: 'EUR', IS: 'ISK', LU: 'EUR', MT: 'EUR', CY: 'EUR',
+  US: 'USD', CA: 'CAD', MX: 'MXN', BR: 'BRL', AR: 'ARS', CL: 'CLP',
+  PE: 'PEN', CO: 'COP', VE: 'VES', EC: 'USD', BO: 'BOB', PY: 'PYG', UY: 'UYU',
+  AU: 'AUD', NZ: 'NZD', FJ: 'FJD', PG: 'PGK',
+  AF: 'AFN', KZ: 'KZT', UZ: 'UZS', TM: 'TMT', KG: 'KGS', TJ: 'TJS',
+  AZ: 'AZN', AM: 'AMD', GE: 'GEL'
+};
+
+function guessCountryCurrency(name) {
+  const key = (name || '').trim().toLowerCase();
+  if (!key) return '';
+  let iso = COUNTRY_ISO_MAP[key];
+  if (!iso) {
+    for (const k in COUNTRY_ISO_MAP) {
+      if (key.includes(k)) { iso = COUNTRY_ISO_MAP[k]; break; }
+    }
+  }
+  return iso ? (CURRENCY_ISO_MAP[iso] || '') : '';
+}
+
 function openCountryModal(existing = null) {
   const modal = $('#preview-modal');
   const body = $('#preview-body');
@@ -3966,35 +4110,17 @@ function openCountryModal(existing = null) {
     <form id="form-country" style="display: flex; flex-direction: column; gap: 14px;" novalidate>
       <div class="input-group">
         <label>Nama Negara</label>
-        <input type="text" id="country-name" value="${escapeHtml(existing?.name || '')}" required />
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span id="country-flag-preview" style="font-size:26px; line-height:1;">${existing?.flag_emoji || guessCountryFlag(existing?.name) || '🌍'}</span>
+          <input type="text" id="country-name" value="${escapeHtml(existing?.name || '')}" required style="flex:1;" />
+        </div>
         <span class="field-error"></span>
       </div>
-      <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
-        <div class="input-group">
-          <label>Kode</label>
-          <input type="text" id="country-code" value="${escapeHtml(existing?.code || '')}" maxlength="3" />
-        </div>
-        <div class="input-group">
-          <label>Emoji Bendera</label>
-          <input type="text" id="country-flag" value="${escapeHtml(existing?.flag_emoji || '')}" placeholder="🇯🇵" />
-        </div>
-        <div class="input-group">
-          <label>Region</label>
-          <input type="text" id="country-region" value="${escapeHtml(existing?.region || '')}" />
-        </div>
-        <div class="input-group">
-          <label>Mata Uang</label>
-          <input type="text" id="country-currency" value="${escapeHtml(existing?.currency || '')}" placeholder="USD" />
-        </div>
-      </div>
       <div class="input-group">
-        <label>Bahasa</label>
-        <input type="text" id="country-language" value="${escapeHtml(existing?.language || '')}" />
+        <label>Kode</label>
+        <input type="text" id="country-code" value="${escapeHtml(existing?.code || '')}" maxlength="3" required />
+        <span class="field-error"></span>
       </div>
-      <label class="checkbox-label">
-        <input type="checkbox" id="country-active" ${existing?.is_active !== false ? 'checked' : ''} />
-        <span>Aktif</span>
-      </label>
       <button type="submit" class="btn btn-primary">
         <span class="btn-text">${existing ? 'Update' : 'Simpan'}</span>
         <span class="btn-loader hidden"></span>
@@ -4004,6 +4130,10 @@ function openCountryModal(existing = null) {
 
   show(modal);
 
+  $('#country-name').addEventListener('input', (e) => {
+    $('#country-flag-preview').textContent = guessCountryFlag(e.target.value) || '🌍';
+  });
+
   $('#form-country').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!validateForm(e.target)) return;
@@ -4011,14 +4141,15 @@ function openCountryModal(existing = null) {
     const btn = e.target.querySelector('button[type="submit"]');
     setLoading(btn, true);
 
+    const nameVal = $('#country-name').value.trim();
     const payload = {
-      name: $('#country-name').value.trim(),
+      name: nameVal,
       code: $('#country-code').value.trim().toUpperCase(),
-      flag_emoji: $('#country-flag').value.trim(),
-      region: $('#country-region').value.trim(),
-      currency: $('#country-currency').value.trim().toUpperCase(),
-      language: $('#country-language').value.trim(),
-      is_active: $('#country-active').checked,
+      flag_emoji: existing?.flag_emoji || guessCountryFlag(nameVal) || '🌍',
+      region: existing?.region || '',
+      currency: existing?.currency || guessCountryCurrency(nameVal) || '',
+      language: existing?.language || '',
+      is_active: existing?.is_active !== false,
       updated_at: new Date().toISOString()
     };
 
@@ -4075,7 +4206,7 @@ async function loadAdminPosisi() {
 
     const tbody = $('#admin-positions-body');
     if (error || !data || data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="table-loading">Belum ada data</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" class="table-loading">Belum ada data</td></tr>';
       return;
     }
 
@@ -4084,9 +4215,6 @@ async function loadAdminPosisi() {
         <td><strong>${escapeHtml(p.title)}</strong></td>
         <td>${p.countries?.flag_emoji || ''} ${escapeHtml(p.countries?.name || '-')}</td>
         <td>${escapeHtml(p.category || '-')}</td>
-        <td>${p.salary_min && p.salary_max ? `${formatCurrency(p.salary_min, p.currency)} - ${formatCurrency(p.salary_max, p.currency)}` : '-'}</td>
-        <td>${p.filled || 0}/${p.quota || 0}</td>
-        <td>${p.estimated_departure || '-'}</td>
         <td>
           <div class="table-actions-cell">
             <button class="btn-edit" onclick="editPosition('${p.id}')">Edit</button>
@@ -4119,69 +4247,37 @@ async function openPositionModal(existing = null) {
   // Load countries
   let countriesHtml = '<option value="">Pilih negara...</option>';
   try {
-    const { data: countries } = await supabase.from('countries').select('*').eq('is_active', true).order('name');
+    const { data: countries, error: countriesErr } = await supabase.from('countries').select('*').eq('is_active', true).order('name');
+    if (countriesErr) {
+      console.error('Load countries error:', countriesErr);
+      toast('error', 'Gagal Memuat Negara', countriesErr.message);
+    } else if (!countries || countries.length === 0) {
+      console.warn('Tabel countries kosong atau tidak ada negara aktif.');
+    }
     (countries || []).forEach(c => {
       countriesHtml += `<option value="${c.id}" ${existing?.country_id === c.id ? 'selected' : ''}>${c.flag_emoji || ''} ${escapeHtml(c.name)}</option>`;
     });
   } catch (err) {
     console.error('Load countries error:', err);
+    toast('error', 'Gagal Memuat Negara', err.message || 'Terjadi kesalahan');
   }
 
   body.innerHTML = `
     <form id="form-position" style="display: flex; flex-direction: column; gap: 14px;" novalidate>
       <div class="input-group">
         <label>Negara</label>
-        <select id="position-country" required>${countriesHtml}</select>
+        <select id="position-country" data-cs-skip="true" required>${countriesHtml}</select>
         <span class="field-error"></span>
       </div>
-      <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
-        <div class="input-group">
-          <label>Judul Posisi</label>
-          <input type="text" id="position-title" value="${escapeHtml(existing?.title || '')}" required />
-          <span class="field-error"></span>
-        </div>
-        <div class="input-group">
-          <label>Kategori</label>
-          <input type="text" id="position-category" value="${escapeHtml(existing?.category || '')}" />
-        </div>
+      <div class="input-group">
+        <label>Tempat</label>
+        <input type="text" id="position-place" value="${escapeHtml(existing?.category || '')}" required />
+        <span class="field-error"></span>
       </div>
       <div class="input-group">
-        <label>Deskripsi</label>
-        <textarea id="position-desc" rows="2">${escapeHtml(existing?.description || '')}</textarea>
-      </div>
-      <div class="input-group">
-        <label>Persyaratan (pisahkan dengan koma)</label>
-        <textarea id="position-requirements" rows="3" placeholder="SMA/SMK, Usia 18-30, Sehat">${(existing?.requirements || []).join(', ')}</textarea>
-      </div>
-      <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr;">
-        <div class="input-group">
-          <label>Gaji Min</label>
-          <input type="number" id="position-salary-min" value="${existing?.salary_min || ''}" />
-        </div>
-        <div class="input-group">
-          <label>Gaji Max</label>
-          <input type="number" id="position-salary-max" value="${existing?.salary_max || ''}" />
-        </div>
-        <div class="input-group">
-          <label>Currency</label>
-          <input type="text" id="position-currency" value="${escapeHtml(existing?.currency || 'USD')}" />
-        </div>
-      </div>
-      <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr;">
-        <div class="input-group">
-          <label>Kuota</label>
-          <input type="number" id="position-quota" value="${existing?.quota || ''}" />
-        </div>
-        <div class="input-group">
-          <label>Estimasi Berangkat</label>
-          <input type="text" id="position-estimate" value="${escapeHtml(existing?.estimated_departure || '')}" placeholder="6 months" />
-        </div>
-        <div class="input-group" style="display: flex; align-items: flex-end;">
-          <label class="checkbox-label">
-            <input type="checkbox" id="position-active" ${existing?.is_active !== false ? 'checked' : ''} />
-            <span>Aktif</span>
-          </label>
-        </div>
+        <label>Bagian</label>
+        <input type="text" id="position-title" value="${escapeHtml(existing?.title || '')}" required />
+        <span class="field-error"></span>
       </div>
       <button type="submit" class="btn btn-primary">
         <span class="btn-text">${existing ? 'Update' : 'Simpan'}</span>
@@ -4199,20 +4295,18 @@ async function openPositionModal(existing = null) {
     const btn = e.target.querySelector('button[type="submit"]');
     setLoading(btn, true);
 
-    const requirements = $('#position-requirements').value.split(',').map(r => r.trim()).filter(r => r);
-
     const payload = {
       country_id: $('#position-country').value,
       title: $('#position-title').value.trim(),
-      category: $('#position-category').value.trim(),
-      description: $('#position-desc').value.trim(),
-      requirements: requirements,
-      salary_min: parseFloat($('#position-salary-min').value) || null,
-      salary_max: parseFloat($('#position-salary-max').value) || null,
-      currency: $('#position-currency').value.trim().toUpperCase(),
-      quota: parseInt($('#position-quota').value) || null,
-      estimated_departure: $('#position-estimate').value.trim(),
-      is_active: $('#position-active').checked,
+      category: $('#position-place').value.trim(),
+      description: existing?.description || '',
+      requirements: existing?.requirements || [],
+      salary_min: existing?.salary_min || null,
+      salary_max: existing?.salary_max || null,
+      currency: existing?.currency || 'USD',
+      quota: existing?.quota || null,
+      estimated_departure: existing?.estimated_departure || '',
+      is_active: existing?.is_active !== false,
       updated_at: new Date().toISOString()
     };
 
@@ -4454,164 +4548,166 @@ async function loadAdminPenempatan() {
       return;
     }
 
+    // Master data untuk dropdown per-kolom (sumbernya sama dengan halaman
+    // Master Data: Jadwal Keberangkatan, Negara Tujuan, Posisi Kerja).
+    let schedules = [];
+    let countries = [];
+    let positions = [];
+    try {
+      const [schedRes, countryRes, posRes] = await Promise.all([
+        supabase.from('departure_schedules').select('schedule_date, note').eq('is_active', true).order('schedule_date'),
+        supabase.from('countries').select('name').eq('is_active', true).order('name'),
+        supabase.from('job_positions').select('title, countries(name)').eq('is_active', true).order('title')
+      ]);
+      if (schedRes.error) console.error('Load departure_schedules error:', schedRes.error);
+      if (countryRes.error) console.error('Load countries error:', countryRes.error);
+      if (posRes.error) console.error('Load job_positions error:', posRes.error);
+      schedules = schedRes.data || [];
+      countries = countryRes.data || [];
+      positions = posRes.data || [];
+      if (!schedules.length) console.warn('departure_schedules: 0 baris aktif (cek is_active / RLS)');
+      if (!countries.length) console.warn('countries: 0 baris aktif (cek is_active / RLS)');
+      if (!positions.length) console.warn('job_positions: 0 baris aktif (cek is_active / RLS)');
+    } catch (err) {
+      console.error('Load master data for penempatan error:', err);
+    }
+
+    function buildDateOptions(selected) {
+      let opts = '<option value="">Pilih tanggal...</option>';
+      opts += schedules.map(s => {
+        const label = formatDate(s.schedule_date) + (s.note ? ` — ${s.note}` : '');
+        return `<option value="${s.schedule_date}" ${selected === s.schedule_date ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+      }).join('');
+      if (selected && !schedules.some(s => s.schedule_date === selected)) {
+        opts += `<option value="${selected}" selected>${escapeHtml(formatDate(selected))} (tidak aktif)</option>`;
+      }
+      return opts;
+    }
+
+    function buildCountryOptions(selected) {
+      let opts = '<option value="">Pilih negara...</option>';
+      opts += countries.map(c =>
+        `<option value="${escapeHtml(c.name)}" ${selected === c.name ? 'selected' : ''}>${escapeHtml(c.name)}</option>`
+      ).join('');
+      if (selected && !countries.some(c => c.name === selected)) {
+        opts += `<option value="${escapeHtml(selected)}" selected>${escapeHtml(selected)} (tidak aktif)</option>`;
+      }
+      return opts;
+    }
+
+    function buildPlacementOptions(countryName, selected) {
+      const filtered = countryName ? positions.filter(p => p.countries?.name === countryName) : positions;
+      let opts = '<option value="">Pilih posisi/penempatan...</option>';
+      opts += filtered.map(p =>
+        `<option value="${escapeHtml(p.title)}" ${selected === p.title ? 'selected' : ''}>${escapeHtml(p.title)}</option>`
+      ).join('');
+      if (selected && !filtered.some(p => p.title === selected)) {
+        opts += `<option value="${escapeHtml(selected)}" selected>${escapeHtml(selected)} (tidak aktif)</option>`;
+      }
+      return opts;
+    }
+
     tbody.innerHTML = rows.map((p, i) => {
       const pl = placementMap[p.id];
+      const isProcessed = !!(pl?.departure_date && pl?.destination_country && pl?.placement);
       return `
         <tr>
           <td>${i + 1}</td>
-          <td><strong>${escapeHtml(p.full_name)}</strong></td>
-          <td>${pl?.departure_date ? formatDate(pl.departure_date) : '-'}</td>
-          <td>${escapeHtml(pl?.destination_country || '-')}</td>
-          <td>${escapeHtml(pl?.placement || '-')}</td>
+          <td>
+            <strong>${escapeHtml(p.full_name)}</strong><br>
+            <span class="status-badge ${isProcessed ? 'status-completed' : 'status-pending'}" style="margin-top:4px;">
+              ${isProcessed ? 'Sudah Diproses' : 'Belum Diproses'}
+            </span>
+          </td>
+          <td>
+            <select class="penempatan-field" data-user="${p.id}" data-field="departure_date">
+              ${buildDateOptions(pl?.departure_date || '')}
+            </select>
+          </td>
+          <td>
+            <select class="penempatan-field penempatan-country" data-user="${p.id}" data-field="destination_country">
+              ${buildCountryOptions(pl?.destination_country || '')}
+            </select>
+          </td>
+          <td>
+            <select class="penempatan-field penempatan-placement" data-user="${p.id}" data-field="placement">
+              ${buildPlacementOptions(pl?.destination_country || '', pl?.placement || '')}
+            </select>
+          </td>
           <td>
             <div class="table-actions-cell">
               <button class="btn-action" onclick="viewParticipantDetail('${p.id}')">Detail</button>
-              <button class="btn-edit" onclick="openPenempatanModal('${p.id}', '${escapeHtml(p.full_name).replace(/'/g, "\\'")}')">Edit</button>
+              <button class="btn-edit" id="proses-btn-${p.id}" onclick="prosesPenempatan('${p.id}')">Proses</button>
             </div>
           </td>
         </tr>
       `;
     }).join('');
+
+    // Saat negara diganti, filter ulang pilihan posisi/penempatan pada baris itu saja
+    // (hanya mengubah opsi di layar; belum tersimpan sampai tombol Proses ditekan)
+    tbody.querySelectorAll('.penempatan-country').forEach((sel) => {
+      sel.addEventListener('change', (e) => {
+        const userId = e.target.dataset.user;
+        const placementSel = tbody.querySelector(`.penempatan-placement[data-user="${userId}"]`);
+        if (placementSel) {
+          placementSel.innerHTML = buildPlacementOptions(e.target.value, '');
+          placementSel.value = '';
+        }
+      });
+    });
   } catch (err) {
     console.error('Load admin penempatan error:', err);
   }
 }
 
-window.openPenempatanModal = async function(userId, fullName) {
-  let existing = null;
+// Tombol "Proses" di tabel Penempatan: menyimpan (upsert) tanggal pemberangkatan,
+// tujuan negara, dan penempatan sekaligus untuk satu peserta. Setelah tersimpan,
+// halaman Beranda peserta otomatis berubah dari "100%"/"SELESAI" menjadi hitung
+// mundur (countdown) hari menuju tanggal keberangkatan, karena countdown itu
+// dihitung langsung dari kolom departure_date pada tabel `placements`.
+window.prosesPenempatan = async function(userId) {
+  const btn = $(`#proses-btn-${userId}`);
+  const dateSel = document.querySelector(`.penempatan-field[data-field="departure_date"][data-user="${userId}"]`);
+  const countrySel = document.querySelector(`.penempatan-country[data-user="${userId}"]`);
+  const placementSel = document.querySelector(`.penempatan-placement[data-user="${userId}"]`);
+
+  const departure_date = dateSel?.value || '';
+  const destination_country = countrySel?.value || '';
+  const placement = placementSel?.value || '';
+
+  if (!departure_date || !destination_country || !placement) {
+    toast('error', 'Belum Lengkap', 'Pilih Tanggal Pemberangkatan, Tujuan Negara, dan Penempatan terlebih dahulu');
+    return;
+  }
+
+  const originalText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan...'; }
+
   try {
-    const { data } = await supabase.from('placements').select('*').eq('user_id', userId).maybeSingle();
-    existing = data;
-  } catch (err) {
-    console.error('Load placement detail error:', err);
-  }
-
-  let countryOptions = '<option value="">Pilih negara...</option>';
-  try {
-    const { data: countries } = await supabase.from('countries').select('name').eq('is_active', true).order('name');
-    countryOptions += (countries || []).map(c =>
-      `<option value="${escapeHtml(c.name)}" ${existing?.destination_country === c.name ? 'selected' : ''}>${escapeHtml(c.name)}</option>`
-    ).join('');
-  } catch (err) {
-    console.error('Load countries for penempatan error:', err);
-  }
-
-  // Master jadwal keberangkatan (dropdown Tanggal Pemberangkatan)
-  let scheduleOptions = '<option value="">Pilih tanggal...</option>';
-  try {
-    const { data: schedules } = await supabase
-      .from('departure_schedules')
-      .select('schedule_date, note')
-      .eq('is_active', true)
-      .order('schedule_date');
-    scheduleOptions += (schedules || []).map(s => {
-      const label = formatDate(s.schedule_date) + (s.note ? ` — ${s.note}` : '');
-      return `<option value="${s.schedule_date}" ${existing?.departure_date === s.schedule_date ? 'selected' : ''}>${escapeHtml(label)}</option>`;
-    }).join('');
-    // Jaga-jaga: kalau tanggal yang tersimpan sudah tidak ada di master aktif
-    // (mis. jadwal dinonaktifkan setelah dipilih), tetap tampilkan sebagai opsi
-    // supaya data lama tidak "hilang" secara diam-diam dari tampilan.
-    if (existing?.departure_date && !(schedules || []).some(s => s.schedule_date === existing.departure_date)) {
-      scheduleOptions += `<option value="${existing.departure_date}" selected>${escapeHtml(formatDate(existing.departure_date))} (tidak aktif)</option>`;
-    }
-  } catch (err) {
-    console.error('Load jadwal keberangkatan for penempatan error:', err);
-  }
-
-  // Master posisi kerja (dropdown Penempatan), untuk difilter ulang per negara
-  let allPositions = [];
-  try {
-    const { data: positions } = await supabase
-      .from('job_positions')
-      .select('title, countries(name)')
-      .eq('is_active', true)
-      .order('title');
-    allPositions = positions || [];
-  } catch (err) {
-    console.error('Load posisi kerja for penempatan error:', err);
-  }
-
-  function buildPlacementOptions(countryName) {
-    const filtered = countryName
-      ? allPositions.filter(p => p.countries?.name === countryName)
-      : allPositions;
-    let opts = '<option value="">Pilih posisi/penempatan...</option>';
-    opts += filtered.map(p =>
-      `<option value="${escapeHtml(p.title)}" ${existing?.placement === p.title ? 'selected' : ''}>${escapeHtml(p.title)}</option>`
-    ).join('');
-    // Kalau nilai lama tersimpan tidak ada di daftar posisi aktif/negara ini,
-    // tetap tampilkan supaya data lama tidak hilang dari tampilan.
-    if (existing?.placement && !filtered.some(p => p.title === existing.placement)) {
-      opts += `<option value="${escapeHtml(existing.placement)}" selected>${escapeHtml(existing.placement)}</option>`;
-    }
-    return opts;
-  }
-
-  const modal = $('#preview-modal');
-  const body = $('#preview-body');
-  $('#preview-title').textContent = `Penempatan - ${fullName}`;
-
-  body.innerHTML = `
-    <form id="form-penempatan" style="display: flex; flex-direction: column; gap: 14px;" novalidate>
-      <div class="input-group">
-        <label>Tanggal Pemberangkatan</label>
-        <select id="penempatan-departure-date">${scheduleOptions}</select>
-      </div>
-      <div class="input-group">
-        <label>Tujuan Negara</label>
-        <select id="penempatan-country">${countryOptions}</select>
-      </div>
-      <div class="input-group">
-        <label>Penempatan</label>
-        <select id="penempatan-placement">${buildPlacementOptions(existing?.destination_country || '')}</select>
-        <span class="field-error"></span>
-      </div>
-      <button type="submit" class="btn btn-primary">
-        <span class="btn-text">Simpan</span>
-        <span class="btn-loader hidden"></span>
-      </button>
-    </form>
-  `;
-
-  show(modal);
-
-  // Saat negara diganti, filter ulang pilihan posisi/penempatan supaya sesuai negara
-  $('#penempatan-country').addEventListener('change', (e) => {
-    $('#penempatan-placement').innerHTML = buildPlacementOptions(e.target.value);
-  });
-
-  $('#form-penempatan').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = e.target.querySelector('button[type="submit"]');
-    setLoading(btn, true);
-
     const payload = {
       user_id: userId,
-      departure_date: $('#penempatan-departure-date').value || null,
-      destination_country: $('#penempatan-country').value || null,
-      placement: $('#penempatan-placement').value.trim() || null,
+      departure_date,
+      destination_country,
+      placement,
       updated_by: state.user.id,
       updated_at: new Date().toISOString()
     };
+    const { error } = await supabase.from('placements').upsert(payload, { onConflict: 'user_id' });
 
-    try {
-      const { error } = await supabase.from('placements').upsert(payload, { onConflict: 'user_id' });
-
-      setLoading(btn, false);
-
-      if (error) {
-        toast('error', 'Gagal', error.message);
-        return;
-      }
-
-      toast('success', 'Penempatan Disimpan');
-      hide(modal);
-      loadAdminPenempatan();
-    } catch (err) {
-      setLoading(btn, false);
-      toast('error', 'Error', 'Terjadi kesalahan');
+    if (error) {
+      toast('error', 'Gagal Memproses', error.message);
+      if (btn) { btn.disabled = false; btn.textContent = originalText; }
+      return;
     }
-  });
+
+    toast('success', 'Penempatan Diproses', 'Countdown keberangkatan otomatis tampil di akun peserta');
+    loadAdminPenempatan();
+  } catch (err) {
+    console.error('Proses penempatan error:', err);
+    toast('error', 'Gagal Memproses');
+    if (btn) { btn.disabled = false; btn.textContent = originalText; }
+  }
 };
 
 /* ============================================ */
