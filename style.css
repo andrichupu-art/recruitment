@@ -1130,11 +1130,33 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 /* Hero "Selamat Datang" ala desain baru: kartu navy penuh lebar dengan
    logo perusahaan, menggantikan .view-header polos di halaman Beranda. */
 .home-hero {
+  position: relative;
+  overflow: hidden;
   background: var(--gradient-focus);
   margin: -8px -32px 20px;
   padding: 26px 28px 34px;
   border-radius: 0 0 70px 70px;
   box-shadow: var(--shadow-md);
+}
+/* Watermark pola lattice/quatrefoil krem tipis di atas navy, senada dengan
+   motif dekoratif yang sudah dipakai di background aplikasi (body::before),
+   supaya area hero juga punya sentuhan pola yang sama. */
+.home-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 0 0, transparent 21px, rgba(239, 229, 207, 0.16) 22px, rgba(239, 229, 207, 0.16) 23px, transparent 24px),
+    radial-gradient(circle at 100% 0, transparent 21px, rgba(239, 229, 207, 0.16) 22px, rgba(239, 229, 207, 0.16) 23px, transparent 24px),
+    radial-gradient(circle at 0 100%, transparent 21px, rgba(239, 229, 207, 0.16) 22px, rgba(239, 229, 207, 0.16) 23px, transparent 24px),
+    radial-gradient(circle at 100% 100%, transparent 21px, rgba(239, 229, 207, 0.16) 22px, rgba(239, 229, 207, 0.16) 23px, transparent 24px);
+  background-size: 60px 60px;
+  pointer-events: none;
+}
+.home-hero-text,
+.home-hero-logo {
+  position: relative;
+  z-index: 1;
 }
 .home-hero-text h1 {
   font-size: 22px;
