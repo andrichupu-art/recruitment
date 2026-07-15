@@ -3320,8 +3320,16 @@ window.resendVerificationEmail = async function(email) {
 window.deleteUnverifiedParticipant = function(userId, fullName) {
   confirmDialog('Hapus Peserta', `Yakin ingin menghapus data pendaftaran "${fullName}"? Peserta harus mendaftar ulang jika ingin bergabung kembali.`, async () => {
     try {
-      const { error } = await supabase.from('profiles').delete().eq('id', userId);
+      const { data, error } = await supabase.from('profiles').delete().eq('id', userId).select();
       if (error) throw error;
+
+      if (!data || data.length === 0) {
+        // Query "sukses" (tidak ada error) tapi 0 baris yang benar-benar terhapus.
+        // Ini hampir selalu berarti diblokir RLS policy DELETE pada tabel profiles.
+        toast('error', 'Gagal Menghapus', 'Data tidak terhapus (kemungkinan diblokir RLS policy tabel profiles).');
+        console.error('deleteUnverifiedParticipant: 0 baris terhapus, cek RLS policy DELETE pada tabel profiles untuk role admin.');
+        return;
+      }
 
       toast('success', 'Peserta Dihapus');
       loadAdminVerifikasi();
