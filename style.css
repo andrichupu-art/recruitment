@@ -1226,7 +1226,7 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   background: var(--gradient-focus);
   margin: -8px -32px 20px;
   padding: 26px 28px 34px;
-  border-radius: 0 0 70px 70px;
+  border-radius: 0 0 130px 130px;
   box-shadow: var(--shadow-md);
 }
 .home-hero-text,
@@ -1303,7 +1303,7 @@ button.home-card { cursor: pointer; }
 .home-card h3 { font-size: 19px; font-weight: 700; color: var(--gray-800); }
 
 @media (max-width: 640px) {
-  .home-hero { margin: -16px -14px 20px; }
+  .home-hero { margin: -16px -14px 20px; border-radius: 0 0 90px 90px; }
 }
 
 
