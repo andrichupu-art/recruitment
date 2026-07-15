@@ -797,6 +797,7 @@ function navigateTo(page) {
     'admin-pengumuman': loadAdminPengumuman,
     'admin-negara': loadAdminNegara,
     'admin-posisi': loadAdminPosisi,
+    'admin-jadwal-keberangkatan': loadAdminJadwalKeberangkatan,
     'admin-penempatan': loadAdminPenempatan,
     'admin-chat': loadAdminChatPage
   };
@@ -4257,6 +4258,144 @@ window.deletePosition = function(id) {
 };
 
 /* ============================================ */
+/* ADMIN JADWAL KEBERANGKATAN */
+/* Master data tanggal pemberangkatan (batch keberangkatan) yang dipakai
+   sebagai pilihan dropdown "Tanggal Pemberangkatan" di halaman Penempatan.
+   Tabel terpisah `departure_schedules`, dikelola lewat menu sidebar
+   "Master Data > Jadwal Keberangkatan". */
+async function loadAdminJadwalKeberangkatan() {
+  try {
+    const { data, error } = await supabase
+      .from('departure_schedules')
+      .select('*')
+      .order('schedule_date');
+
+    const tbody = $('#admin-schedules-body');
+    if (error || !data || data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="table-loading">Belum ada data</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = data.map(s => `
+      <tr>
+        <td><strong>${formatDate(s.schedule_date)}</strong></td>
+        <td>${escapeHtml(s.note || '-')}</td>
+        <td>${s.quota || '-'}</td>
+        <td><span class="status-badge status-${s.is_active ? 'approved' : 'rejected'}">${s.is_active ? 'Aktif' : 'Nonaktif'}</span></td>
+        <td>
+          <div class="table-actions-cell">
+            <button class="btn-edit" onclick="editSchedule('${s.id}')">Edit</button>
+            <button class="btn-delete" onclick="deleteSchedule('${s.id}')">Hapus</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error('Load admin jadwal keberangkatan error:', err);
+  }
+}
+
+$('#btn-add-departure-schedule').addEventListener('click', () => openScheduleModal());
+
+window.editSchedule = async function(id) {
+  try {
+    const { data } = await supabase.from('departure_schedules').select('*').eq('id', id).single();
+    if (data) openScheduleModal(data);
+  } catch (err) {
+    toast('error', 'Error', 'Gagal memuat data');
+  }
+};
+
+function openScheduleModal(existing = null) {
+  const modal = $('#preview-modal');
+  const body = $('#preview-body');
+  $('#preview-title').textContent = existing ? 'Edit Jadwal Keberangkatan' : 'Tambah Jadwal Keberangkatan';
+
+  body.innerHTML = `
+    <form id="form-schedule" style="display: flex; flex-direction: column; gap: 14px;" novalidate>
+      <div class="input-group">
+        <label>Tanggal Keberangkatan</label>
+        <input type="date" id="schedule-date" value="${existing?.schedule_date || ''}" required />
+        <span class="field-error"></span>
+      </div>
+      <div class="input-group">
+        <label>Catatan</label>
+        <input type="text" id="schedule-note" value="${escapeHtml(existing?.note || '')}" placeholder="Mis. Batch 1 - Taiwan" />
+      </div>
+      <div class="input-group">
+        <label>Kuota</label>
+        <input type="number" id="schedule-quota" value="${existing?.quota || ''}" />
+      </div>
+      <label class="checkbox-label">
+        <input type="checkbox" id="schedule-active" ${existing?.is_active !== false ? 'checked' : ''} />
+        <span>Aktif</span>
+      </label>
+      <button type="submit" class="btn btn-primary">
+        <span class="btn-text">${existing ? 'Update' : 'Simpan'}</span>
+        <span class="btn-loader hidden"></span>
+      </button>
+    </form>
+  `;
+
+  show(modal);
+
+  $('#form-schedule').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!validateForm(e.target)) return;
+
+    const btn = e.target.querySelector('button[type="submit"]');
+    setLoading(btn, true);
+
+    const payload = {
+      schedule_date: $('#schedule-date').value,
+      note: $('#schedule-note').value.trim(),
+      quota: parseInt($('#schedule-quota').value) || null,
+      is_active: $('#schedule-active').checked,
+      updated_at: new Date().toISOString()
+    };
+
+    try {
+      let error;
+      if (existing) {
+        const res = await supabase.from('departure_schedules').update(payload).eq('id', existing.id);
+        error = res.error;
+      } else {
+        payload.created_by = state.user.id;
+        const res = await supabase.from('departure_schedules').insert(payload);
+        error = res.error;
+      }
+
+      setLoading(btn, false);
+
+      if (error) {
+        toast('error', 'Gagal', error.message);
+        return;
+      }
+
+      toast('success', existing ? 'Jadwal Diperbarui' : 'Jadwal Ditambahkan');
+      hide(modal);
+      loadAdminJadwalKeberangkatan();
+    } catch (err) {
+      setLoading(btn, false);
+      toast('error', 'Error', 'Terjadi kesalahan');
+    }
+  });
+}
+
+window.deleteSchedule = function(id) {
+  confirmDialog('Hapus Jadwal', 'Yakin ingin menghapus jadwal keberangkatan ini?', async () => {
+    try {
+      const { error } = await supabase.from('departure_schedules').delete().eq('id', id);
+      if (error) throw error;
+      toast('success', 'Jadwal Dihapus');
+      loadAdminJadwalKeberangkatan();
+    } catch (err) {
+      toast('error', 'Error', 'Gagal menghapus');
+    }
+  });
+};
+
+/* ============================================ */
 /* ADMIN PENEMPATAN */
 /* Menampilkan peserta yang sudah mencapai tahap akhir timeline (saat ini
    "Penempatan", dipilih manual oleh admin lewat dropdown Tahapan di Kelola
@@ -4357,6 +4496,57 @@ window.openPenempatanModal = async function(userId, fullName) {
     console.error('Load countries for penempatan error:', err);
   }
 
+  // Master jadwal keberangkatan (dropdown Tanggal Pemberangkatan)
+  let scheduleOptions = '<option value="">Pilih tanggal...</option>';
+  try {
+    const { data: schedules } = await supabase
+      .from('departure_schedules')
+      .select('schedule_date, note')
+      .eq('is_active', true)
+      .order('schedule_date');
+    scheduleOptions += (schedules || []).map(s => {
+      const label = formatDate(s.schedule_date) + (s.note ? ` — ${s.note}` : '');
+      return `<option value="${s.schedule_date}" ${existing?.departure_date === s.schedule_date ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+    }).join('');
+    // Jaga-jaga: kalau tanggal yang tersimpan sudah tidak ada di master aktif
+    // (mis. jadwal dinonaktifkan setelah dipilih), tetap tampilkan sebagai opsi
+    // supaya data lama tidak "hilang" secara diam-diam dari tampilan.
+    if (existing?.departure_date && !(schedules || []).some(s => s.schedule_date === existing.departure_date)) {
+      scheduleOptions += `<option value="${existing.departure_date}" selected>${escapeHtml(formatDate(existing.departure_date))} (tidak aktif)</option>`;
+    }
+  } catch (err) {
+    console.error('Load jadwal keberangkatan for penempatan error:', err);
+  }
+
+  // Master posisi kerja (dropdown Penempatan), untuk difilter ulang per negara
+  let allPositions = [];
+  try {
+    const { data: positions } = await supabase
+      .from('job_positions')
+      .select('title, countries(name)')
+      .eq('is_active', true)
+      .order('title');
+    allPositions = positions || [];
+  } catch (err) {
+    console.error('Load posisi kerja for penempatan error:', err);
+  }
+
+  function buildPlacementOptions(countryName) {
+    const filtered = countryName
+      ? allPositions.filter(p => p.countries?.name === countryName)
+      : allPositions;
+    let opts = '<option value="">Pilih posisi/penempatan...</option>';
+    opts += filtered.map(p =>
+      `<option value="${escapeHtml(p.title)}" ${existing?.placement === p.title ? 'selected' : ''}>${escapeHtml(p.title)}</option>`
+    ).join('');
+    // Kalau nilai lama tersimpan tidak ada di daftar posisi aktif/negara ini,
+    // tetap tampilkan supaya data lama tidak hilang dari tampilan.
+    if (existing?.placement && !filtered.some(p => p.title === existing.placement)) {
+      opts += `<option value="${escapeHtml(existing.placement)}" selected>${escapeHtml(existing.placement)}</option>`;
+    }
+    return opts;
+  }
+
   const modal = $('#preview-modal');
   const body = $('#preview-body');
   $('#preview-title').textContent = `Penempatan - ${fullName}`;
@@ -4365,7 +4555,7 @@ window.openPenempatanModal = async function(userId, fullName) {
     <form id="form-penempatan" style="display: flex; flex-direction: column; gap: 14px;" novalidate>
       <div class="input-group">
         <label>Tanggal Pemberangkatan</label>
-        <input type="date" id="penempatan-departure-date" value="${existing?.departure_date || ''}" />
+        <select id="penempatan-departure-date">${scheduleOptions}</select>
       </div>
       <div class="input-group">
         <label>Tujuan Negara</label>
@@ -4373,7 +4563,7 @@ window.openPenempatanModal = async function(userId, fullName) {
       </div>
       <div class="input-group">
         <label>Penempatan</label>
-        <input type="text" id="penempatan-placement" value="${escapeHtml(existing?.placement || '')}" placeholder="Mis. Nama perusahaan / posisi kerja" />
+        <select id="penempatan-placement">${buildPlacementOptions(existing?.destination_country || '')}</select>
         <span class="field-error"></span>
       </div>
       <button type="submit" class="btn btn-primary">
@@ -4384,6 +4574,11 @@ window.openPenempatanModal = async function(userId, fullName) {
   `;
 
   show(modal);
+
+  // Saat negara diganti, filter ulang pilihan posisi/penempatan supaya sesuai negara
+  $('#penempatan-country').addEventListener('change', (e) => {
+    $('#penempatan-placement').innerHTML = buildPlacementOptions(e.target.value);
+  });
 
   $('#form-penempatan').addEventListener('submit', async (e) => {
     e.preventDefault();
