@@ -1098,7 +1098,8 @@ async function loadBeranda() {
 
     const docs = docsRes.data || [];
     const completedDocs = docs.filter(d => d.status === 'approved').length;
-    $('#stat-docs').textContent = `${completedDocs}/${DOC_TYPES.length}`;
+    const statDocs = $('#stat-docs');
+    if (statDocs) statDocs.textContent = `${completedDocs}/${DOC_TYPES.length}`;
 
     const currentStep = progressRes.data?.current_step || 1;
     const finalStep = TIMELINE_STEPS[TIMELINE_STEPS.length - 1].step;
@@ -1122,7 +1123,8 @@ async function loadBeranda() {
       $('#stat-progress').textContent = percent + '%';
     }
 
-    $('#stat-schedules').textContent = schedulesRes.data?.length || 0;
+    const statSchedules = $('#stat-schedules');
+    if (statSchedules) statSchedules.textContent = schedulesRes.data?.length || 0;
 
     const { data: announcements } = await supabase
       .from('announcements')
