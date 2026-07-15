@@ -33,6 +33,16 @@ const state = {
   },
   adminDetail: { activeUserId: null, previewReturnsToDetail: false },
   adminChat: { userId: null, channel: null },
+  adminChatTab: {
+    conversations: [],   // [{ userId, fullName, email, lastMessage, lastAt, unreadCount }]
+    search: '',
+    activeUserId: null,
+    activeName: '',
+    activeEmail: '',
+    channel: null,
+    attachment: null,
+    allParticipants: null // cache daftar peserta untuk picker "Chat Baru"
+  },
   adminVerifikasi: { data: [], search: '' },
   scheduleFilter: 'all',
   theme: localStorage.getItem('theme') || 'light',
@@ -759,6 +769,12 @@ $$('.toggle-password').forEach(btn => {
 /* DASHBOARD ROUTING */
 /* ============================================ */
 function navigateTo(page) {
+  // Tutup realtime channel tab Chat admin saat berpindah keluar dari halaman itu,
+  // supaya tidak ada channel supabase yang menumpuk/nyangkut di background.
+  if (state.currentPage === 'admin-chat' && page !== 'admin-chat') {
+    closeAdminChatTabChannel();
+  }
+
   state.currentPage = page;
   $$('.view').forEach(v => v.classList.remove('active'));
   const view = $(`#view-${page}`);
@@ -788,7 +804,8 @@ function navigateTo(page) {
     'admin-pengumuman': loadAdminPengumuman,
     'admin-negara': loadAdminNegara,
     'admin-posisi': loadAdminPosisi,
-    'admin-penempatan': loadAdminPenempatan
+    'admin-penempatan': loadAdminPenempatan,
+    'admin-chat': loadAdminChatPage
   };
   
   if (loaders[page]) loaders[page]();
@@ -2316,7 +2333,7 @@ function renderAdminTable() {
           <div class="table-actions-cell">
             <div class="table-actions-group">
               <button class="btn-action ${p.isDataComplete ? '' : 'btn-action-incomplete'}" onclick="viewParticipantDetail('${p.id}')" ${p.isDataComplete ? '' : `title="Belum lengkap: ${escapeHtml([...p.missingProfileFields, ...p.missingDocTypes.map(t => 'Dok. ' + t)].join(', '))}"`}>Detail</button>
-              <button class="btn-action btn-chat-action btn-icon-only ${p.unreadChat > 0 ? 'has-unread' : ''}" data-user-id="${p.id}" onclick="openAdminChat('${p.id}', '${escapeHtml(p.full_name).replace(/'/g, "\\'")}')" title="Chat dengan Peserta" aria-label="Chat dengan Peserta">
+              <button class="btn-action btn-chat-action btn-icon-only ${p.unreadChat > 0 ? 'has-unread' : ''}" data-user-id="${p.id}" onclick="goToAdminChat('${p.id}', '${escapeHtml(p.full_name).replace(/'/g, "\\'")}', '${escapeHtml(p.email).replace(/'/g, "\\'")}')" title="Chat dengan Peserta" aria-label="Chat dengan Peserta">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               </button>
               <!-- Sementara disembunyikan: fungsi Approve/Reject akan dipindahkan ke tempat lain.
@@ -2563,6 +2580,492 @@ function renderAdminChatBubble(m) {
     </div>
   `;
 }
+
+/* ============================================ */
+/* ADMIN CHAT TAB (halaman navbar "Chat", ala WhatsApp) */
+/* Berbeda dari openAdminChat() (modal cepat di tabel Kelola Peserta),
+   tab ini menampilkan daftar SEMUA percakapan yang pernah ada, diurutkan
+   dari yang paling baru di atas, plus tombol "Chat Baru" untuk memilih
+   peserta yang belum pernah diajak chat. Riwayat percakapan yang sudah
+   ada tidak perlu dicari ulang - tinggal klik dari daftar. */
+/* ============================================ */
+
+function formatChatListTime(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const isSameDay = date.toDateString() === now.toDateString();
+  if (isSameDay) return formatTime(dateStr);
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) return 'Kemarin';
+
+  return date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+
+function chatListPreviewText(messageRow) {
+  const { text, attachmentType } = parseChatMessage(messageRow);
+  if (text && text.trim()) return text.trim();
+  if (attachmentType === 'image') return '📷 Foto';
+  if (attachmentType === 'pdf') return '📄 Dokumen';
+  return messageRow.message || '';
+}
+
+async function loadAdminChatPage() {
+  const listEl = $('#admin-chat-list');
+  try {
+    const [messagesRes, profilesRes] = await Promise.all([
+      supabase.from('chat_messages').select('user_id, sender_role, message, is_read, created_at').order('created_at', { ascending: true }),
+      supabase.from('profiles').select('id, full_name, email').eq('role', 'user')
+    ]);
+
+    if (messagesRes.error) console.error('Load chat messages error:', messagesRes.error);
+    if (profilesRes.error) console.error('Load profiles error:', profilesRes.error);
+
+    const profileMap = {};
+    (profilesRes.data || []).forEach(p => { profileMap[p.id] = p; });
+
+    const convoMap = {};
+    (messagesRes.data || []).forEach(m => {
+      const profile = profileMap[m.user_id];
+      if (!convoMap[m.user_id]) {
+        convoMap[m.user_id] = {
+          userId: m.user_id,
+          fullName: profile ? profile.full_name : 'Peserta',
+          email: profile ? profile.email : '',
+          lastMessage: '',
+          lastAt: null,
+          unreadCount: 0
+        };
+      }
+      const convo = convoMap[m.user_id];
+      convo.lastMessage = chatListPreviewText(m);
+      convo.lastAt = m.created_at;
+      if (m.sender_role === 'user' && !m.is_read) convo.unreadCount++;
+    });
+
+    // Pertahankan percakapan baru yang barusan dipilih lewat "Chat Baru" tapi belum
+    // ada pesannya sama sekali, supaya tetap tampil di daftar (di paling atas)
+    // selagi admin mengetik pesan pertama.
+    (state.adminChatTab.conversations || []).forEach(c => {
+      if (!convoMap[c.userId] && c.lastAt === null) {
+        convoMap[c.userId] = c;
+      }
+    });
+
+    const conversations = Object.values(convoMap).sort((a, b) => {
+      if (a.lastAt === null && b.lastAt === null) return 0;
+      if (a.lastAt === null) return -1;
+      if (b.lastAt === null) return 1;
+      return new Date(b.lastAt) - new Date(a.lastAt);
+    });
+
+    state.adminChatTab.conversations = conversations;
+    renderAdminChatList();
+    updateAdminChatNavBadge();
+
+    // Kalau ada percakapan yang sedang aktif dibuka, muat ulang pesannya juga
+    // (misalnya setelah kembali dari halaman lain).
+    if (state.adminChatTab.activeUserId) {
+      await loadAdminChatTabMessages(state.adminChatTab.activeUserId);
+    }
+
+    subscribeAdminChatTabRealtime();
+  } catch (err) {
+    console.error('Load admin chat page error:', err);
+    if (listEl) listEl.innerHTML = '<div class="admin-chat-list-empty">Gagal memuat percakapan.</div>';
+  }
+}
+
+function renderAdminChatList() {
+  const listEl = $('#admin-chat-list');
+  if (!listEl) return;
+
+  const search = state.adminChatTab.search.toLowerCase();
+  let items = state.adminChatTab.conversations;
+  if (search) {
+    items = items.filter(c =>
+      (c.fullName || '').toLowerCase().includes(search) ||
+      (c.email || '').toLowerCase().includes(search)
+    );
+  }
+
+  if (items.length === 0) {
+    listEl.innerHTML = `<div class="admin-chat-list-empty">${search ? 'Tidak ada percakapan yang cocok.' : 'Belum ada percakapan. Klik "Chat Baru" untuk mulai.'}</div>`;
+    return;
+  }
+
+  listEl.innerHTML = items.map(c => {
+    const initial = (c.fullName || '?').trim().charAt(0).toUpperCase();
+    const isActive = state.adminChatTab.activeUserId === c.userId;
+    const hasUnread = c.unreadCount > 0;
+    return `
+      <div class="admin-chat-list-item ${isActive ? 'active' : ''} ${hasUnread ? 'has-unread' : ''}" data-user-id="${c.userId}" onclick="selectAdminChatConversation('${c.userId}')">
+        <div class="admin-chat-avatar">${escapeHtml(initial)}</div>
+        <div class="admin-chat-list-item-body">
+          <div class="admin-chat-list-item-top">
+            <span class="admin-chat-list-item-name">${escapeHtml(c.fullName || 'Peserta')}</span>
+            <span class="admin-chat-list-item-time">${c.lastAt ? formatChatListTime(c.lastAt) : ''}</span>
+          </div>
+          <div class="admin-chat-list-item-preview">${c.lastMessage ? escapeHtml(c.lastMessage) : 'Belum ada pesan'}</div>
+        </div>
+        ${hasUnread ? `<span class="admin-chat-unread-dot">${c.unreadCount}</span>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function updateAdminChatNavBadge() {
+  const badge = $('#admin-chat-nav-badge');
+  if (!badge) return;
+  const total = (state.adminChatTab.conversations || []).reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+  if (total > 0) {
+    badge.textContent = total > 99 ? '99+' : total;
+    show(badge);
+  } else {
+    hide(badge);
+  }
+}
+
+$('#admin-chat-search').addEventListener('input', (e) => {
+  state.adminChatTab.search = e.target.value;
+  renderAdminChatList();
+});
+
+window.selectAdminChatConversation = async function (userId) {
+  const convo = state.adminChatTab.conversations.find(c => c.userId === userId);
+  if (!convo) return;
+
+  state.adminChatTab.activeUserId = userId;
+  state.adminChatTab.activeName = convo.fullName;
+  state.adminChatTab.activeEmail = convo.email;
+
+  $('#admin-chat-header-name').textContent = convo.fullName || 'Peserta';
+  $('#admin-chat-header-email').textContent = convo.email || '';
+  $('#admin-chat-header-avatar').textContent = (convo.fullName || '?').trim().charAt(0).toUpperCase();
+
+  hide($('#admin-chat-panel-empty'));
+  show($('#admin-chat-panel-active'));
+  $('.admin-chat-wrap').classList.add('has-active');
+
+  renderAdminChatList();
+  await loadAdminChatTabMessages(userId);
+};
+
+$('#admin-chat-back-btn').addEventListener('click', () => {
+  state.adminChatTab.activeUserId = null;
+  $('.admin-chat-wrap').classList.remove('has-active');
+  show($('#admin-chat-panel-empty'));
+  hide($('#admin-chat-panel-active'));
+  renderAdminChatList();
+});
+
+async function loadAdminChatTabMessages(userId) {
+  const container = $('#admin-chat-tab-messages');
+  try {
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true });
+
+    if (!container || state.adminChatTab.activeUserId !== userId) return;
+
+    if (error) console.error('Load admin chat tab error:', error);
+
+    if (!data || data.length === 0) {
+      container.innerHTML = `
+        <div class="chat-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <p>Belum ada pesan. Mulai percakapan dengan peserta ini!</p>
+        </div>
+      `;
+    } else {
+      container.innerHTML = data.map(renderAdminChatBubble).join('');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    await supabase
+      .from('chat_messages')
+      .update({ is_read: true })
+      .eq('user_id', userId)
+      .eq('sender_role', 'user')
+      .eq('is_read', false);
+
+    const convo = state.adminChatTab.conversations.find(c => c.userId === userId);
+    if (convo) convo.unreadCount = 0;
+    renderAdminChatList();
+    updateAdminChatNavBadge();
+
+    // Sinkronkan juga titik notifikasi di tombol chat pada tabel Kelola Peserta.
+    const participant = state.adminTable.data.find(p => p.id === userId);
+    if (participant) participant.unreadChat = 0;
+    const chatBtn = document.querySelector(`.btn-chat-action[data-user-id="${userId}"]`);
+    if (chatBtn) chatBtn.classList.remove('has-unread');
+  } catch (err) {
+    console.error('Load admin chat tab error:', err);
+  }
+}
+
+function subscribeAdminChatTabRealtime() {
+  if (state.adminChatTab.channel) return; // sudah ada, tidak perlu subscribe ulang
+  state.adminChatTab.channel = supabase
+    .channel('admin-chat-tab')
+    .on('postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+      async (payload) => {
+        const msg = payload.new;
+        let convo = state.adminChatTab.conversations.find(c => c.userId === msg.user_id);
+
+        if (!convo) {
+          // Percakapan baru yang belum pernah muncul di daftar - ambil nama pesertanya.
+          const { data: profile } = await supabase.from('profiles').select('full_name, email').eq('id', msg.user_id).single();
+          convo = {
+            userId: msg.user_id,
+            fullName: profile ? profile.full_name : 'Peserta',
+            email: profile ? profile.email : '',
+            lastMessage: '',
+            lastAt: null,
+            unreadCount: 0
+          };
+          state.adminChatTab.conversations.push(convo);
+        }
+
+        convo.lastMessage = chatListPreviewText(msg);
+        convo.lastAt = msg.created_at;
+        if (msg.sender_role === 'user' && state.adminChatTab.activeUserId !== msg.user_id) {
+          convo.unreadCount = (convo.unreadCount || 0) + 1;
+        }
+
+        // Pindahkan percakapan ini ke posisi paling atas.
+        state.adminChatTab.conversations = [
+          convo,
+          ...state.adminChatTab.conversations.filter(c => c.userId !== msg.user_id)
+        ];
+
+        renderAdminChatList();
+        updateAdminChatNavBadge();
+
+        // Kalau percakapan ini sedang dibuka, tambahkan bubble-nya langsung & tandai terbaca.
+        if (msg.sender_role !== 'admin' && state.adminChatTab.activeUserId === msg.user_id) {
+          loadAdminChatTabMessages(msg.user_id);
+        }
+      }
+    )
+    .subscribe();
+}
+
+function closeAdminChatTabChannel() {
+  if (state.adminChatTab.channel) {
+    supabase.removeChannel(state.adminChatTab.channel);
+    state.adminChatTab.channel = null;
+  }
+}
+
+// Lampiran untuk chat tab (sama persis polanya dengan chat peserta)
+$('#admin-chat-tab-attach-btn').addEventListener('click', () => {
+  $('#admin-chat-tab-file-input').click();
+});
+
+$('#admin-chat-tab-file-input').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (file.size > 5 * 1024 * 1024) {
+    toast('error', 'File terlalu besar', 'Maks 5MB');
+    return;
+  }
+
+  state.adminChatTab.attachment = file;
+  $('#admin-chat-tab-attachment-name').textContent = file.name;
+  show($('#admin-chat-tab-attachment-preview'));
+});
+
+$('#admin-chat-tab-attachment-remove').addEventListener('click', () => {
+  state.adminChatTab.attachment = null;
+  $('#admin-chat-tab-file-input').value = '';
+  hide($('#admin-chat-tab-attachment-preview'));
+});
+
+$('#form-admin-chat-tab').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const userId = state.adminChatTab.activeUserId;
+  if (!userId) return;
+
+  const input = $('#admin-chat-tab-message');
+  const message = input.value.trim();
+  if (!message && !state.adminChatTab.attachment) return;
+
+  input.value = '';
+  const container = $('#admin-chat-tab-messages');
+  const empty = container.querySelector('.chat-empty');
+  if (empty) empty.remove();
+
+  const tempBubble = document.createElement('div');
+  tempBubble.className = 'chat-bubble user';
+  tempBubble.innerHTML = `${escapeHtml(message)}<span class="chat-time">mengirim...</span>`;
+  container.appendChild(tempBubble);
+  container.scrollTop = container.scrollHeight;
+
+  try {
+    let attachmentUrl = null;
+    let attachmentType = null;
+
+    if (state.adminChatTab.attachment) {
+      const file = state.adminChatTab.attachment;
+      const ext = file.name.split('.').pop();
+      const path = `${userId}/chat-${Date.now()}.${ext}`;
+      const isImage = ['jpg', 'jpeg', 'png', 'gif'].includes(ext.toLowerCase());
+
+      const { error: upErr } = await supabase.storage.from('documents').upload(path, file);
+      if (upErr) throw upErr;
+
+      const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path);
+      attachmentUrl = urlData.publicUrl;
+      attachmentType = isImage ? 'image' : 'pdf';
+    }
+
+    const { error } = await supabase.from('chat_messages').insert({
+      user_id: userId,
+      sender_id: state.user.id,
+      sender_role: 'admin',
+      message: attachmentUrl
+        ? embedAttachmentMarker(message, attachmentType, attachmentUrl)
+        : (message || '[Lampiran]')
+    });
+
+    if (error) throw error;
+
+    tempBubble.querySelector('.chat-time').textContent = formatTime(new Date());
+
+    await supabase.from('notifications').insert({
+      user_id: userId,
+      title: 'Pesan Baru dari Admin',
+      message: message.length > 80 ? message.slice(0, 80) + '...' : (message || 'Mengirim lampiran'),
+      type: 'info'
+    });
+
+    state.adminChatTab.attachment = null;
+    $('#admin-chat-tab-file-input').value = '';
+    hide($('#admin-chat-tab-attachment-preview'));
+  } catch (err) {
+    tempBubble.remove();
+    toast('error', 'Gagal Mengirim', err.message || 'Terjadi kesalahan');
+    input.value = message;
+  }
+});
+
+/* --- Picker "Chat Baru": pilih peserta yang akan diajak mulai percakapan --- */
+
+$('#btn-new-chat').addEventListener('click', openAdminChatPicker);
+$('#admin-chat-picker-close').addEventListener('click', closeAdminChatPicker);
+$('#admin-chat-picker-overlay').addEventListener('click', closeAdminChatPicker);
+
+function closeAdminChatPicker() {
+  hide($('#admin-chat-picker'));
+}
+
+async function openAdminChatPicker() {
+  show($('#admin-chat-picker'));
+  $('#admin-chat-picker-search').value = '';
+  const listEl = $('#admin-chat-picker-list');
+  listEl.innerHTML = '<div class="skeleton-card"></div>';
+
+  try {
+    if (!state.adminChatTab.allParticipants) {
+      const { data, error } = await supabase.from('profiles').select('id, full_name, email').eq('role', 'user').order('full_name');
+      if (error) throw error;
+      state.adminChatTab.allParticipants = data || [];
+    }
+    renderAdminChatPickerList('');
+  } catch (err) {
+    console.error('Load participants for picker error:', err);
+    listEl.innerHTML = '<div class="admin-chat-picker-empty">Gagal memuat daftar peserta.</div>';
+  }
+}
+
+function renderAdminChatPickerList(search) {
+  const listEl = $('#admin-chat-picker-list');
+  const term = search.toLowerCase();
+  let items = state.adminChatTab.allParticipants || [];
+
+  if (term) {
+    items = items.filter(p =>
+      (p.full_name || '').toLowerCase().includes(term) ||
+      (p.email || '').toLowerCase().includes(term)
+    );
+  }
+
+  if (items.length === 0) {
+    listEl.innerHTML = '<div class="admin-chat-picker-empty">Tidak ada peserta yang cocok.</div>';
+    return;
+  }
+
+  listEl.innerHTML = items.map(p => {
+    const initial = (p.full_name || '?').trim().charAt(0).toUpperCase();
+    return `
+      <div class="admin-chat-picker-item" onclick="startAdminChatFromPicker('${p.id}')">
+        <div class="admin-chat-avatar">${escapeHtml(initial)}</div>
+        <div>
+          <div class="admin-chat-picker-item-name">${escapeHtml(p.full_name || 'Peserta')}</div>
+          <div class="admin-chat-picker-item-email">${escapeHtml(p.email || '')}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+$('#admin-chat-picker-search').addEventListener('input', (e) => {
+  renderAdminChatPickerList(e.target.value);
+});
+
+window.startAdminChatFromPicker = function (userId) {
+  const profile = (state.adminChatTab.allParticipants || []).find(p => p.id === userId);
+  if (!profile) return;
+
+  closeAdminChatPicker();
+
+  let convo = state.adminChatTab.conversations.find(c => c.userId === userId);
+  if (!convo) {
+    convo = {
+      userId,
+      fullName: profile.full_name,
+      email: profile.email,
+      lastMessage: '',
+      lastAt: null,
+      unreadCount: 0
+    };
+    state.adminChatTab.conversations = [convo, ...state.adminChatTab.conversations];
+  }
+
+  selectAdminChatConversation(userId);
+};
+
+// Tombol chat di baris tabel Kelola Peserta sekarang langsung membuka tab
+// Chat ini (bukan modal terpisah lagi), supaya semua percakapan terpusat
+// di satu tempat dan riwayatnya konsisten dengan daftar di tab Chat.
+window.goToAdminChat = function (userId, fullName, email) {
+  navigateTo('admin-chat');
+
+  let convo = state.adminChatTab.conversations.find(c => c.userId === userId);
+  if (!convo) {
+    convo = {
+      userId,
+      fullName: fullName || 'Peserta',
+      email: email || '',
+      lastMessage: '',
+      lastAt: null,
+      unreadCount: 0
+    };
+    state.adminChatTab.conversations = [convo, ...state.adminChatTab.conversations];
+  }
+
+  // loadAdminChatPage() dari navigateTo() berjalan async; beri sedikit jeda
+  // supaya daftar percakapan (termasuk convo di atas) sudah dirender dulu
+  // sebelum kita memilihnya.
+  setTimeout(() => selectAdminChatConversation(userId), 250);
+};
 
 function renderPagination() {
   const { filtered, page, perPage } = state.adminTable;
