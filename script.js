@@ -9,6 +9,16 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// FIX: sebelumnya email konfirmasi signup mengarah balik ke index.html (app
+// penuh), sehingga loading setelah klik link jadi tidak konsisten (tergantung
+// webview email & cold-start seluruh app). Sekarang diarahkan ke halaman
+// statis ringan confirmed.html yang cuma menampilkan notifikasi sukses —
+// peserta lalu membuka aplikasi secara manual dan login normal.
+// PENTING: URL ini juga wajib didaftarkan di Supabase Dashboard ->
+// Authentication -> URL Configuration -> Redirect URLs, kalau tidak
+// Supabase akan menolak redirect dan fallback ke Site URL default.
+const EMAIL_CONFIRM_REDIRECT = window.location.origin + window.location.pathname.replace(/index\.html$/, '').replace(/\/$/, '') + '/confirmed.html';
+
 /* ============================================ */
 /* STATE */
 /* ============================================ */
@@ -692,7 +702,8 @@ $('#form-login').addEventListener('submit', async (e) => {
             try {
               const { error: resendError } = await supabase.auth.resend({
                 type: 'signup',
-                email
+                email,
+                options: { emailRedirectTo: EMAIL_CONFIRM_REDIRECT }
               });
               if (resendError) {
                 toast('error', 'Gagal Mengirim Ulang', resendError.message);
@@ -740,7 +751,10 @@ $('#form-register').addEventListener('submit', async (e) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name, phone } }
+      options: {
+        data: { full_name, phone },
+        emailRedirectTo: EMAIL_CONFIRM_REDIRECT
+      }
     });
 
     setLoading(btn, false);
@@ -3392,7 +3406,11 @@ function renderAdminVerifikasi() {
 
 window.resendVerificationEmail = async function(email) {
   try {
-    const { error } = await supabase.auth.resend({ type: 'signup', email });
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: EMAIL_CONFIRM_REDIRECT }
+    });
     if (error) {
       toast('error', 'Gagal Mengirim', error.message);
       return;
