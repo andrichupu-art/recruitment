@@ -1138,25 +1138,6 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   border-radius: 0 0 70px 70px;
   box-shadow: var(--shadow-md);
 }
-/* Watermark pola asli (logo_3.svg — sama dengan motif yang dipakai di
-   background aplikasi) ditumpuk di atas navy pakai mix-blend-mode: soft-light,
-   teknik yang sama seperti body::before pada [data-theme="dark"], supaya
-   pola emasnya terlihat sebagai aksen lembut di atas warna gelap. Pola ini
-   memudar ke navy solid di bagian bawah pakai mask-image gradient. */
-.home-hero::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: url('logo_3.svg');
-  background-repeat: repeat;
-  background-size: 130px auto;
-  background-position: center top;
-  opacity: 0.55;
-  mix-blend-mode: soft-light;
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 55%, rgba(0,0,0,0) 100%);
-  mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 55%, rgba(0,0,0,0) 100%);
-  pointer-events: none;
-}
 .home-hero-text,
 .home-hero-logo {
   position: relative;
@@ -1429,47 +1410,127 @@ button.home-card { cursor: pointer; }
 .timeline {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  position: relative;
-  padding-left: 28px;
+  gap: 14px;
 }
 
 .timeline-item {
   position: relative;
-  padding-bottom: 22px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px 14px 14px;
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
-.timeline-item::before {
-  content: '';
-  position: absolute;
-  left: -22px;
-  top: 4px;
-  width: 12px;
-  height: 12px;
+.timeline-icon {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: var(--gray-300);
-  border: 2px solid var(--white);
-  box-shadow: 0 0 0 2px var(--gray-300);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--gray-200);
+  color: var(--gray-500);
 }
+.timeline-icon svg { width: 17px; height: 17px; }
 
-.timeline-item::after {
+.timeline-item.completed .timeline-icon { background: var(--green-500); color: var(--white); }
+.timeline-item.current .timeline-icon { background: var(--gradient-focus); color: var(--white); box-shadow: var(--glow-focus); }
+
+.timeline-item:not(:last-child)::after {
   content: '';
   position: absolute;
-  left: -17px;
-  top: 16px;
-  bottom: 0;
+  left: 31px;
+  top: 48px;
+  bottom: -14px;
   width: 2px;
   background: var(--gray-200);
 }
+.timeline-item.completed:not(:last-child)::after { background: var(--green-500); }
 
-.timeline-item:last-child::after { display: none; }
+.timeline-body { flex: 1; min-width: 0; }
 
-.timeline-item.completed::before { background: var(--green-500); box-shadow: 0 0 0 2px var(--green-500); }
-.timeline-item.current::before { background: var(--blue-600); box-shadow: 0 0 0 4px var(--blue-100); }
+.timeline-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 
-.timeline-title { font-size: 14px; font-weight: 600; color: var(--gray-800); }
-.timeline-desc { font-size: 12.5px; color: var(--gray-500); margin-top: 2px; }
-.timeline-date { font-size: 11px; color: var(--gray-400); margin-top: 4px; }
+.timeline-title { font-size: 14px; font-weight: 700; color: var(--gray-800); }
+.timeline-desc { font-size: 12.5px; color: var(--gray-500); margin-top: 3px; }
+
+.timeline-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: var(--gray-100);
+  color: var(--gray-500);
+}
+.timeline-badge.completed { background: var(--tonal-green); color: var(--tonal-green-ink); }
+.timeline-badge.current { background: var(--tonal-orange); color: var(--tonal-orange-ink); animation: timelinePulse 1.8s ease-in-out infinite; }
+
+@keyframes timelinePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+/* ============================================ */
+/* ALUR PROGRESS — versi lebih interaktif & penuh */
+/* layar, KHUSUS tampilan HP.                     */
+/* ============================================ */
+@media (max-width: 900px) {
+  .timeline { gap: 18px; }
+
+  .timeline-item {
+    padding: 18px 18px 18px 16px;
+    gap: 16px;
+    opacity: 0;
+    transform: translateY(10px);
+    animation: timelineReveal 0.45s ease-out forwards;
+  }
+  @keyframes timelineReveal {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .timeline-item:active { transform: scale(0.98); }
+
+  .timeline-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 15px;
+  }
+  .timeline-icon svg { width: 20px; height: 20px; }
+
+  .timeline-item.current .timeline-icon {
+    animation: timelineIconGlow 1.8s ease-in-out infinite;
+  }
+  @keyframes timelineIconGlow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(21, 46, 69, 0.45); }
+    50% { box-shadow: 0 0 0 8px rgba(21, 46, 69, 0); }
+  }
+
+  .timeline-item:not(:last-child)::after {
+    left: 37px;
+    top: 56px;
+    bottom: -18px;
+    width: 3px;
+  }
+
+  .timeline-title { font-size: 15px; }
+  .timeline-desc { font-size: 13px; }
+  .timeline-badge { font-size: 11px; padding: 4px 10px; }
+}
 
 /* ============================================ */
 /* DARK MODE ADDITIONS (foundation) */
