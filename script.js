@@ -413,7 +413,7 @@ if (installBtn) {
     installBtn.disabled = false;
     hide(installBanner);
     if (outcome === 'accepted' && typeof toast === 'function') {
-      toast('success', 'Aplikasi Terinstall', 'GlobalWork berhasil ditambahkan ke perangkat Anda.');
+      toast('success', 'Aplikasi Terinstall', 'PT. Juara berhasil ditambahkan ke perangkat Anda.');
     }
   });
 }
@@ -3247,7 +3247,7 @@ $('#btn-export-excel').addEventListener('click', () => {
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Peserta');
-  XLSX.writeFile(wb, 'peserta-globalwork.xlsx');
+  XLSX.writeFile(wb, 'peserta-pt-juara.xlsx');
   toast('success', 'Export Berhasil', 'File Excel telah diunduh');
 });
 
@@ -3261,7 +3261,7 @@ $('#btn-export-pdf').addEventListener('click', () => {
   const doc = new jsPDF();
 
   doc.setFontSize(18);
-  doc.text('Data Peserta - GlobalWork', 14, 22);
+  doc.text('Data Peserta - PT. Juara', 14, 22);
   doc.setFontSize(11);
   doc.text(`Tanggal: ${formatDate(new Date())}`, 14, 30);
 
@@ -3281,7 +3281,7 @@ $('#btn-export-pdf').addEventListener('click', () => {
     headStyles: { fillColor: [37, 99, 235] }
   });
 
-  doc.save('peserta-globalwork.pdf');
+  doc.save('peserta-pt-juara.pdf');
   toast('success', 'Export Berhasil', 'File PDF telah diunduh');
 });
 
