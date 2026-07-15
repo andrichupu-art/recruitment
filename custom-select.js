@@ -250,7 +250,15 @@
           );
           selects.forEach(function (sel) {
             var wrapper = sel.closest ? sel.closest('.custom-select') : null;
-            if (wrapper && wrapper.__csPanel && wrapper.__csPanel.parentNode) {
+            // PENTING: saat select baru pertama kali di-enhance, ia juga "dipindah"
+            // (insertBefore + appendChild) ke dalam wrapper-nya sendiri — perpindahan
+            // ini turut tercatat sebagai mutation "removedNodes" oleh observer yang
+            // sama, padahal select-nya masih ada di halaman (cuma pindah wadah).
+            // Kalau langsung dibersihkan di sini, panel yang baru saja dibuat malah
+            // ikut terhapus. Makanya cek dulu: wrapper-nya masih nempel ke dokumen
+            // atau tidak (isConnected). Hanya bersihkan panel kalau wrapper-nya
+            // benar-benar sudah lepas dari halaman (mis. baris tabelnya dihapus).
+            if (wrapper && !wrapper.isConnected && wrapper.__csPanel && wrapper.__csPanel.parentNode) {
               wrapper.__csPanel.parentNode.removeChild(wrapper.__csPanel);
             }
           });
