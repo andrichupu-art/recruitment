@@ -1,13 +1,26 @@
 /* ============================================================
    SERVICE WORKER - GlobalWork PWA
+   ============================================================
+   PENTING (biar tidak ada lagi kasus "browser beda, tampilan beda"):
+   Setiap kali index.html, style.css, script.js, atau custom-select.js
+   diubah dan di-deploy ulang, WAJIB:
+   1. Naikkan angka versi query (?v=...) pada file yang berubah, di
+      SEMUA tempat file itu direferensikan — yaitu di index.html
+      (tag <link>/<script>) DAN di daftar URLS_TO_CACHE di bawah ini
+      (keduanya harus sama persis).
+   2. Naikkan juga CACHE_NAME (mis. v3 -> v4).
+   Kalau CACHE_NAME tidak berubah, browser akan menganggap sw.js ini
+   tidak berubah sama sekali dan TIDAK akan menjalankan ulang proses
+   install/activate — akibatnya file lama yang sudah di-cache browser
+   akan terus dipakai selamanya, walau file di server sudah baru.
    ============================================================ */
-const CACHE_NAME = 'globalwork-v2';
+const CACHE_NAME = 'globalwork-v4';
 const URLS_TO_CACHE = [
   './',
   './index.html',
-  './style.css?v=3',
-  './script.js',
-  './custom-select.js',
+  './style.css?v=7',
+  './script.js?v=10',
+  './custom-select.js?v=3',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
