@@ -3957,16 +3957,57 @@ window.editCountry = async function(id) {
   }
 };
 
+/* ============================================ */
+/* DATA REFERENSI NEGARA TUJUAN KERJA (UMUM) */
+/* Dipakai untuk auto-fill Kode/Emoji/Region/Mata Uang/Bahasa saat admin
+   memilih negara dari dropdown di form Tambah/Edit Negara Tujuan. Bukan
+   daftar lengkap 195 negara dunia, hanya negara-negara yang umum jadi
+   tujuan penempatan PMI, supaya cepat dipilih dan datanya konsisten. */
+const COMMON_DESTINATION_COUNTRIES = [
+  { name: 'Arab Saudi', code: 'SA', flag_emoji: '🇸🇦', region: 'Timur Tengah', currency: 'SAR', language: 'Arab' },
+  { name: 'Uni Emirat Arab', code: 'AE', flag_emoji: '🇦🇪', region: 'Timur Tengah', currency: 'AED', language: 'Arab' },
+  { name: 'Qatar', code: 'QA', flag_emoji: '🇶🇦', region: 'Timur Tengah', currency: 'QAR', language: 'Arab' },
+  { name: 'Kuwait', code: 'KW', flag_emoji: '🇰🇼', region: 'Timur Tengah', currency: 'KWD', language: 'Arab' },
+  { name: 'Oman', code: 'OM', flag_emoji: '🇴🇲', region: 'Timur Tengah', currency: 'OMR', language: 'Arab' },
+  { name: 'Bahrain', code: 'BH', flag_emoji: '🇧🇭', region: 'Timur Tengah', currency: 'BHD', language: 'Arab' },
+  { name: 'Yordania', code: 'JO', flag_emoji: '🇯🇴', region: 'Timur Tengah', currency: 'JOD', language: 'Arab' },
+  { name: 'Malaysia', code: 'MY', flag_emoji: '🇲🇾', region: 'Asia Tenggara', currency: 'MYR', language: 'Melayu' },
+  { name: 'Singapura', code: 'SG', flag_emoji: '🇸🇬', region: 'Asia Tenggara', currency: 'SGD', language: 'Inggris' },
+  { name: 'Brunei Darussalam', code: 'BN', flag_emoji: '🇧🇳', region: 'Asia Tenggara', currency: 'BND', language: 'Melayu' },
+  { name: 'Taiwan', code: 'TW', flag_emoji: '🇹🇼', region: 'Asia Timur', currency: 'TWD', language: 'Mandarin' },
+  { name: 'Hong Kong', code: 'HK', flag_emoji: '🇭🇰', region: 'Asia Timur', currency: 'HKD', language: 'Kanton' },
+  { name: 'Jepang', code: 'JP', flag_emoji: '🇯🇵', region: 'Asia Timur', currency: 'JPY', language: 'Jepang' },
+  { name: 'Korea Selatan', code: 'KR', flag_emoji: '🇰🇷', region: 'Asia Timur', currency: 'KRW', language: 'Korea' }
+];
+
 function openCountryModal(existing = null) {
   const modal = $('#preview-modal');
   const body = $('#preview-body');
   $('#preview-title').textContent = existing ? 'Edit Negara' : 'Tambah Negara';
 
+  // Tentukan apakah negara yang sedang diedit ada di daftar referensi umum,
+  // supaya dropdown bisa langsung terpilih ke negara itu. Kalau tidak ada
+  // (mis. negara di luar daftar umum yang dulu diinput manual), fallback ke
+  // opsi "Lainnya" dan tampilkan kolom Nama Negara manual terisi otomatis.
+  const matched = existing ? COMMON_DESTINATION_COUNTRIES.find(c => c.name === existing.name) : null;
+  const isCustom = !!existing && !matched;
+
+  let countrySelectOptions = '<option value="">Pilih negara...</option>';
+  countrySelectOptions += COMMON_DESTINATION_COUNTRIES.map(c =>
+    `<option value="${escapeHtml(c.name)}" ${existing?.name === c.name ? 'selected' : ''}>${c.flag_emoji} ${escapeHtml(c.name)}</option>`
+  ).join('');
+  countrySelectOptions += `<option value="__custom__" ${isCustom ? 'selected' : ''}>Lainnya (isi manual)</option>`;
+
   body.innerHTML = `
     <form id="form-country" style="display: flex; flex-direction: column; gap: 14px;" novalidate>
       <div class="input-group">
-        <label>Nama Negara</label>
-        <input type="text" id="country-name" value="${escapeHtml(existing?.name || '')}" required />
+        <label>Negara</label>
+        <select id="country-select" required>${countrySelectOptions}</select>
+        <span class="field-error"></span>
+      </div>
+      <div class="input-group ${isCustom ? '' : 'hidden'}" id="country-custom-name-group">
+        <label>Nama Negara (manual)</label>
+        <input type="text" id="country-name" value="${escapeHtml(isCustom ? existing.name : '')}" ${isCustom ? 'required' : ''} />
         <span class="field-error"></span>
       </div>
       <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
@@ -4004,15 +4045,57 @@ function openCountryModal(existing = null) {
 
   show(modal);
 
+  // Saat admin memilih negara dari daftar umum: auto-isi kode, emoji, region,
+  // mata uang, dan bahasa (tetap bisa diubah manual kalau perlu). Saat pilih
+  // "Lainnya", tampilkan kolom Nama Negara manual dan kosongkan field lain
+  // supaya diisi sendiri.
+  $('#country-select').addEventListener('change', (e) => {
+    const val = e.target.value;
+    const customGroup = $('#country-custom-name-group');
+    if (val === '__custom__') {
+      customGroup.classList.remove('hidden');
+      $('#country-name').setAttribute('required', 'required');
+      $('#country-name').value = '';
+      $('#country-code').value = '';
+      $('#country-flag').value = '';
+      $('#country-region').value = '';
+      $('#country-currency').value = '';
+      $('#country-language').value = '';
+      $('#country-name').focus();
+      return;
+    }
+    customGroup.classList.add('hidden');
+    $('#country-name').removeAttribute('required');
+    const ref = COMMON_DESTINATION_COUNTRIES.find(c => c.name === val);
+    if (ref) {
+      $('#country-code').value = ref.code;
+      $('#country-flag').value = ref.flag_emoji;
+      $('#country-region').value = ref.region;
+      $('#country-currency').value = ref.currency;
+      $('#country-language').value = ref.language;
+    }
+  });
+
   $('#form-country').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!validateForm(e.target)) return;
-    
+
+    const selectVal = $('#country-select').value;
+    if (!selectVal) {
+      toast('error', 'Gagal', 'Pilih negara terlebih dahulu');
+      return;
+    }
+    const finalName = selectVal === '__custom__' ? $('#country-name').value.trim() : selectVal;
+    if (!finalName) {
+      toast('error', 'Gagal', 'Nama negara wajib diisi');
+      return;
+    }
+
     const btn = e.target.querySelector('button[type="submit"]');
     setLoading(btn, true);
 
     const payload = {
-      name: $('#country-name').value.trim(),
+      name: finalName,
       code: $('#country-code').value.trim().toUpperCase(),
       flag_emoji: $('#country-flag').value.trim(),
       region: $('#country-region').value.trim(),
