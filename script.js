@@ -39,7 +39,6 @@ const state = {
     activeUserId: null,
     activeName: '',
     activeEmail: '',
-    channel: null,
     attachment: null,
     allParticipants: null // cache daftar peserta untuk picker "Chat Baru"
   },
@@ -769,12 +768,6 @@ $$('.toggle-password').forEach(btn => {
 /* DASHBOARD ROUTING */
 /* ============================================ */
 function navigateTo(page) {
-  // Tutup realtime channel tab Chat admin saat berpindah keluar dari halaman itu,
-  // supaya tidak ada channel supabase yang menumpuk/nyangkut di background.
-  if (state.currentPage === 'admin-chat' && page !== 'admin-chat') {
-    closeAdminChatTabChannel();
-  }
-
   state.currentPage = page;
   $$('.view').forEach(v => v.classList.remove('active'));
   const view = $(`#view-${page}`);
@@ -2670,8 +2663,6 @@ async function loadAdminChatPage() {
     if (state.adminChatTab.activeUserId) {
       await loadAdminChatTabMessages(state.adminChatTab.activeUserId);
     }
-
-    subscribeAdminChatTabRealtime();
   } catch (err) {
     console.error('Load admin chat page error:', err);
     if (listEl) listEl.innerHTML = '<div class="admin-chat-list-empty">Gagal memuat percakapan.</div>';
@@ -2808,59 +2799,57 @@ async function loadAdminChatTabMessages(userId) {
   }
 }
 
-function subscribeAdminChatTabRealtime() {
-  if (state.adminChatTab.channel) return; // sudah ada, tidak perlu subscribe ulang
-  state.adminChatTab.channel = supabase
-    .channel('admin-chat-tab')
-    .on('postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'chat_messages' },
-      async (payload) => {
-        const msg = payload.new;
-        let convo = state.adminChatTab.conversations.find(c => c.userId === msg.user_id);
+// Dipanggil dari channel realtime GLOBAL (lihat subscribeRealtime) setiap ada
+// pesan baru dari peserta manapun - jalan terus selama admin login, tidak
+// cuma saat tab Chat sedang dibuka. Ini yang memunculkan toast + suara +
+// notifikasi browser walau admin sedang di halaman lain (mis. Kelola Peserta).
+async function handleIncomingChatMessageForAdmin(msg) {
+  if (msg.sender_role !== 'user') return;
 
-        if (!convo) {
-          // Percakapan baru yang belum pernah muncul di daftar - ambil nama pesertanya.
-          const { data: profile } = await supabase.from('profiles').select('full_name, email').eq('id', msg.user_id).single();
-          convo = {
-            userId: msg.user_id,
-            fullName: profile ? profile.full_name : 'Peserta',
-            email: profile ? profile.email : '',
-            lastMessage: '',
-            lastAt: null,
-            unreadCount: 0
-          };
-          state.adminChatTab.conversations.push(convo);
-        }
-
-        convo.lastMessage = chatListPreviewText(msg);
-        convo.lastAt = msg.created_at;
-        if (msg.sender_role === 'user' && state.adminChatTab.activeUserId !== msg.user_id) {
-          convo.unreadCount = (convo.unreadCount || 0) + 1;
-        }
-
-        // Pindahkan percakapan ini ke posisi paling atas.
-        state.adminChatTab.conversations = [
-          convo,
-          ...state.adminChatTab.conversations.filter(c => c.userId !== msg.user_id)
-        ];
-
-        renderAdminChatList();
-        updateAdminChatNavBadge();
-
-        // Kalau percakapan ini sedang dibuka, tambahkan bubble-nya langsung & tandai terbaca.
-        if (msg.sender_role !== 'admin' && state.adminChatTab.activeUserId === msg.user_id) {
-          loadAdminChatTabMessages(msg.user_id);
-        }
-      }
-    )
-    .subscribe();
-}
-
-function closeAdminChatTabChannel() {
-  if (state.adminChatTab.channel) {
-    supabase.removeChannel(state.adminChatTab.channel);
-    state.adminChatTab.channel = null;
+  let convo = state.adminChatTab.conversations.find(c => c.userId === msg.user_id);
+  if (!convo) {
+    const { data: profile } = await supabase.from('profiles').select('full_name, email').eq('id', msg.user_id).single();
+    convo = {
+      userId: msg.user_id,
+      fullName: profile ? profile.full_name : 'Peserta',
+      email: profile ? profile.email : '',
+      lastMessage: '',
+      lastAt: null,
+      unreadCount: 0
+    };
+    state.adminChatTab.conversations.push(convo);
   }
+
+  convo.lastMessage = chatListPreviewText(msg);
+  convo.lastAt = msg.created_at;
+
+  const isViewingThisConvo = state.currentPage === 'admin-chat' && state.adminChatTab.activeUserId === msg.user_id;
+
+  if (isViewingThisConvo) {
+    // Admin sedang lihat percakapan ini langsung -> cukup update panel & tandai
+    // terbaca, tidak perlu toast/suara karena pesannya sudah kelihatan.
+    loadAdminChatTabMessages(msg.user_id);
+  } else {
+    convo.unreadCount = (convo.unreadCount || 0) + 1;
+
+    toast('info', 'Pesan Baru dari Peserta', `${convo.fullName}: ${convo.lastMessage}`);
+    playNotificationSound();
+    showBrowserNotification('Pesan Baru dari Peserta', `${convo.fullName}: ${convo.lastMessage}`);
+
+    // Sinkronkan titik unread di tombol chat pada tabel Kelola Peserta (kalau lagi ter-render).
+    const participant = state.adminTable.data.find(p => p.id === msg.user_id);
+    if (participant) participant.unreadChat = (participant.unreadChat || 0) + 1;
+    const chatBtn = document.querySelector(`.btn-chat-action[data-user-id="${msg.user_id}"]`);
+    if (chatBtn) chatBtn.classList.add('has-unread');
+  }
+
+  // Pindahkan percakapan ini ke posisi paling atas & refresh badge total.
+  state.adminChatTab.conversations = [
+    convo,
+    ...state.adminChatTab.conversations.filter(c => c.userId !== msg.user_id)
+  ];
+  if (state.currentPage === 'admin-chat') renderAdminChatList();
+  updateAdminChatNavBadge();
 }
 
 // Lampiran untuk chat tab (sama persis polanya dengan chat peserta)
@@ -4459,12 +4448,36 @@ function subscribeRealtime() {
           }
         } else {
           toast('info', 'Pesan baru', 'Anda menerima pesan dari admin');
+          playNotificationSound();
           showBrowserNotification('Pesan Baru', 'Anda menerima pesan dari admin');
         }
       })
       .subscribe();
 
     state.realtimeChannels.push(chatChannel);
+
+    // Chat realtime KHUSUS ADMIN: channel di atas (chat-<user.id>) tidak pernah
+    // cocok untuk admin karena filternya `user_id=eq.<id akun admin>`, padahal
+    // chat_messages.user_id selalu berisi ID PESERTA, bukan ID admin. Akibatnya
+    // sebelum ini admin tidak pernah dapat notifikasi chat masuk sama sekali
+    // (kecuali sedang membuka tab Chat itu sendiri). Channel terpisah ini
+    // mendengarkan pesan dari peserta MANAPUN, aktif selama admin login, di
+    // halaman manapun - bukan cuma saat tab Chat sedang dibuka.
+    if (state.isAdmin) {
+      const adminChatGlobalChannel = supabase
+        .channel('admin-chat-global-' + state.user.id)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: 'sender_role=eq.user'
+        }, (payload) => {
+          handleIncomingChatMessageForAdmin(payload.new);
+        })
+        .subscribe();
+
+      state.realtimeChannels.push(adminChatGlobalChannel);
+    }
 
     // Notifications realtime
     const notifChannel = supabase
@@ -4569,6 +4582,38 @@ function showBrowserNotification(title, body) {
     } catch (err) {
       console.error('Browser notification error:', err);
     }
+  }
+}
+
+// Beep notifikasi 2 nada (mirip "ting" WhatsApp) memakai Web Audio API,
+// jadi tidak perlu file .mp3/.wav terpisah. Dipakai untuk pesan chat masuk,
+// baik di sisi admin maupun peserta, selama aplikasi/tab sedang terbuka.
+let sharedNotifAudioCtx = null;
+function playNotificationSound() {
+  try {
+    if (!sharedNotifAudioCtx) {
+      sharedNotifAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    const ctx = sharedNotifAudioCtx;
+    if (ctx.state === 'suspended') ctx.resume();
+
+    const now = ctx.currentTime;
+    [880, 660].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const start = now + i * 0.12;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.25, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.22);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.25);
+    });
+  } catch (err) {
+    console.error('Play notification sound error:', err);
   }
 }
 
