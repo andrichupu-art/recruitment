@@ -1138,19 +1138,23 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   border-radius: 0 0 70px 70px;
   box-shadow: var(--shadow-md);
 }
-/* Watermark pola lattice/quatrefoil krem tipis di atas navy, senada dengan
-   motif dekoratif yang sudah dipakai di background aplikasi (body::before),
-   supaya area hero juga punya sentuhan pola yang sama. */
+/* Watermark pola asli (logo_3.svg — sama dengan motif yang dipakai di
+   background aplikasi) ditumpuk di atas navy pakai mix-blend-mode: soft-light,
+   teknik yang sama seperti body::before pada [data-theme="dark"], supaya
+   pola emasnya terlihat sebagai aksen lembut di atas warna gelap. Pola ini
+   memudar ke navy solid di bagian bawah pakai mask-image gradient. */
 .home-hero::before {
   content: "";
   position: absolute;
   inset: 0;
-  background-image:
-    radial-gradient(circle at 0 0, transparent 21px, rgba(239, 229, 207, 0.16) 22px, rgba(239, 229, 207, 0.16) 23px, transparent 24px),
-    radial-gradient(circle at 100% 0, transparent 21px, rgba(239, 229, 207, 0.16) 22px, rgba(239, 229, 207, 0.16) 23px, transparent 24px),
-    radial-gradient(circle at 0 100%, transparent 21px, rgba(239, 229, 207, 0.16) 22px, rgba(239, 229, 207, 0.16) 23px, transparent 24px),
-    radial-gradient(circle at 100% 100%, transparent 21px, rgba(239, 229, 207, 0.16) 22px, rgba(239, 229, 207, 0.16) 23px, transparent 24px);
-  background-size: 60px 60px;
+  background-image: url('logo_3.svg');
+  background-repeat: repeat;
+  background-size: 130px auto;
+  background-position: center top;
+  opacity: 0.55;
+  mix-blend-mode: soft-light;
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 55%, rgba(0,0,0,0) 100%);
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 55%, rgba(0,0,0,0) 100%);
   pointer-events: none;
 }
 .home-hero-text,
