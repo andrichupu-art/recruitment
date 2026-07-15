@@ -1169,7 +1169,7 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   font-size: 15px;
   font-weight: 600;
   color: var(--gray-800);
-  margin: 24px 0 14px;
+  margin: 10px 0 10px;
 }
 
 /* ============================================ */
@@ -1260,7 +1260,7 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: var(--bento-gap);
-  margin-bottom: 22px;
+  margin-bottom: 10px;
 }
 
 .home-card {
@@ -3626,6 +3626,25 @@ button.home-card { cursor: pointer; }
   font-size: 13px;
   color: var(--gray-600);
   line-height: 1.5;
+}
+
+/* Kartu Pengumuman Terbaru di Beranda dibuat lebih ringkas (padding, font,
+   dan jarak antar-kartu diperkecil) supaya seluruh halaman muat tanpa
+   perlu scroll di layar HP. Di-scope ke #home-announcements saja supaya
+   tidak mengubah tampilan .card-item di halaman lain (Jadwal, Notifikasi,
+   Kelola Pengumuman admin, dll). */
+#home-announcements.card-list { gap: 8px; }
+#home-announcements .card-item { padding: 10px 14px; }
+#home-announcements .card-item-header { margin-bottom: 3px; }
+#home-announcements .card-item-title { font-size: 13px; }
+#home-announcements .card-item-meta { font-size: 11px; margin-top: 0; }
+#home-announcements .card-item-body {
+  font-size: 12px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .status-badge {
