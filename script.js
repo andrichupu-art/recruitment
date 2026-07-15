@@ -1648,17 +1648,27 @@ async function loadProgress() {
       : (percent === 100 ? 'Semua tahapan selesai 🎉' : 'Memuat data...');
 
     const container = $('#progress-timeline');
-    container.innerHTML = TIMELINE_STEPS.map(step => {
+    container.innerHTML = TIMELINE_STEPS.map((step, idx) => {
       const isCompleted = step.step < currentStep;
       const isCurrent = step.step === currentStep;
-      const statusClass = isCompleted ? 'completed' : isCurrent ? 'current' : '';
-      
+      const statusClass = isCompleted ? 'completed' : isCurrent ? 'current' : 'upcoming';
+      const statusLabel = isCompleted ? 'Selesai' : isCurrent ? 'Sedang Diproses' : 'Menunggu';
+
+      const icon = isCompleted
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>'
+        : isCurrent
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+        : `<span>${step.step}</span>`;
+
       return `
-        <div class="timeline-item ${statusClass}">
-          <div class="timeline-title">${step.step}. ${step.title}</div>
-          <div class="timeline-desc">${step.desc}</div>
-          <div class="timeline-date">
-            ${isCompleted ? '✓ Selesai' : isCurrent ? '⏳ Sedang Diproses' : '○ Belum'}
+        <div class="timeline-item ${statusClass}" style="animation-delay:${idx * 60}ms">
+          <div class="timeline-icon">${icon}</div>
+          <div class="timeline-body">
+            <div class="timeline-title-row">
+              <div class="timeline-title">${step.title}</div>
+              <span class="timeline-badge ${statusClass}">${statusLabel}</span>
+            </div>
+            <div class="timeline-desc">${step.desc}</div>
           </div>
         </div>
       `;
