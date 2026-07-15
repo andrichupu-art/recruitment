@@ -26,7 +26,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
 
-  <link rel="stylesheet" href="style.css?v=5" />
+  <link rel="stylesheet" href="style.css?v=7" />
 </head>
 <body>
 
@@ -453,6 +453,13 @@
           </svg>
           <span>Kelola Peserta</span>
         </a>
+        <a href="#" class="nav-item" data-page="admin-chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span>Chat</span>
+          <span class="nav-item-badge hidden" id="admin-chat-nav-badge">0</span>
+        </a>
         <a href="#" class="nav-item" data-page="admin-verifikasi">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="2" y="4" width="20" height="16" rx="2"/>
@@ -753,6 +760,96 @@
           </table>
         </div>
         <div class="table-pagination" id="admin-pagination"><div class="skeleton-bar short"></div></div>
+      </section>
+
+      <!-- ADMIN: CHAT (ala WhatsApp) -->
+      <section id="view-admin-chat" class="view">
+        <div class="view-header">
+          <h1>Chat</h1>
+          <p>Percakapan dengan peserta</p>
+        </div>
+        <div class="admin-chat-wrap glass">
+          <div class="admin-chat-sidebar" id="admin-chat-sidebar">
+            <div class="admin-chat-sidebar-head">
+              <div class="table-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="admin-chat-search" placeholder="Cari peserta..." />
+              </div>
+              <button type="button" class="btn btn-primary btn-sm admin-chat-new-btn" id="btn-new-chat">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Chat Baru
+              </button>
+            </div>
+            <div class="admin-chat-list" id="admin-chat-list">
+              <div class="skeleton-card"></div>
+            </div>
+          </div>
+
+          <div class="admin-chat-panel" id="admin-chat-panel">
+            <div class="admin-chat-panel-empty" id="admin-chat-panel-empty">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <p>Pilih peserta di daftar untuk mulai chat, atau klik "Chat Baru"</p>
+            </div>
+
+            <div class="admin-chat-panel-active hidden" id="admin-chat-panel-active">
+              <div class="admin-chat-panel-header">
+                <button type="button" class="icon-btn admin-chat-back-btn" id="admin-chat-back-btn" aria-label="Kembali">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <div class="admin-chat-avatar" id="admin-chat-header-avatar">?</div>
+                <div class="admin-chat-header-info">
+                  <h4 id="admin-chat-header-name">-</h4>
+                  <p id="admin-chat-header-email">-</p>
+                </div>
+              </div>
+
+              <div class="chat-messages" id="admin-chat-tab-messages">
+                <div class="chat-empty"><p>Memuat pesan...</p></div>
+              </div>
+
+              <div class="chat-attachment-preview hidden" id="admin-chat-tab-attachment-preview">
+                <div class="attachment-info">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                  <span id="admin-chat-tab-attachment-name">file.pdf</span>
+                </div>
+                <button type="button" class="icon-btn" id="admin-chat-tab-attachment-remove">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+
+              <form class="chat-input" id="form-admin-chat-tab" novalidate>
+                <button type="button" class="icon-btn" id="admin-chat-tab-attach-btn" title="Lampirkan file">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                </button>
+                <input type="file" id="admin-chat-tab-file-input" accept="image/*,.pdf" class="hidden" />
+                <input type="text" id="admin-chat-tab-message" placeholder="Ketik pesan ke peserta..." autocomplete="off" />
+                <button type="submit" class="btn btn-primary" aria-label="Kirim">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- OVERLAY: PILIH PESERTA UNTUK CHAT BARU -->
+        <div class="admin-chat-picker hidden" id="admin-chat-picker">
+          <div class="admin-chat-picker-overlay" id="admin-chat-picker-overlay"></div>
+          <div class="admin-chat-picker-box glass">
+            <div class="admin-chat-picker-head">
+              <h3>Pilih Peserta</h3>
+              <button type="button" class="icon-btn" id="admin-chat-picker-close" aria-label="Tutup">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div class="table-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="admin-chat-picker-search" placeholder="Cari nama atau email..." />
+            </div>
+            <div class="admin-chat-picker-list" id="admin-chat-picker-list">
+              <div class="skeleton-card"></div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- ADMIN: VERIFIKASI EMAIL -->
