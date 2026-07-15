@@ -1776,7 +1776,7 @@ button.home-card { cursor: pointer; }
 .splash-loader-bar {
   height: 100%;
   width: 30%;
-  background: linear-gradient(90deg, var(--gold-500), var(--coral-500));
+  background: var(--gradient-focus);
   border-radius: 14px;
   animation: splashLoad 1.5s infinite ease-in-out;
 }
@@ -3176,42 +3176,22 @@ button.home-card { cursor: pointer; }
 .priority-low { border-left: 4px solid var(--gray-400); }
 
 /* ============================================ */
-/* MOBILE LOGOUT BUTTON (pojok kanan atas, HP saja) */
+/* LOGOUT DI DALAM BOTTOM NAVBAR (tampilan HP) */
 /* ============================================ */
-.mobile-logout-btn {
-  display: none;
-  position: fixed;
-  top: calc(12px + env(safe-area-inset-top));
-  right: 14px;
-  z-index: 300;
-  width: 40px;
-  height: 40px;
-  align-items: center;
-  justify-content: center;
+.bottom-item-logout {
+  background: none;
   border: none;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.9);
-  backdrop-filter: blur(10px);
+  font-family: inherit;
   color: var(--red-500);
-  box-shadow: var(--shadow-md);
-  cursor: pointer;
-  transition: var(--transition);
 }
-
-.mobile-logout-btn svg { width: 20px; height: 20px; }
-
-.mobile-logout-btn:hover { background: var(--red-500); color: var(--white); transform: translateY(-1px); }
-
-.mobile-logout-btn:active { transform: translateY(0); }
-
-[data-theme="dark"] .mobile-logout-btn { background: rgba(31,41,55,0.85); }
+.bottom-item-logout svg { color: var(--red-500); }
+.bottom-item-logout:hover,
+.bottom-item-logout:active { color: var(--red-600, var(--red-500)); }
 
 /* ============================================ */
 /* RESPONSIVE */
 /* ============================================ */
 @media (max-width: 900px) {
-  .mobile-logout-btn { display: flex; }
-
   .dashboard-wrapper {
     grid-template-columns: 1fr;
     grid-template-areas: "topbar" "main";
