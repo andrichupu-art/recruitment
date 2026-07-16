@@ -285,6 +285,67 @@ function infoDialog(title, message, onOk) {
   activeConfirmCleanup = cleanup;
 }
 
+// Pengganti prompt() bawaan browser (yang tampilannya polos & beda gaya di
+// tiap OS/browser) — dipakai untuk minta input teks singkat dari admin, mis.
+// alasan penolakan peserta/dokumen. Gaya & animasinya disamakan dengan
+// #confirm-modal supaya konsisten dengan modal lain di app.
+let activePromptCleanup = null;
+
+function promptDialog(title, message, { placeholder = '', okLabel = 'Kirim', onSubmit, onCancel } = {}) {
+  if (activePromptCleanup) activePromptCleanup();
+
+  const modal = $('#prompt-modal');
+  const input = $('#prompt-input');
+  const errorEl = $('#prompt-error');
+  const wrapper = input.closest('.input-group');
+  const okBtn = $('#prompt-ok');
+  const cancelBtn = $('#prompt-cancel');
+
+  $('#prompt-title').textContent = title;
+  $('#prompt-message').textContent = message;
+  input.placeholder = placeholder;
+  input.value = '';
+  errorEl.textContent = '';
+  wrapper.classList.remove('error');
+  okBtn.textContent = okLabel;
+
+  show(modal);
+  setTimeout(() => input.focus(), 50);
+
+  const cleanup = () => {
+    hide(modal);
+    okBtn.removeEventListener('click', handleOk);
+    cancelBtn.removeEventListener('click', handleCancel);
+    input.removeEventListener('keydown', handleKeydown);
+    activePromptCleanup = null;
+  };
+
+  const handleOk = () => {
+    const value = input.value.trim();
+    if (!value) {
+      errorEl.textContent = 'Alasan tidak boleh kosong.';
+      wrapper.classList.add('error');
+      input.focus();
+      return;
+    }
+    cleanup();
+    onSubmit(value);
+  };
+
+  const handleCancel = () => { cleanup(); if (typeof onCancel === 'function') onCancel(); };
+
+  const handleKeydown = (e) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleOk();
+    else if (e.key === 'Escape') handleCancel();
+  };
+
+  okBtn.addEventListener('click', handleOk);
+  cancelBtn.addEventListener('click', handleCancel);
+  input.addEventListener('keydown', handleKeydown);
+
+  activePromptCleanup = cleanup;
+}
+
 function setLoading(btn, loading) {
   if (!btn) return;
   const text = btn.querySelector('.btn-text');
@@ -3813,29 +3874,32 @@ window.approveParticipant = async function(userId) {
 };
 
 window.rejectParticipant = async function(userId, fullName) {
-  confirmDialog('Tolak Peserta', `Tolak seluruh dokumen ${fullName || 'peserta ini'}?`, async () => {
-    const reason = prompt('Alasan penolakan:');
-    if (!reason) return;
+  confirmDialog('Tolak Peserta', `Tolak seluruh dokumen ${fullName || 'peserta ini'}?`, () => {
+    promptDialog('Alasan Penolakan', `Jelaskan alasan penolakan untuk ${fullName || 'peserta ini'}.`, {
+      placeholder: 'Contoh: KTP buram, dokumen tidak sesuai...',
+      okLabel: 'Kirim Penolakan',
+      onSubmit: async (reason) => {
+        try {
+          await supabase
+            .from('documents')
+            .update({ status: 'rejected', rejection_reason: reason, reviewed_by: state.user.id, reviewed_at: new Date().toISOString() })
+            .eq('user_id', userId)
+            .eq('status', 'pending');
 
-    try {
-      await supabase
-        .from('documents')
-        .update({ status: 'rejected', rejection_reason: reason, reviewed_by: state.user.id, reviewed_at: new Date().toISOString() })
-        .eq('user_id', userId)
-        .eq('status', 'pending');
+          await supabase.from('notifications').insert({
+            user_id: userId,
+            title: 'Dokumen Ditolak',
+            message: `Dokumen Anda ditolak. Alasan: ${reason}`,
+            type: 'error'
+          });
 
-      await supabase.from('notifications').insert({
-        user_id: userId,
-        title: 'Dokumen Ditolak',
-        message: `Dokumen Anda ditolak. Alasan: ${reason}`,
-        type: 'error'
-      });
-
-      toast('success', 'Peserta Ditolak');
-      loadAdminPeserta();
-    } catch (err) {
-      toast('error', 'Error', 'Gagal menolak');
-    }
+          toast('success', 'Peserta Ditolak');
+          loadAdminPeserta();
+        } catch (err) {
+          toast('error', 'Error', 'Gagal menolak');
+        }
+      }
+    });
   });
 };
 
@@ -3915,30 +3979,33 @@ window.approveDocument = async function(docId, userId) {
 };
 
 window.rejectDocument = async function(docId, userId) {
-  const reason = prompt('Alasan penolakan:');
-  if (!reason) return;
+  promptDialog('Alasan Penolakan', 'Jelaskan alasan penolakan dokumen ini ke peserta.', {
+    placeholder: 'Contoh: Foto buram, dokumen tidak sesuai...',
+    okLabel: 'Kirim Penolakan',
+    onSubmit: async (reason) => {
+      try {
+        await supabase.from('documents').update({ 
+          status: 'rejected',
+          rejection_reason: reason,
+          reviewed_by: state.user.id,
+          reviewed_at: new Date().toISOString()
+        }).eq('id', docId);
 
-  try {
-    await supabase.from('documents').update({ 
-      status: 'rejected',
-      rejection_reason: reason,
-      reviewed_by: state.user.id,
-      reviewed_at: new Date().toISOString()
-    }).eq('id', docId);
+        await supabase.from('notifications').insert({
+          user_id: userId,
+          title: 'Dokumen Ditolak',
+          message: `Dokumen Anda ditolak. Alasan: ${reason}`,
+          type: 'error'
+        });
 
-    await supabase.from('notifications').insert({
-      user_id: userId,
-      title: 'Dokumen Ditolak',
-      message: `Dokumen Anda ditolak. Alasan: ${reason}`,
-      type: 'error'
-    });
-
-    toast('success', 'Dokumen Ditolak');
-    if (state.adminDetail.activeUserId) viewParticipantDetail(state.adminDetail.activeUserId);
-    loadAdminPeserta();
-  } catch (err) {
-    toast('error', 'Error', 'Gagal menolak');
-  }
+        toast('success', 'Dokumen Ditolak');
+        if (state.adminDetail.activeUserId) viewParticipantDetail(state.adminDetail.activeUserId);
+        loadAdminPeserta();
+      } catch (err) {
+        toast('error', 'Error', 'Gagal menolak');
+      }
+    }
+  });
 };
 
 /* ============================================ */
