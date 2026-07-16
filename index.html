@@ -22,6 +22,38 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
 
+  <!-- CRITICAL CSS: splash screen di-inline langsung di sini supaya bisa
+       tampil SEKETIKA (satu frame pertama), tanpa nunggu style.css?v=10
+       selesai di-download dulu (itu filenya besar & render-blocking, di
+       koneksi HP yang lambat ini penyebab layar kosong beberapa detik). -->
+  <style>
+    html, body { background: #0a1e33; margin: 0; }
+    .splash-screen {
+      position: fixed; inset: 0; z-index: 9999;
+      background: #0a1e33;
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.5s ease-out;
+    }
+    .splash-screen.fade-out { opacity: 0; pointer-events: none; }
+    .splash-content { text-align: center; color: #fff; }
+    .splash-logo {
+      width: 160px; height: auto; margin: 0 auto 20px;
+      display: flex; align-items: center; justify-content: center;
+      animation: pulse 2s infinite;
+    }
+    .splash-logo img { width: 100%; height: auto; }
+    .splash-loader {
+      width: 200px; height: 4px; background: rgba(255,255,255,0.2);
+      border-radius: 14px; overflow: hidden; margin: 0 auto;
+    }
+    .splash-loader-bar {
+      height: 100%; width: 30%; background: linear-gradient(135deg,#2a5c8a,#152e45);
+      border-radius: 14px; animation: splashLoad 1.5s infinite ease-in-out;
+    }
+    @keyframes splashLoad { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
+  </style>
+
   <link rel="stylesheet" href="style.css?v=10" />
 
   <!-- defer: supaya HTML+CSS langsung ke-parse & splash screen tampil instan,
