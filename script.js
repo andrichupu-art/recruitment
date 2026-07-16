@@ -42,7 +42,7 @@ const state = {
     sortField: 'full_name',
     sortDirection: 'asc',
     search: '',
-    filterStatus: '',
+    filterStatus: 'pending', // default filter tabel Kelola Peserta: tampilkan yang "Menunggu" dulu
     filterStep: ''
   },
   adminDetail: { activeUserId: null, previewReturnsToDetail: false },
@@ -57,6 +57,9 @@ const state = {
     allParticipants: null // cache daftar peserta untuk picker "Chat Baru"
   },
   adminVerifikasi: { data: [], search: '' },
+  inviteAdminPicker: {
+    allParticipants: null // cache daftar peserta (role user) untuk picker "Jadikan Admin"
+  },
   scheduleFilter: 'all',
   theme: localStorage.getItem('theme') || 'light',
   autoSaveTimers: {},
@@ -973,9 +976,7 @@ function navigateTo(page) {
     'admin-peserta': loadAdminPeserta,
     'admin-verifikasi': loadAdminVerifikasi,
     'admin-pengumuman': loadAdminPengumuman,
-    'admin-negara': loadAdminNegara,
-    'admin-posisi': loadAdminPosisi,
-    'admin-jadwal-keberangkatan': loadAdminJadwalKeberangkatan,
+    'admin-setting-tujuan': loadAdminSettingTujuan,
     'admin-penempatan': loadAdminPenempatan,
     'admin-chat': loadAdminChatPage
   };
@@ -1017,17 +1018,20 @@ $$('.admin-stat-card[data-page]').forEach(item => {
     const filterStatus = item.dataset.filterStatus;
     const filterStep = item.dataset.filterStep;
 
-    if (filterStatus !== undefined && page === 'admin-peserta') {
-      state.adminTable.filterStatus = filterStatus;
-      const filterSelect = $('#admin-filter-status');
-      if (filterSelect) filterSelect.value = filterStatus;
-      applyAdminFilters();
-    }
+    if (page === 'admin-peserta') {
+      // Klik kartu statistik selalu mengganti TOTAL filter Kelola Peserta jadi
+      // persis sesuai kartunya (bukan digabung dengan filter yang kebetulan
+      // masih aktif sebelumnya) — supaya kartu seperti "Disetujui" (cuma set
+      // filterStep) tetap benar hasilnya walau filter Status defaultnya
+      // sekarang "Menunggu", bukan lagi "Semua Status".
+      state.adminTable.filterStatus = filterStatus !== undefined ? filterStatus : '';
+      state.adminTable.filterStep = filterStep !== undefined ? filterStep : '';
 
-    if (filterStep !== undefined && page === 'admin-peserta') {
-      state.adminTable.filterStep = filterStep;
+      const filterSelect = $('#admin-filter-status');
+      if (filterSelect) filterSelect.value = state.adminTable.filterStatus;
       const stepSelect = $('#admin-filter-step');
-      if (stepSelect) stepSelect.value = filterStep;
+      if (stepSelect) stepSelect.value = state.adminTable.filterStep;
+
       applyAdminFilters();
     }
 
@@ -1171,10 +1175,12 @@ async function initDashboard() {
     if (state.isAdmin) {
       hide($('#user-nav'));
       show($('#admin-nav'));
+      show($('#topbar-invite-admin-btn'));
       if (isFirstInit) navigateTo('admin-dashboard');
     } else {
       show($('#user-nav'));
       hide($('#admin-nav'));
+      hide($('#topbar-invite-admin-btn'));
       if (isFirstInit) navigateTo('beranda');
     }
 
@@ -2683,14 +2689,8 @@ function renderAdminTable() {
           <div class="table-actions-cell">
             <div class="table-actions-group">
               <button class="btn-action ${p.isDataComplete ? '' : 'btn-action-incomplete'}" onclick="viewParticipantDetail('${p.id}')" ${p.isDataComplete ? '' : `title="Belum lengkap: ${escapeHtml([...p.missingProfileFields, ...p.missingDocTypes.map(t => 'Dok. ' + t)].join(', '))}"`}>Detail</button>
-              <button class="btn-action btn-chat-action btn-icon-only ${p.unreadChat > 0 ? 'has-unread' : ''}" data-user-id="${p.id}" onclick="goToAdminChat('${p.id}', '${escapeHtml(p.full_name).replace(/'/g, "\\'")}', '${escapeHtml(p.email).replace(/'/g, "\\'")}')" title="Chat dengan Peserta" aria-label="Chat dengan Peserta">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              </button>
               <button class="btn-reject" onclick="rejectParticipant('${p.id}', '${escapeHtml(p.full_name).replace(/'/g, "\\'")}')" title="Tolak Peserta">Tolak</button>
             </div>
-            <button class="btn-action btn-make-admin-action btn-icon-only" onclick="makeAdmin('${p.id}', '${escapeHtml(p.full_name).replace(/'/g, "\\'")}')" title="Jadikan Admin" aria-label="Jadikan Admin">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3.5v5.5c0 5-3.4 8.7-8 11-4.6-2.3-8-6-8-11V5.5L12 2z"/><path d="m9 12 2 2 4-4"/></svg>
-            </button>
           </div>
         </td>
       </tr>
@@ -3375,6 +3375,82 @@ window.startAdminChatFromPicker = function (userId) {
   selectAdminChatConversation(userId);
 };
 
+/* --- Picker "Jadikan Admin": tombol mengambang di pojok kanan atas
+   (sejajar dengan tombol Chat), menggantikan tombol per-baris di tabel
+   Kelola Peserta. Klik tombol -> pilih peserta dari daftar -> konfirmasi
+   lewat makeAdmin() seperti biasa. --- */
+
+$('#topbar-invite-admin-btn').addEventListener('click', openInviteAdminPicker);
+$('#invite-admin-picker-close').addEventListener('click', closeInviteAdminPicker);
+$('#invite-admin-picker-overlay').addEventListener('click', closeInviteAdminPicker);
+
+function closeInviteAdminPicker() {
+  hide($('#invite-admin-picker'));
+}
+
+async function openInviteAdminPicker() {
+  show($('#invite-admin-picker'));
+  $('#invite-admin-picker-search').value = '';
+  const listEl = $('#invite-admin-picker-list');
+  listEl.innerHTML = '<div class="skeleton-card"></div>';
+
+  try {
+    // Cache dipakai ulang tiap dibuka dalam sesi yang sama; di-refresh setiap
+    // kali dibuka supaya peserta yang baru saja dijadikan admin langsung
+    // hilang dari daftar (tidak perlu reload halaman).
+    const { data, error } = await supabase.from('profiles').select('id, full_name, email').eq('role', 'user').order('full_name');
+    if (error) throw error;
+    state.inviteAdminPicker.allParticipants = data || [];
+    renderInviteAdminPickerList('');
+  } catch (err) {
+    console.error('Load participants for invite-admin picker error:', err);
+    listEl.innerHTML = '<div class="admin-chat-picker-empty">Gagal memuat daftar peserta.</div>';
+  }
+}
+
+function renderInviteAdminPickerList(search) {
+  const listEl = $('#invite-admin-picker-list');
+  const term = search.toLowerCase();
+  let items = state.inviteAdminPicker.allParticipants || [];
+
+  if (term) {
+    items = items.filter(p =>
+      (p.full_name || '').toLowerCase().includes(term) ||
+      (p.email || '').toLowerCase().includes(term)
+    );
+  }
+
+  if (items.length === 0) {
+    listEl.innerHTML = '<div class="admin-chat-picker-empty">Tidak ada peserta yang cocok.</div>';
+    return;
+  }
+
+  listEl.innerHTML = items.map(p => {
+    const initial = (p.full_name || '?').trim().charAt(0).toUpperCase();
+    return `
+      <div class="admin-chat-picker-item" onclick="selectInviteAdminFromPicker('${p.id}')">
+        <div class="admin-chat-avatar">${escapeHtml(initial)}</div>
+        <div>
+          <div class="admin-chat-picker-item-name">${escapeHtml(p.full_name || 'Peserta')}</div>
+          <div class="admin-chat-picker-item-email">${escapeHtml(p.email || '')}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+$('#invite-admin-picker-search').addEventListener('input', (e) => {
+  renderInviteAdminPickerList(e.target.value);
+});
+
+window.selectInviteAdminFromPicker = function (userId) {
+  const profile = (state.inviteAdminPicker.allParticipants || []).find(p => p.id === userId);
+  if (!profile) return;
+
+  closeInviteAdminPicker();
+  makeAdmin(userId, profile.full_name || 'Peserta');
+};
+
 // Tombol chat di baris tabel Kelola Peserta sekarang langsung membuka tab
 // Chat ini (bukan modal terpisah lagi), supaya semua percakapan terpusat
 // di satu tempat dan riwayatnya konsisten dengan daftar di tab Chat.
@@ -3880,11 +3956,31 @@ window.rejectParticipant = async function(userId, fullName) {
       okLabel: 'Kirim Penolakan',
       onSubmit: async (reason) => {
         try {
-          await supabase
+          // FIX: sebelumnya query ini punya .eq('status', 'pending'), padahal
+          // dialognya sendiri bilang "Tolak SELURUH dokumen". Akibatnya kalau
+          // peserta sudah lewat tahap awal (dokumennya sudah 'approved', bukan
+          // lagi 'pending'), update ini kena 0 baris -> tidak ada satupun
+          // dokumen yang benar-benar jadi 'rejected' -> status peserta secara
+          // keseluruhan tetap bukan 'rejected' -> makanya tidak muncul di
+          // filter "Ditolak" walau toast sempat bilang "Peserta Ditolak".
+          // Sekarang seluruh dokumen peserta (apapun status sebelumnya) ikut
+          // ditandai rejected, sesuai teks dialognya.
+          const { error, count } = await supabase
             .from('documents')
-            .update({ status: 'rejected', rejection_reason: reason, reviewed_by: state.user.id, reviewed_at: new Date().toISOString() })
-            .eq('user_id', userId)
-            .eq('status', 'pending');
+            .update({ status: 'rejected', rejection_reason: reason, reviewed_by: state.user.id, reviewed_at: new Date().toISOString() }, { count: 'exact' })
+            .eq('user_id', userId);
+
+          if (error) throw error;
+
+          if (!count) {
+            // Peserta belum punya dokumen sama sekali -> tidak ada baris untuk
+            // ditandai rejected, jadi status "Ditolak" tidak akan pernah
+            // muncul untuk peserta ini (statusnya dihitung dari tabel
+            // documents). Beri tahu admin secara eksplisit, jangan pura-pura
+            // berhasil.
+            toast('error', 'Tidak Ada Dokumen', `${fullName || 'Peserta ini'} belum mengunggah dokumen apapun, jadi belum bisa ditandai "Ditolak".`);
+            return;
+          }
 
           await supabase.from('notifications').insert({
             user_id: userId,
@@ -3896,7 +3992,8 @@ window.rejectParticipant = async function(userId, fullName) {
           toast('success', 'Peserta Ditolak');
           loadAdminPeserta();
         } catch (err) {
-          toast('error', 'Error', 'Gagal menolak');
+          console.error('Reject participant error:', err);
+          toast('error', 'Error', err.message || 'Gagal menolak. Periksa RLS policy UPDATE pada tabel documents untuk role admin.');
         }
       }
     });
@@ -4153,6 +4250,35 @@ window.deleteAnnouncement = function(id) {
 /* ============================================ */
 /* ADMIN NEGARA TUJUAN */
 /* ============================================ */
+// Halaman "Setting Tujuan" menggabungkan 3 data master (Negara Tujuan, Posisi
+// Kerja, Jadwal Keberangkatan) yang dulunya 3 menu & 3 halaman terpisah,
+// sekarang jadi 1 halaman dengan sistem tab/panel. Semua data dimuat sekaligus
+// begitu halaman dibuka supaya pindah tab tidak perlu nunggu loading lagi.
+async function loadAdminSettingTujuan() {
+  await Promise.all([
+    loadAdminNegara(),
+    loadAdminPosisi(),
+    loadAdminJadwalKeberangkatan()
+  ]);
+}
+
+$$('#view-admin-setting-tujuan .settings-tab').forEach(tabBtn => {
+  tabBtn.addEventListener('click', () => {
+    const target = tabBtn.dataset.tabTarget;
+
+    $$('#view-admin-setting-tujuan .settings-tab').forEach(b => {
+      b.classList.toggle('active', b === tabBtn);
+      b.setAttribute('aria-selected', b === tabBtn ? 'true' : 'false');
+    });
+    $$('#view-admin-setting-tujuan .settings-tab-panel').forEach(panel => {
+      panel.classList.toggle('active', panel.dataset.tabPanel === target);
+    });
+    $$('#view-admin-setting-tujuan .settings-tab-action').forEach(actionBtn => {
+      actionBtn.classList.toggle('active', actionBtn.dataset.tabTarget === target);
+    });
+  });
+});
+
 async function loadAdminNegara() {
   try {
     const { data, error } = await supabase
