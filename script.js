@@ -2675,12 +2675,13 @@ function renderAdminTable() {
   const tbody = $('#admin-table-body');
   
   if (pageData.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="table-loading">Tidak ada data</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="table-loading">Tidak ada data</td></tr>';
   } else {
     tbody.innerHTML = pageData.map((p, i) => `
       <tr>
         <td>${start + i + 1}</td>
         <td>${escapeHtml(p.full_name)}</td>
+        <td class="col-phone">${escapeHtml(p.phone || '-')}</td>
         <td>
           <span class="status-tahap status-tahap-${p.current_step}">${TIMELINE_STEPS.find(s => s.step === p.current_step)?.title || '-'}</span>
         </td>
