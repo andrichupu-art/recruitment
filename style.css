@@ -1359,9 +1359,14 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
    huruf judul). Discope hanya untuk .admin-dashboard-header-mobile supaya
    halaman Beranda (yang juga memakai .home-hero-text) dan tampilan PC
    tidak ikut berubah. */
+.admin-dashboard-header-mobile .home-hero-text h1 {
+  font-size: 14px;
+  margin-bottom: 3px;
+}
 .admin-dashboard-header-mobile .home-hero-text p {
-  margin-left: -2px;
-  font-size: 10px;
+  margin-left: 0;
+  font-size: 11px;
+  letter-spacing: 0;
 }
 .home-hero-logo {
   display: flex;
