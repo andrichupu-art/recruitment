@@ -1353,11 +1353,15 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 /* FIX: khusus header mobile "Dashboard Admin", sub text (p) terlihat sedikit
    masuk ke kanan dibanding judul (h1) karena beda font-weight (700 vs 500)
    membuat sisi kiri huruf "O" optically lebih ke dalam dari huruf "D".
-   Ditarik sedikit ke kiri supaya kedua baris benar-benar sejajar. Discope
-   hanya untuk .admin-dashboard-header-mobile supaya halaman Beranda (yang
-   juga memakai .home-hero-text) dan tampilan PC tidak ikut berubah. */
+   Ditarik sedikit ke kiri supaya kedua baris benar-benar sejajar. Ukuran
+   font subtitle juga dikecilkan supaya proporsinya terhadap judul sama
+   seperti pada gambar referensi (tinggi huruf subtitle ± setengah tinggi
+   huruf judul). Discope hanya untuk .admin-dashboard-header-mobile supaya
+   halaman Beranda (yang juga memakai .home-hero-text) dan tampilan PC
+   tidak ikut berubah. */
 .admin-dashboard-header-mobile .home-hero-text p {
   margin-left: -2px;
+  font-size: 10px;
 }
 .home-hero-logo {
   display: flex;
@@ -3949,7 +3953,15 @@ button.home-card { cursor: pointer; }
   .menu-toggle { display: inline-flex; }
 
   .admin-dashboard-header-desktop { display: none; }
-  .admin-dashboard-header-mobile { display: block; }
+  .admin-dashboard-header-mobile {
+    display: block;
+    /* FIX: jarak dari atas layar ke tulisan "Dashboard Admin" kebesaran
+       (padding-top bawaan .home-hero 26px). Dikecilkan khusus untuk card
+       ini saja supaya judul lebih nempel ke atas, tanpa mengubah hero
+       "Selamat Datang" di halaman Beranda yang pakai class .home-hero
+       yang sama. */
+    padding-top: 14px;
+  }
 
   .admin-stats-grid {
     flex: 1;
