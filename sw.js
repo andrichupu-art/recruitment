@@ -1,29 +1,34 @@
 /* ============================================================
-   SERVICE WORKER - GlobalWork PWA
+   SERVICE WORKER - PT. Juara PWA
    ============================================================
    PENTING (biar tidak ada lagi kasus "browser beda, tampilan beda"):
-   Setiap kali index.html, style.css, script.js, atau custom-select.js
-   diubah dan di-deploy ulang, WAJIB:
+   Setiap kali index.html, style.css, script.js, custom-select.js,
+   manifest.json, ATAU file icon (favicon/icon-*.png) diubah dan
+   di-deploy ulang, WAJIB:
    1. Naikkan angka versi query (?v=...) pada file yang berubah, di
       SEMUA tempat file itu direferensikan — yaitu di index.html
       (tag <link>/<script>) DAN di daftar URLS_TO_CACHE di bawah ini
       (keduanya harus sama persis).
-   2. Naikkan juga CACHE_NAME (mis. v3 -> v4).
+   2. Naikkan juga CACHE_NAME (mis. v6 -> v7).
    Kalau CACHE_NAME tidak berubah, browser akan menganggap sw.js ini
    tidak berubah sama sekali dan TIDAK akan menjalankan ulang proses
    install/activate — akibatnya file lama yang sudah di-cache browser
    akan terus dipakai selamanya, walau file di server sudah baru.
+   Ini termasuk manifest.json & icon: kalau CACHE_NAME tidak dinaikkan,
+   nama app/icon lama yang sudah ke-cache akan tetap muncul di HP user
+   yang sudah install, walau isi manifest.json di server sudah benar.
    ============================================================ */
-const CACHE_NAME = 'globalwork-v6';
+const CACHE_NAME = 'ptjuara-v8';
 const URLS_TO_CACHE = [
   './',
   './index.html',
-  './style.css?v=7',
-  './script.js?v=12',
+  './style.css?v=9',
+  './script.js?v=13',
   './custom-select.js?v=3',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
+  './icon-maskable-512.png',
   './apple-touch-icon.png',
   './favicon-32.png',
   './favicon-16.png'
@@ -86,7 +91,7 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   const data = event.data ? event.data.json() : {};
   event.waitUntil(
-    self.registration.showNotification(data.title || 'GlobalWork', {
+    self.registration.showNotification(data.title || 'PT. Juara', {
       body: data.body || 'Notifikasi baru',
       icon: './icon-192.png',
       badge: './favicon-32.png'
