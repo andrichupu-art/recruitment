@@ -1,6 +1,10 @@
 (function () {
 'use strict';
 
+// Dicatat sedini mungkin (sebelum fetch/query apa pun) supaya hideSplash()
+// bisa menghitung sudah berapa lama splash tampil sejak app mulai jalan.
+const APP_START_TIME = Date.now();
+
 /* ============================================ */
 /* KONFIGURASI SUPABASE */
 /* ============================================ */
@@ -521,12 +525,31 @@ async function requestNotificationPermission() {
 /* ============================================ */
 /* SPLASH SCREEN */
 /* ============================================ */
+const MIN_SPLASH_DURATION = 900; // ms — splash minimal tampil segini, supaya
+// transisi terasa smooth & konsisten walau data (getSession/getUser/profile)
+// kebetulan selesai sangat cepat. Tanpa ini, di koneksi kencang splash bisa
+// "kedip" sekilas lalu langsung hilang, terasa patah-patah/tidak smooth.
+
 function hideSplash() {
   const splash = $('#splash-screen');
-  if (splash) {
-    splash.classList.add('fade-out');
-    setTimeout(() => splash.remove(), 500);
-  }
+  if (!splash || splash.classList.contains('fade-out')) return;
+
+  const elapsed = Date.now() - APP_START_TIME;
+  const remaining = Math.max(0, MIN_SPLASH_DURATION - elapsed);
+
+  setTimeout(() => {
+    // Double requestAnimationFrame: menjamin browser sudah selesai melukis
+    // (paint) tampilan dashboard/auth yang baru saja di-show() SEBELUM splash
+    // mulai memudar. Jadi tidak ada celah sedetik pun di mana splash sudah
+    // hilang tapi tampilan di baliknya belum "jadi" — perpindahannya aman
+    // 100% setiap kali, bukan cuma kebetulan cepat.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        splash.classList.add('fade-out');
+        setTimeout(() => splash.remove(), 600); // samakan dengan durasi transition CSS .splash-screen
+      });
+    });
+  }, remaining);
 }
 
 /* ============================================ */
