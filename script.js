@@ -1096,7 +1096,12 @@ async function initDashboard() {
 
     hide($('#auth-wrapper'));
     show($('#dashboard-wrapper'));
-    
+    // Splash baru ditutup SETELAH dashboard (nama, avatar, menu/nav) benar-benar
+    // siap ditampilkan, supaya tidak ada jeda "background kosong" antara splash
+    // hilang dan tools/menu muncul (sebelumnya hideSplash() dipanggil terlalu
+    // dini, sebelum data profile & nav selesai di-render).
+    hideSplash();
+
     await requestNotificationPermission();
     subscribeRealtime();
     updateAppBadge();
@@ -5104,21 +5109,23 @@ function playNotificationSound() {
 /* ============================================ */
 supabase.auth.onAuthStateChange(async (event, session) => {
   if (event === 'PASSWORD_RECOVERY') {
-    hideSplash();
     hide($('#dashboard-wrapper'));
     show($('#auth-wrapper'));
     showAuthPage('reset');
+    hideSplash();
     return;
   }
   if (event === 'SIGNED_IN' && session) {
     if ($('#page-reset').classList.contains('active')) return;
-    hideSplash();
+    // hideSplash() TIDAK dipanggil di sini — initDashboard() yang akan
+    // menutup splash setelah dashboard-wrapper benar-benar siap ditampilkan.
     initDashboard();
   } else if (event === 'SIGNED_OUT') {
     state.realtimeChannels.forEach(c => supabase.removeChannel(c));
     state.realtimeChannels = [];
     show($('#auth-wrapper'));
     hide($('#dashboard-wrapper'));
+    hideSplash();
   }
 });
 
@@ -5129,22 +5136,26 @@ supabase.auth.onAuthStateChange(async (event, session) => {
   try {
     const isRecoveryLink = window.location.hash.includes('type=recovery');
     const { data: { session } } = await supabase.auth.getSession();
-    hideSplash();
 
     if (isRecoveryLink) {
       hide($('#dashboard-wrapper'));
       show($('#auth-wrapper'));
       showAuthPage('reset');
+      hideSplash();
     } else if (session) {
+      // Splash ditutup di dalam initDashboard(), setelah dashboard-wrapper
+      // (nama, avatar, menu/nav) selesai disiapkan — bukan di sini, supaya
+      // tidak ada jeda background kosong sebelum tools/menu muncul.
       initDashboard();
     } else {
       show($('#auth-wrapper'));
       hide($('#dashboard-wrapper'));
+      hideSplash();
     }
   } catch (err) {
-    hideSplash();
     console.error('Init error:', err);
     show($('#auth-wrapper'));
+    hideSplash();
   }
 })();
 
