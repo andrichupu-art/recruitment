@@ -1349,6 +1349,16 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   letter-spacing: 0.3px;
   color: rgba(239, 229, 207, 0.75);
 }
+
+/* FIX: khusus header mobile "Dashboard Admin", sub text (p) terlihat sedikit
+   masuk ke kanan dibanding judul (h1) karena beda font-weight (700 vs 500)
+   membuat sisi kiri huruf "O" optically lebih ke dalam dari huruf "D".
+   Ditarik sedikit ke kiri supaya kedua baris benar-benar sejajar. Discope
+   hanya untuk .admin-dashboard-header-mobile supaya halaman Beranda (yang
+   juga memakai .home-hero-text) dan tampilan PC tidak ikut berubah. */
+.admin-dashboard-header-mobile .home-hero-text p {
+  margin-left: -2px;
+}
 .home-hero-logo {
   display: flex;
   justify-content: center;
