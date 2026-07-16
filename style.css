@@ -1163,7 +1163,7 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 }
 .bottom-item.active { color: var(--cream); font-weight: 700; }
 .bottom-item.active svg {
-  background: var(--gold);
+  background: var(--cream);
   color: var(--navy);
   box-shadow: 0 6px 14px rgba(0,0,0,0.28);
 }
@@ -1344,7 +1344,9 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   margin-bottom: 4px;
 }
 .home-hero-text p {
-  font-size: 11.5px;
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
   color: rgba(239, 229, 207, 0.75);
 }
 .home-hero-logo {
@@ -3135,6 +3137,12 @@ button.home-card { cursor: pointer; }
   height: 100%;
 }
 
+/* Dashboard Admin pakai header berbeda per breakpoint: versi PC tetap
+   header polos & ringkas (supaya layout flex-fill 5 kartu statistik di
+   desktop tidak "gepeng" akibat header terlalu tinggi), sedangkan versi
+   HP memakai hero navy + logo besar (lihat media query mobile di bawah). */
+.admin-dashboard-header-mobile { display: none; }
+
 .admin-stats-grid {
   display: flex;
   flex-direction: column;
@@ -3929,6 +3937,9 @@ button.home-card { cursor: pointer; }
   .topbar { padding: 10px 14px; border-radius: 0; top: 0; }
 
   .menu-toggle { display: inline-flex; }
+
+  .admin-dashboard-header-desktop { display: none; }
+  .admin-dashboard-header-mobile { display: block; }
 
   .admin-stats-grid {
     flex: 1;
