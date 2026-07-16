@@ -3931,6 +3931,7 @@ button.home-card { cursor: pointer; }
   .admin-stats-grid {
     flex: 1;
     gap: 10px;
+    margin-bottom: 10px;
   }
 
   .admin-stat-card {
