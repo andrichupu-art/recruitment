@@ -4143,6 +4143,19 @@ button.home-card { cursor: pointer; }
   .profile-header { flex-direction: column; text-align: center; }
 }
 
+/* Kelola Peserta (admin) di HP: sembunyikan filter status, filter tahapan,
+   serta tombol export Excel/PDF. Hanya sisakan kolom pencarian nama/email. */
+@media (max-width: 768px) {
+  #view-admin-peserta .table-filters,
+  #view-admin-peserta .table-actions {
+    display: none;
+  }
+
+  #view-admin-peserta .table-search {
+    width: 100%;
+  }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
