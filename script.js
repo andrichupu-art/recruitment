@@ -371,8 +371,23 @@ function toTitleCase(str) {
   });
 }
 
+// Field yang SENGAJA dikecualikan dari auto title-case:
+// - kotak pencarian (search) & chat: user ketik bebas, jangan dipaksa Title Case
+// - country-code: sudah di-force UPPERCASE sendiri (lihat listener-nya)
+// - field dengan data-no-titlecase (opt-out manual)
+const TITLECASE_EXCLUDE_ID_PATTERN = /search|chat-message|code/i;
+
+function shouldSkipTitleCase(input) {
+  if (!input || input.tagName !== 'INPUT') return true;
+  if (input.type !== 'text') return true; // hanya type="text" (bukan email/password/tel/number/date/dll)
+  if (input.dataset.noTitlecase !== undefined) return true;
+  if (TITLECASE_EXCLUDE_ID_PATTERN.test(input.id || '')) return true;
+  return false;
+}
+
 function bindTitleCaseInput(input) {
   if (!input || input.__titleCaseBound) return;
+  if (shouldSkipTitleCase(input)) return;
   input.__titleCaseBound = true;
   input.addEventListener('input', function () {
     const start = this.selectionStart;
@@ -385,11 +400,9 @@ function bindTitleCaseInput(input) {
   });
 }
 
-// Terapkan ke semua input nama yang sudah ada di halaman (statis)
+// Terapkan ke SEMUA input teks bebas yang sudah ada di halaman (statis)
 function initTitleCaseInputs(root) {
-  (root || document).querySelectorAll(
-    'input[data-titlecase], #register-name, #profile-fullname, input[id*="fullname" i], input[id*="full-name" i], input[id*="nama" i]:not([id*="username" i])'
-  ).forEach(bindTitleCaseInput);
+  (root || document).querySelectorAll('input[type="text"]').forEach(bindTitleCaseInput);
 }
 
 initTitleCaseInputs(document);
@@ -400,8 +413,7 @@ new MutationObserver(function (mutations) {
     m.addedNodes.forEach(function (node) {
       if (node.nodeType !== 1) return;
       initTitleCaseInputs(node);
-      if (node.matches && node.matches('input') &&
-          (node.dataset.titlecase !== undefined || /fullname|full-name|nama/i.test(node.id || ''))) {
+      if (node.matches && node.matches('input[type="text"]')) {
         bindTitleCaseInput(node);
       }
     });
