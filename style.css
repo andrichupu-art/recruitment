@@ -3935,9 +3935,23 @@ button.home-card { cursor: pointer; }
 
   .admin-stats-grid {
     flex: none;
+    gap: 10px;
   }
 
-  .admin-stat-card { min-height: 90px; }
+  .admin-stat-card {
+    min-height: 64px;
+    padding: 12px 16px;
+    gap: 14px;
+  }
+
+  .admin-stat-icon {
+    width: 40px;
+    height: 40px;
+  }
+  .admin-stat-icon svg { width: 20px; height: 20px; }
+
+  .admin-stat-info p { font-size: 11.5px; margin-bottom: 2px; }
+  .admin-stat-info h3 { font-size: 20px; }
 
   #view-admin-peserta.active {
     display: block;
