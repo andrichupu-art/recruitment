@@ -1992,12 +1992,12 @@ async function updateNotifBadge() {
 }
 
 async function updateAppBadge() {
-  // Badge angka merah di ICON APLIKASI (home screen HP), seperti WhatsApp —
-  // beda dengan updateNotifBadge() di atas yang cuma badge di DALAM app.
-  // Pakai Badging API (navigator.setAppBadge), didukung baik di Android/Chrome;
-  // di iOS dukungannya masih terbatas tergantung versi, jadi kalau browser tidak
-  // support, fungsi ini diam saja (tidak error, tidak ganggu apa pun).
-  if (!('setAppBadge' in navigator)) return;
+  // Update dua jenis badge sekaligus untuk peserta saat ada pesan admin yang
+  // belum dibaca: (1) badge di ICON APLIKASI (home screen HP) lewat Badging
+  // API navigator.setAppBadge — didukung Android/Chrome, browser lain diam
+  // saja; dan (2) badge merah DI DALAM aplikasi pada menu "Chat" (sidebar &
+  // bottom-nav), yang sebelumnya tidak ada elemennya sama sekali sehingga
+  // pesan baru tidak pernah kelihatan tandanya di menu.
   if (state.isAdmin) return; // fitur ini untuk peserta menerima chat dari admin
 
   try {
@@ -2008,11 +2008,26 @@ async function updateAppBadge() {
       .eq('sender_role', 'admin')
       .eq('is_read', false);
 
-    if (count > 0) {
-      await navigator.setAppBadge(count);
-    } else {
-      await navigator.clearAppBadge();
+    // (1) Badge di icon aplikasi (kalau browser/OS mendukung Badging API)
+    if ('setAppBadge' in navigator) {
+      if (count > 0) {
+        await navigator.setAppBadge(count);
+      } else {
+        await navigator.clearAppBadge();
+      }
     }
+
+    // (2) Badge di dalam aplikasi (menu Chat sidebar + bottom-nav)
+    const text = count > 99 ? '99+' : String(count || 0);
+    [$('#user-chat-nav-badge'), $('#bottom-chat-badge')].forEach(el => {
+      if (!el) return;
+      if (count > 0) {
+        el.textContent = text;
+        el.classList.remove('hidden');
+      } else {
+        el.classList.add('hidden');
+      }
+    });
   } catch (err) {
     console.error('Update app badge error:', err);
   }
