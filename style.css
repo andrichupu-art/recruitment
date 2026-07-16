@@ -3989,6 +3989,38 @@ button.home-card { cursor: pointer; }
   .admin-stat-info p { font-size: 11.5px; margin-bottom: 2px; }
   .admin-stat-info h3 { font-size: 20px; }
 
+  /* FIX: motif watermark logo_3.svg (body::before) memakai ubin besar
+     (140px) yang nyaris tidak kelihatan di celah sempit antar-kartu
+     statistik Dashboard Admin versi HP (kartu full-width, celah cuma
+     ~10px), sehingga latar terlihat polos/rata dibanding halaman Beranda
+     yang punya area kosong lebih luas. Ditambahkan watermark lokal khusus
+     di balik grid kartu statistik ini, dengan ubin lebih kecil supaya
+     motifnya benar-benar terlihat di celah & pinggir kartu, sama seperti
+     tampilan di halaman Beranda. */
+  .admin-stats-grid {
+    position: relative;
+  }
+  .admin-stats-grid::before {
+    content: "";
+    position: absolute;
+    top: -8px;
+    right: -14px;
+    bottom: -8px;
+    left: -14px;
+    z-index: -1;
+    pointer-events: none;
+    background-image: var(--watermark-image);
+    background-repeat: repeat;
+    background-size: 64px auto;
+    background-position: center top;
+    opacity: 0.55;
+    mix-blend-mode: multiply;
+  }
+  [data-theme="dark"] .admin-stats-grid::before {
+    mix-blend-mode: soft-light;
+    opacity: 0.4;
+  }
+
   #view-admin-peserta.active {
     display: block;
     height: auto;
