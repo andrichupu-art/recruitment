@@ -1,7 +1,7 @@
 {
-  "name": "GlobalWork - Agensi Penyalur Tenaga Kerja",
-  "short_name": "GlobalWork",
-  "description": "GlobalWork - Agensi Penyalur Tenaga Kerja ke Luar Negeri",
+  "name": "PT. Juara - Agensi Penyalur Tenaga Kerja",
+  "short_name": "PT. Juara",
+  "description": "PT. Juara - Agensi Penyalur Tenaga Kerja ke Luar Negeri",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
