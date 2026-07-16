@@ -118,15 +118,19 @@
      kecil di pusat. Digambar sebagai data-URI SVG (garis tipis, tanpa file
      eksternal) supaya ringan dan gampang diatur ukuran ubin/kekuatannya
      lewat variabel. */
-  --me-pattern-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%23CDA434' stroke-width='1.1' stroke-linejoin='round'%3E%3Cpath d='M50 20 L54.59 38.91 L71.21 28.79 L61.09 45.41 L80 50 L61.09 54.59 L71.21 71.21 L54.59 61.09 L50 80 L45.41 61.09 L28.79 71.21 L38.91 54.59 L20 50 L38.91 45.41 L28.79 28.79 L45.41 38.91 Z'/%3E%3Cpath d='M0 -16 L2.3 -5.54 L11.31 -11.31 L5.54 -2.3 L16 0 L5.54 2.3 L11.31 11.31 L2.3 5.54 L0 16 L-2.3 5.54 L-11.31 11.31 L-5.54 2.3 L-16 0 L-5.54 -2.3 L-11.31 -11.31 L-2.3 -5.54 Z'/%3E%3Cpath d='M100 -16 L102.3 -5.54 L111.31 -11.31 L105.54 -2.3 L116 0 L105.54 2.3 L111.31 11.31 L102.3 5.54 L100 16 L97.7 5.54 L88.69 11.31 L94.46 2.3 L84 0 L94.46 -2.3 L88.69 -11.31 L97.7 -5.54 Z'/%3E%3Cpath d='M0 84 L2.3 94.46 L11.31 88.69 L5.54 97.7 L16 100 L5.54 102.3 L11.31 111.31 L2.3 105.54 L0 116 L-2.3 105.54 L-11.31 111.31 L-5.54 102.3 L-16 100 L-5.54 97.7 L-11.31 88.69 L-2.3 94.46 Z'/%3E%3Cpath d='M100 84 L102.3 94.46 L111.31 88.69 L105.54 97.7 L116 100 L105.54 102.3 L111.31 111.31 L102.3 105.54 L100 116 L97.7 105.54 L88.69 111.31 L94.46 102.3 L84 100 L94.46 97.7 L88.69 88.69 L97.7 94.46 Z'/%3E%3Cpath d='M50 42 L58 50 L50 58 L42 50 Z' fill='%23CDA434' fill-opacity='0.5' stroke='none'/%3E%3C/g%3E%3C/svg%3E");
-  --me-pattern-tile: 100px;
-  --me-pattern-opacity: 0.18;
+  --me-pattern-image: url('pattern-khatam.png');
+  --me-pattern-tile: 160px;
+  --me-pattern-opacity: 0.23;
   /* Lapisan gradasi tambahan: memudarkan motif dari sudut layar menuju
      tengah/konten dan sekaligus "membaurkan" warna gold motif ke warna
      background di titik-titik tertentu, supaya teksturnya tidak flat. */
   --me-pattern-glow: radial-gradient(120% 90% at 15% 0%, rgba(205, 164, 52, 0.10), transparent 55%),
                      radial-gradient(120% 90% at 85% 100%, rgba(205, 164, 52, 0.08), transparent 55%);
-  --me-pattern-fade: radial-gradient(130% 110% at 50% 45%, transparent 42%, #000 100%);
+  /* FIX: area transparan (tersembunyi) sebelumnya 42% — di banyak halaman
+     dashboard, area "kosong" antar-kartu memang sudah sempit, jadi motif
+     nyaris tidak kelihatan di tengah layar. Diturunkan ke 20% supaya motif
+     tetap tampak konsisten di semua halaman, PC maupun HP. */
+  --me-pattern-fade: radial-gradient(130% 110% at 50% 45%, transparent 20%, #000 100%);
 
   /* Bento */
   --bento-gap: 14px;
@@ -214,7 +218,7 @@ body::before {
 
 [data-theme="dark"] body::before {
   mix-blend-mode: soft-light;
-  opacity: calc(var(--me-pattern-opacity) * 1.4);
+  opacity: 0.30;
 }
 
 @media (max-width: 640px) {
@@ -222,7 +226,10 @@ body::before {
     --me-pattern-tile: 60px;
     /* Motif lebih rapat memenuhi layar sempit tanpa perlu bergantung ke
        satu titik fokus gradasi, tapi tetap memudar di tepi. */
-    --me-pattern-fade: radial-gradient(150% 120% at 50% 40%, transparent 48%, #000 100%);
+    /* FIX: sama seperti root — 48% sebelumnya menyembunyikan hampir separuh
+       layar tepat di area konten utama, sehingga motif jarang kelihatan di
+       HP. Diturunkan ke 20% supaya konsisten dengan desktop. */
+    --me-pattern-fade: radial-gradient(150% 120% at 50% 40%, transparent 20%, #000 100%);
   }
 }
 
@@ -654,23 +661,36 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   background-image: var(--me-pattern-glow), var(--me-pattern-image);
   background-repeat: no-repeat, repeat;
   background-size: cover, var(--me-pattern-tile) var(--me-pattern-tile);
-  opacity: var(--me-pattern-opacity);
+  /* FIX: .auth-card di mobile hampir memenuhi lebar .auth-wrapper (padding
+     hanya 20px), jadi ruang pinggir yang tersisa untuk motif sangat sempit.
+     Dipakai opacity lokal lebih tinggi daripada --me-pattern-opacity global
+     (dipakai body/admin-stats-grid) supaya motif tetap kelihatan walau
+     "kanvas" yang tersedia sempit. */
+  opacity: 0.41;
   mix-blend-mode: multiply;
   /* Sama seperti body::before: motif memudar ke arah tepi/sudut sehingga
-     membaur ke warna background .auth-wrapper, bukan tekstur rata. */
-  -webkit-mask-image: var(--me-pattern-fade);
-  mask-image: var(--me-pattern-fade);
+     membaur ke warna background .auth-wrapper, bukan tekstur rata.
+     FIX: area tersembunyi (transparan) dikurangi dari 42% ke 30% supaya
+     pinggiran yang kelihatan lebih lebar — sebelumnya motif nyaris hanya
+     boleh tampil di sisa tipis di luar kartu. */
+  -webkit-mask-image: radial-gradient(130% 110% at 50% 45%, transparent 30%, #000 100%);
+  mask-image: radial-gradient(130% 110% at 50% 45%, transparent 30%, #000 100%);
 }
 .auth-wrapper > * { position: relative; z-index: 1; }
 [data-theme="dark"] .auth-wrapper::before {
   mix-blend-mode: soft-light;
-  opacity: calc(var(--me-pattern-opacity) * 1.4);
+  opacity: 0.55;
 }
 
 @media (max-width: 640px) {
   .auth-wrapper::before {
     --me-pattern-tile: 60px;
-    --me-pattern-fade: radial-gradient(150% 120% at 50% 40%, transparent 48%, #000 100%);
+    /* FIX: sebelumnya transparent 48% di mobile menyembunyikan hampir
+       separuh layar tepat di area kartu, ditambah kartu yang sudah lebar
+       penuh — hasilnya motif nyaris tidak pernah kelihatan di HP.
+       Diturunkan ke 20% supaya pinggiran kartu tetap menampakkan motif. */
+    -webkit-mask-image: radial-gradient(150% 120% at 50% 40%, transparent 20%, #000 100%);
+    mask-image: radial-gradient(150% 120% at 50% 40%, transparent 20%, #000 100%);
   }
 }
 
