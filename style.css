@@ -3928,13 +3928,8 @@ button.home-card { cursor: pointer; }
 
   .menu-toggle { display: inline-flex; }
 
-  #view-admin-dashboard.active {
-    display: block;
-    height: auto;
-  }
-
   .admin-stats-grid {
-    flex: none;
+    flex: 1;
     gap: 10px;
   }
 
