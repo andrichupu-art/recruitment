@@ -942,6 +942,7 @@ $$('.admin-stat-card[data-page]').forEach(item => {
 $('#btn-logout').addEventListener('click', (e) => {
   e.preventDefault();
   confirmDialog('Logout', 'Yakin ingin keluar dari akun?', async () => {
+    if ('clearAppBadge' in navigator) navigator.clearAppBadge().catch(() => {});
     await supabase.auth.signOut();
     location.reload();
   });
@@ -953,6 +954,7 @@ $('#btn-logout').addEventListener('click', (e) => {
 $('#mobile-logout-btn')?.addEventListener('click', (e) => {
   e.preventDefault();
   confirmDialog('Logout', 'Yakin ingin keluar dari akun?', async () => {
+    if ('clearAppBadge' in navigator) navigator.clearAppBadge().catch(() => {});
     await supabase.auth.signOut();
     location.reload();
   });
@@ -1073,6 +1075,7 @@ async function initDashboard() {
     
     await requestNotificationPermission();
     subscribeRealtime();
+    updateAppBadge();
   } catch (err) {
     console.error('Init error:', err);
     toast('error', 'Error', 'Gagal memuat dashboard');
@@ -1988,6 +1991,33 @@ async function updateNotifBadge() {
   }
 }
 
+async function updateAppBadge() {
+  // Badge angka merah di ICON APLIKASI (home screen HP), seperti WhatsApp —
+  // beda dengan updateNotifBadge() di atas yang cuma badge di DALAM app.
+  // Pakai Badging API (navigator.setAppBadge), didukung baik di Android/Chrome;
+  // di iOS dukungannya masih terbatas tergantung versi, jadi kalau browser tidak
+  // support, fungsi ini diam saja (tidak error, tidak ganggu apa pun).
+  if (!('setAppBadge' in navigator)) return;
+  if (state.isAdmin) return; // fitur ini untuk peserta menerima chat dari admin
+
+  try {
+    const { count } = await supabase
+      .from('chat_messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', state.user.id)
+      .eq('sender_role', 'admin')
+      .eq('is_read', false);
+
+    if (count > 0) {
+      await navigator.setAppBadge(count);
+    } else {
+      await navigator.clearAppBadge();
+    }
+  } catch (err) {
+    console.error('Update app badge error:', err);
+  }
+}
+
 $('#btn-mark-all-read').addEventListener('click', async () => {
   try {
     await supabase
@@ -2033,6 +2063,8 @@ async function loadChat() {
       .eq('user_id', state.user.id)
       .eq('sender_role', 'admin')
       .eq('is_read', false);
+
+    updateAppBadge();
   } catch (err) {
     console.error('Load chat error:', err);
   }
@@ -4789,12 +4821,17 @@ function subscribeRealtime() {
           if (payload.new.sender_role === 'admin') {
             container.insertAdjacentHTML('beforeend', renderChatBubble(payload.new));
             container.scrollTop = container.scrollHeight;
+            // Sedang dibuka & dilihat -> langsung tandai dibaca, biar badge
+            // icon aplikasi tidak ikut naik padahal peserta sudah lihat pesannya.
+            supabase.from('chat_messages').update({ is_read: true }).eq('id', payload.new.id).then(() => updateAppBadge());
+            return;
           }
         } else {
           toast('info', 'Pesan baru', 'Anda menerima pesan dari admin');
           playNotificationSound();
           showBrowserNotification('Pesan Baru', 'Anda menerima pesan dari admin');
         }
+        updateAppBadge();
       })
       .subscribe();
 
