@@ -866,6 +866,32 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   height: 100vh;
   gap: 16px;
   padding: 16px 16px 16px 16px;
+  position: relative;
+}
+
+/* FIX: sama seperti .auth-wrapper — sidebar/.glass, topbar, dan kartu-kartu
+   (.surface/.glass) di dashboard menutup hampir seluruh viewport dengan
+   background solid, sehingga motif global body::before (z-index:-1) yang
+   cuma tampak di celah tipis (padding/gap 16px) nyaris tidak kelihatan sama
+   sekali di semua halaman dashboard (PC maupun HP). Ditambahkan motif lokal
+   di sini juga, sama seperti auth-wrapper, supaya konsisten tampil. */
+.dashboard-wrapper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--me-pattern-glow), var(--me-pattern-image);
+  background-repeat: no-repeat, repeat;
+  background-size: cover, var(--me-pattern-tile) var(--me-pattern-tile);
+  opacity: 0.41;
+  mix-blend-mode: multiply;
+  -webkit-mask-image: radial-gradient(130% 110% at 50% 45%, transparent 30%, #000 100%);
+  mask-image: radial-gradient(130% 110% at 50% 45%, transparent 30%, #000 100%);
+}
+[data-theme="dark"] .dashboard-wrapper::before {
+  mix-blend-mode: soft-light;
+  opacity: 0.30;
 }
 
 .topbar {
@@ -4387,8 +4413,15 @@ button.home-card { cursor: pointer; }
 /* ANIMATIONS */
 /* ============================================ */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  /* FIX: sebelumnya animasi ini memainkan opacity (0 -> 1) pada seluruh
+     .view, termasuk kartu-kartu solid di dalamnya. Selama opacity < 1,
+     kartu yang harusnya opaque ikut jadi transparan sesaat sehingga motif
+     background di baliknya "bocor" tampak sekilas lalu tertutup lagi begitu
+     opacity mencapai 1 — inilah penyebab motif "berkedip" saat pindah
+     halaman. Diganti jadi transform-only supaya transisi tetap terasa halus
+     tanpa membuat konten jadi transparan. */
+  from { transform: translateY(6px); }
+  to { transform: translateY(0); }
 }
 
 @keyframes slideIn {
