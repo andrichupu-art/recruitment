@@ -18,12 +18,12 @@
    nama app/icon lama yang sudah ke-cache akan tetap muncul di HP user
    yang sudah install, walau isi manifest.json di server sudah benar.
    ============================================================ */
-const CACHE_NAME = 'ptjuara-v8';
+const CACHE_NAME = 'ptjuara-v9';
 const URLS_TO_CACHE = [
   './',
   './index.html',
   './style.css?v=9',
-  './script.js?v=13',
+  './script.js?v=14',
   './custom-select.js?v=3',
   './manifest.json',
   './icon-192.png',
@@ -90,13 +90,27 @@ self.addEventListener('fetch', (event) => {
 
 self.addEventListener('push', (event) => {
   const data = event.data ? event.data.json() : {};
-  event.waitUntil(
-    self.registration.showNotification(data.title || 'PT. Juara', {
-      body: data.body || 'Notifikasi baru',
-      icon: './icon-192.png',
-      badge: './favicon-32.png'
-    })
-  );
+
+  const notifyPromise = self.registration.showNotification(data.title || 'PT. Juara', {
+    body: data.body || 'Notifikasi baru',
+    icon: './icon-192.png',
+    badge: './favicon-32.png'
+  });
+
+  // Badge angka merah di icon aplikasi (Android/Chrome) juga harus ke-update
+  // walau app-nya lagi TERTUTUP TOTAL (bukan sekadar di-background), karena
+  // event 'push' ini tetap jalan meski tidak ada tab/window app yang terbuka.
+  // Kalau payload push mengirim `badgeCount` (mis. jumlah chat belum dibaca),
+  // pakai itu; kalau tidak ada, tetap panggil setAppBadge() tanpa angka
+  // supaya minimal muncul tanda ada notifikasi baru di icon.
+  let badgePromise = Promise.resolve();
+  if ('setAppBadge' in self.navigator) {
+    badgePromise = typeof data.badgeCount === 'number'
+      ? self.navigator.setAppBadge(data.badgeCount).catch(() => {})
+      : self.navigator.setAppBadge().catch(() => {});
+  }
+
+  event.waitUntil(Promise.all([notifyPromise, badgePromise]));
 });
 
 self.addEventListener('notificationclick', (event) => {
