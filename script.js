@@ -996,7 +996,12 @@ function updateBottomNavForRole(isAdmin) {
     // icon-wrap ikut ditimpa jadi teks label (menghapus svg ikon + badge di
     // dalamnya). Sekarang ambil span LANGSUNG anak dari item (label asli),
     // bukan span bersarang di dalam icon-wrap.
-    const label = item.querySelector(':scope > span');
+    // FIX ULANG: percobaan sebelumnya (':scope > span') TERNYATA masih salah
+    // tangkap juga — .bottom-item-icon-wrap adalah span anak-langsung juga,
+    // jadi tetap ke-pilih duluan (document order), bukan span label. Sekarang
+    // label diberi class eksplisit .bottom-item-label di HTML, jadi tidak
+    // bergantung sama sekali pada tag/urutan span di dalam item.
+    const label = item.querySelector('.bottom-item-label');
     if (label) label.textContent = cfg.label;
   });
 
