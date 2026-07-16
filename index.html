@@ -430,6 +430,38 @@
       <span class="topbar-chat-badge hidden" id="topbar-chat-badge">0</span>
     </button>
 
+    <!-- Tombol "Jadikan Admin" mengambang, sejajar dengan tombol Chat di pojok
+         kanan atas. Menggantikan tombol per-baris di kolom Aksi tabel Kelola
+         Peserta: klik untuk membuka daftar peserta lalu pilih siapa yang mau
+         dijadikan admin. Hanya tampil untuk role admin (lihat script.js). -->
+    <button type="button" id="topbar-invite-admin-btn" class="topbar-chat-btn topbar-invite-admin-btn hidden" aria-label="Jadikan Admin" title="Jadikan Admin">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2l8 3.5v5.5c0 5-3.4 8.7-8 11-4.6-2.3-8-6-8-11V5.5L12 2z"/>
+        <path d="m9 12 2 2 4-4"/>
+      </svg>
+    </button>
+
+    <!-- OVERLAY: PILIH PESERTA UNTUK DIJADIKAN ADMIN (dipicu dari tombol
+         mengambang di atas, bisa dibuka dari halaman admin manapun) -->
+    <div class="admin-chat-picker hidden" id="invite-admin-picker">
+      <div class="admin-chat-picker-overlay" id="invite-admin-picker-overlay"></div>
+      <div class="admin-chat-picker-box glass">
+        <div class="admin-chat-picker-head">
+          <h3>Jadikan Admin</h3>
+          <button type="button" class="icon-btn" id="invite-admin-picker-close" aria-label="Tutup">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="table-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="invite-admin-picker-search" placeholder="Cari nama atau email..." />
+        </div>
+        <div class="admin-chat-picker-list" id="invite-admin-picker-list">
+          <div class="skeleton-card"></div>
+        </div>
+      </div>
+    </div>
+
     <aside class="sidebar glass" id="sidebar">
       <div class="sidebar-header">
         <div class="user-info">
@@ -546,32 +578,13 @@
           <span>Penempatan</span>
         </a>
 
-        <div class="nav-section-label">Master Data</div>
-        <a href="#" class="nav-item" data-page="admin-negara">
+        <a href="#" class="nav-item" data-page="admin-setting-tujuan">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"/>
-            <line x1="2" y1="12" x2="22" y2="12"/>
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            <circle cx="12" cy="12" r="6"/>
+            <circle cx="12" cy="12" r="2"/>
           </svg>
-          <span>Negara Tujuan</span>
-        </a>
-        <a href="#" class="nav-item" data-page="admin-posisi">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M20 7h-3V5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2H4a1 1 0 0 0-1 1v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1z"/>
-            <path d="M22 13v5a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-5"/>
-            <path d="M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2H9V5z"/>
-          </svg>
-          <span>Posisi Kerja</span>
-        </a>
-        <a href="#" class="nav-item" data-page="admin-jadwal-keberangkatan">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-            <line x1="16" y1="2" x2="16" y2="6"/>
-            <line x1="8" y1="2" x2="8" y2="6"/>
-            <line x1="3" y1="10" x2="21" y2="10"/>
-            <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>
-          </svg>
-          <span>Jadwal Keberangkatan</span>
+          <span>Setting Tujuan</span>
         </a>
 
         <a href="#" class="nav-item" data-page="admin-pengumuman">
@@ -848,7 +861,7 @@
         <div class="table-controls glass">
           <div class="table-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="admin-search" placeholder="Cari nama atau email..." /></div>
           <div class="table-filters">
-            <select id="admin-filter-status"><option value="">Semua Status</option><option value="pending">Menunggu</option><option value="approved">Disetujui</option><option value="rejected">Ditolak</option></select>
+            <select id="admin-filter-status"><option value="">Semua Status</option><option value="pending" selected>Menunggu</option><option value="approved">Disetujui</option><option value="rejected">Ditolak</option></select>
             <select id="admin-filter-step"><option value="">Semua Tahapan</option><option value="1">Pendaftaran</option><option value="2">Verifikasi</option><option value="3">Interview</option><option value="4">Administrasi</option><option value="5">Medical</option><option value="6">Penempatan</option></select>
           </div>
           <div class="table-actions">
@@ -992,39 +1005,53 @@
         <div id="admin-announcements-list" class="card-list" style="margin-top: 20px;"><div class="skeleton-card"></div></div>
       </section>
 
-      <!-- ADMIN: NEGARA TUJUAN -->
-      <section id="view-admin-negara" class="view">
-        <div class="view-header"><h1>Negara Tujuan</h1><p>Kelola daftar negara tujuan kerja</p></div>
-        <button class="btn btn-primary" id="btn-add-country"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tambah Negara</button>
-        <div class="table-container glass" style="margin-top: 20px;">
-          <table class="modern-table">
-            <thead><tr><th>Bendera</th><th>Nama Negara</th><th>Kode</th><th>Mata Uang</th><th>Aksi</th></tr></thead>
-            <tbody id="admin-countries-body"><tr class="skeleton-row"><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td></tr><tr class="skeleton-row"><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td></tr><tr class="skeleton-row"><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td></tr></tbody>
-          </table>
-        </div>
-      </section>
+      <!-- ADMIN: SETTING TUJUAN (gabungan Negara Tujuan + Posisi Kerja + Jadwal
+           Keberangkatan jadi 1 halaman dengan sistem tab/panel, sebelumnya 3
+           menu & 3 halaman terpisah di sidebar) -->
+      <section id="view-admin-setting-tujuan" class="view">
+        <div class="view-header"><h1>Setting Tujuan</h1><p>Kelola negara tujuan, posisi kerja, dan jadwal keberangkatan</p></div>
 
-      <!-- ADMIN: POSISI KERJA -->
-      <section id="view-admin-posisi" class="view">
-        <div class="view-header"><h1>Posisi Kerja</h1><p>Kelola posisi kerja per negara</p></div>
-        <button class="btn btn-primary" id="btn-add-position"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tambah Posisi</button>
-        <div class="table-container glass" style="margin-top: 20px;">
-          <table class="modern-table">
-            <thead><tr><th>Bagian</th><th>Negara</th><th>Tempat</th><th>Aksi</th></tr></thead>
-            <tbody id="admin-positions-body"><tr class="skeleton-row"><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td></tr><tr class="skeleton-row"><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td></tr><tr class="skeleton-row"><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td></tr></tbody>
-          </table>
+        <div class="settings-tabs-row">
+          <div class="settings-tabs glass" role="tablist">
+            <button type="button" class="settings-tab active" data-tab-target="negara" role="tab" aria-selected="true">Negara Tujuan</button>
+            <button type="button" class="settings-tab" data-tab-target="posisi" role="tab" aria-selected="false">Posisi Kerja</button>
+            <button type="button" class="settings-tab" data-tab-target="jadwal" role="tab" aria-selected="false">Jadwal Keberangkatan</button>
+          </div>
+          <div class="settings-tabs-actions">
+            <button class="btn btn-primary settings-tab-action active" data-tab-target="negara" id="btn-add-country"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tambah Negara</button>
+            <button class="btn btn-primary settings-tab-action" data-tab-target="posisi" id="btn-add-position"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tambah Posisi</button>
+            <button class="btn btn-primary settings-tab-action" data-tab-target="jadwal" id="btn-add-departure-schedule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tambah Jadwal</button>
+          </div>
         </div>
-      </section>
 
-      <!-- ADMIN: JADWAL KEBERANGKATAN (master untuk dropdown Tanggal Pemberangkatan) -->
-      <section id="view-admin-jadwal-keberangkatan" class="view">
-        <div class="view-header"><h1>Jadwal Keberangkatan</h1><p>Kelola daftar tanggal pemberangkatan yang bisa dipilih di halaman Penempatan</p></div>
-        <button class="btn btn-primary" id="btn-add-departure-schedule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tambah Jadwal</button>
-        <div class="table-container glass" style="margin-top: 20px;">
-          <table class="modern-table">
-            <thead><tr><th>Tanggal Keberangkatan</th><th>Catatan</th><th>Kuota</th><th>Status</th><th>Aksi</th></tr></thead>
-            <tbody id="admin-schedules-body"><tr class="skeleton-row"><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td></tr><tr class="skeleton-row"><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td></tr></tbody>
-          </table>
+        <!-- Panel: Negara Tujuan -->
+        <div class="settings-tab-panel active" data-tab-panel="negara" role="tabpanel">
+          <div class="table-container glass" style="margin-top: 20px;">
+            <table class="modern-table">
+              <thead><tr><th>Bendera</th><th>Nama Negara</th><th>Kode</th><th>Mata Uang</th><th>Aksi</th></tr></thead>
+              <tbody id="admin-countries-body"><tr class="skeleton-row"><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td></tr><tr class="skeleton-row"><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td></tr><tr class="skeleton-row"><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Panel: Posisi Kerja -->
+        <div class="settings-tab-panel" data-tab-panel="posisi" role="tabpanel">
+          <div class="table-container glass" style="margin-top: 20px;">
+            <table class="modern-table">
+              <thead><tr><th>Bagian</th><th>Negara</th><th>Tempat</th><th>Aksi</th></tr></thead>
+              <tbody id="admin-positions-body"><tr class="skeleton-row"><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td></tr><tr class="skeleton-row"><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td></tr><tr class="skeleton-row"><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Panel: Jadwal Keberangkatan (master untuk dropdown Tanggal Pemberangkatan) -->
+        <div class="settings-tab-panel" data-tab-panel="jadwal" role="tabpanel">
+          <div class="table-container glass" style="margin-top: 20px;">
+            <table class="modern-table">
+              <thead><tr><th>Tanggal Keberangkatan</th><th>Catatan</th><th>Kuota</th><th>Status</th><th>Aksi</th></tr></thead>
+              <tbody id="admin-schedules-body"><tr class="skeleton-row"><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td></tr><tr class="skeleton-row"><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td></tr></tbody>
+            </table>
+          </div>
         </div>
       </section>
 
