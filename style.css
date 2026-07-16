@@ -1067,6 +1067,17 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 .topbar-chat-btn:active { transform: translateY(0) scale(0.96); }
 .topbar-chat-btn.active { background: var(--gold); color: var(--navy); }
 
+/* Tombol "Jadikan Admin" mengambang: sama persis dengan tombol Chat
+   (.topbar-chat-btn di atas), hanya digeser ke kiri supaya sejajar dan
+   berdampingan di pojok kanan atas, dengan warna gold supaya beda fungsi
+   terlihat jelas sekilas dibanding tombol Chat (navy). */
+.topbar-invite-admin-btn {
+  right: 86px;
+  background: var(--gold);
+  color: var(--navy);
+}
+.topbar-invite-admin-btn:hover { background: #b8912c; box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+
 .topbar-chat-badge {
   position: absolute;
   top: -3px;
@@ -1174,6 +1185,74 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 }
 .view-header h1 { font-size: 24px; font-weight: 700; color: var(--gray-800); margin-bottom: 4px; }
 .view-header p { font-size: 13px; color: var(--gray-500); }
+
+/* Sistem tab/panel untuk halaman "Setting Tujuan" (gabungan Negara Tujuan +
+   Posisi Kerja + Jadwal Keberangkatan dalam 1 halaman, 3 tab). */
+/* Baris pembungkus: tabs di kiri, tombol "Tambah" di kanan (nempel di
+   pinggir tab terakhir / Jadwal Keberangkatan), tinggi disamakan lewat
+   align-items: stretch + box-sizing: border-box pada kedua elemen. */
+.settings-tabs-row {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.settings-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 5px;
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+}
+.settings-tab {
+  border: none;
+  background: transparent;
+  color: var(--gray-500);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+.settings-tab:hover { color: var(--blue-700); }
+.settings-tab.active {
+  background: var(--gold);
+  color: var(--navy);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Tombol "Tambah" (Negara/Posisi/Jadwal): hanya satu yang tampil sesuai
+   tab aktif, tingginya mengikuti tinggi bar tabs (align-items: stretch
+   pada .settings-tabs-row) alih-alih padding tetap seperti .btn biasa. */
+.settings-tabs-actions {
+  display: flex;
+  align-items: stretch;
+}
+.settings-tab-action {
+  display: none;
+  height: 100%;
+  min-width: 200px;
+  padding-top: 0;
+  padding-bottom: 0;
+  box-sizing: border-box;
+}
+.settings-tab-action.active { display: inline-flex; }
+
+.settings-tab-panel { display: none; animation: fadeIn 0.2s ease-out; }
+.settings-tab-panel.active { display: block; }
+
+@media (max-width: 600px) {
+  .settings-tabs-row { flex-direction: column; }
+  .settings-tabs { display: flex; width: 100%; }
+  .settings-tab { flex: 1; text-align: center; padding: 9px 8px; }
+  .settings-tabs-actions { width: 100%; }
+  .settings-tab-action.active { width: 100%; height: 46px; }
+}
 
 .view-header-row {
   display: flex;
@@ -3343,6 +3422,16 @@ button.home-card { cursor: pointer; }
   width: 140px;
 }
 
+/* Kolom Tahapan (3) dan Aksi (5) dipusatkan (center) sesuai permintaan —
+   sebelumnya isinya (badge tahapan & tombol aksi) terlihat menempel ke
+   kiri kolom karena lebar kolom auto-size lebih lebar dari kontennya. */
+#admin-table th:nth-child(3),
+#admin-table td:nth-child(3),
+#admin-table th:nth-child(5),
+#admin-table td:nth-child(5) {
+  text-align: center;
+}
+
 .table-loading {
   text-align: center;
   padding: 40px;
@@ -3359,7 +3448,7 @@ button.home-card { cursor: pointer; }
 
 #admin-table .table-actions-cell {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   width: 100%;
 }
 
@@ -3368,8 +3457,6 @@ button.home-card { cursor: pointer; }
   gap: 4px;
   flex-wrap: wrap;
 }
-
-.btn-make-admin-action { margin-left: 12px; }
 
 .btn-icon-only {
   width: 23px;
