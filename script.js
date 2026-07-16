@@ -989,7 +989,14 @@ function updateBottomNavForRole(isAdmin) {
     const cfg = config[i];
     if (!cfg) return;
     item.dataset.page = cfg.page;
-    const label = item.querySelector('span');
+    // FIX: sebelumnya pakai item.querySelector('span') yang salah tangkap
+    // span PERTAMA di dalam item — sejak ikon dibungkus
+    // <span class="bottom-item-icon-wrap"> (untuk badge chat), span pertama
+    // itu jadi icon-wrap itu sendiri, bukan label teks. Akibatnya textContent
+    // icon-wrap ikut ditimpa jadi teks label (menghapus svg ikon + badge di
+    // dalamnya). Sekarang ambil span LANGSUNG anak dari item (label asli),
+    // bukan span bersarang di dalam icon-wrap.
+    const label = item.querySelector(':scope > span');
     if (label) label.textContent = cfg.label;
   });
 
