@@ -22,13 +22,18 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
-
   <link rel="stylesheet" href="style.css?v=10" />
+
+  <!-- defer: supaya HTML+CSS langsung ke-parse & splash screen tampil instan,
+       tanpa nunggu 5 library CDN ini selesai di-download dulu (khususnya
+       tesseract.js & xlsx yang lumayan berat -> ini penyebab layar cuma
+       kelihatan background polos beberapa detik di HP). defer tetap
+       menjaga urutan eksekusi berurutan & sebelum script.js. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js" defer></script>
 </head>
 <body>
 
@@ -991,7 +996,7 @@
     </nav>
   </div>
 
-  <script src="script.js?v=16"></script>
-  <script src="custom-select.js?v=3"></script>
+  <script src="script.js?v=16" defer></script>
+  <script src="custom-select.js?v=3" defer></script>
 </body>
 </html>
