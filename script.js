@@ -2688,8 +2688,14 @@ function renderAdminTable() {
         <td>
           <div class="table-actions-cell">
             <div class="table-actions-group">
-              <button class="btn-action ${p.isDataComplete ? '' : 'btn-action-incomplete'}" onclick="viewParticipantDetail('${p.id}')" ${p.isDataComplete ? '' : `title="Belum lengkap: ${escapeHtml([...p.missingProfileFields, ...p.missingDocTypes.map(t => 'Dok. ' + t)].join(', '))}"`}>Detail</button>
-              <button class="btn-reject" onclick="rejectParticipant('${p.id}', '${escapeHtml(p.full_name).replace(/'/g, "\\'")}')" title="Tolak Peserta">Tolak</button>
+              <button class="btn-action btn-icon-only ${p.isDataComplete ? '' : 'btn-action-incomplete'}" onclick="viewParticipantDetail('${p.id}')" aria-label="Detail" title="${p.isDataComplete ? 'Detail Peserta' : `Belum lengkap: ${escapeHtml([...p.missingProfileFields, ...p.missingDocTypes.map(t => 'Dok. ' + t)].join(', '))}`}">
+                <svg class="btn-icon-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span class="btn-label">Detail</span>
+              </button>
+              <button class="btn-reject btn-icon-only" onclick="rejectParticipant('${p.id}', '${escapeHtml(p.full_name).replace(/'/g, "\\'")}')" aria-label="Tolak" title="Tolak Peserta">
+                <svg class="btn-icon-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <span class="btn-label">Tolak</span>
+              </button>
             </div>
           </div>
         </td>
