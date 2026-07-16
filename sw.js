@@ -18,11 +18,11 @@
    nama app/icon lama yang sudah ke-cache akan tetap muncul di HP user
    yang sudah install, walau isi manifest.json di server sudah benar.
    ============================================================ */
-const CACHE_NAME = 'ptjuara-v16';
+const CACHE_NAME = 'ptjuara-v17';
 const URLS_TO_CACHE = [
   './',
   './index.html',
-  './style.css?v=14',
+  './style.css?v=15',
   './script.js?v=19',
   './custom-select.js?v=3',
   './manifest.json?v=2',
