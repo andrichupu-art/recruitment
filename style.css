@@ -2213,7 +2213,7 @@ button.home-card { cursor: pointer; }
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: linear-gradient(150deg, var(--purple-600) 0%, var(--blue-600) 45%, var(--coral-500) 100%);
+  background: var(--navy);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2449,7 +2449,7 @@ button.home-card { cursor: pointer; }
 }
 
 [data-theme="dark"] .splash-screen {
-  background: linear-gradient(135deg, var(--navy), var(--slate));
+  background: var(--navy);
 }
 
 [data-theme="dark"] .offline-banner {
