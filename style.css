@@ -3564,6 +3564,11 @@ button.home-card { cursor: pointer; }
   white-space: nowrap;
 }
 
+/* Icon Detail/Tolak disembunyikan di desktop (tetap pakai teks seperti semula);
+   icon ini baru dimunculkan (menggantikan teks) khusus di breakpoint mobile
+   lewat media query di bawah. */
+.btn-icon-svg { display: none; }
+
 .btn-approve { background: var(--green-500); color: var(--white); }
 .btn-approve:hover { background: var(--blue-700); }
 
@@ -4176,27 +4181,39 @@ button.home-card { cursor: pointer; }
 
   #admin-table th,
   #admin-table td {
-    padding: 6px 3px;
+    padding: 8px 4px;
     font-size: 10.5px;
     white-space: normal;
     word-break: break-word;
+    vertical-align: middle;
   }
 
+  /* Lebar kolom pakai persentase (bukan campuran px + auto) supaya sisa
+     ruang tidak semuanya "dibuang" ke kolom Nama — sebelumnya kolom Nama
+     auto-fill sisa lebar tabel sehingga jaraknya ke badge Tahapan jadi
+     sangat lebar dan tabel terlihat berantakan. */
   #admin-table th:nth-child(1),
   #admin-table td:nth-child(1) {
-    width: 26px;
+    width: 10%;
+    padding-right: 0;
+  }
+
+  #admin-table th:nth-child(2),
+  #admin-table td:nth-child(2) {
+    width: 34%;
+    text-align: center;
   }
 
   #admin-table th:nth-child(3),
   #admin-table td:nth-child(3) {
-    width: 72px;
-    overflow: hidden;
+    width: 28%;
+    overflow: visible;
   }
 
   #admin-table th:nth-child(5),
   #admin-table td:nth-child(5) {
-    width: 70px;
-    overflow: hidden;
+    width: 28%;
+    overflow: visible;
   }
 
   #admin-table .status-tahap {
@@ -4206,22 +4223,39 @@ button.home-card { cursor: pointer; }
     box-sizing: border-box;
     justify-content: center;
     text-align: center;
-    line-height: 1.15;
-    font-size: 9px;
-    padding: 3px 4px;
+    line-height: 1.25;
+    font-size: 9.5px;
+    padding: 4px 4px;
     white-space: normal;
+    overflow: visible;
   }
 
   #admin-table .table-actions-group {
-    flex-direction: column;
-    gap: 3px;
+    flex-direction: row;
+    gap: 6px;
     width: 100%;
+    align-items: center;
+    justify-content: center;
   }
 
-  #admin-table .table-actions-cell button {
-    width: 100%;
-    padding: 3px 4px;
-    font-size: 9.5px;
+  /* Tombol Detail/Tolak jadi icon-only bulat kecil (bukan lagi full-width
+     dengan teks) supaya kolom Aksi tetap ringkas di layar sempit — hanya
+     berlaku di breakpoint mobile ini; tampilan desktop tetap pakai teks. */
+  #admin-table .table-actions-cell .btn-icon-only {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  #admin-table .table-actions-cell .btn-icon-only .btn-label {
+    display: none;
+  }
+  #admin-table .table-actions-cell .btn-icon-only .btn-icon-svg {
+    display: block;
   }
 }
 
