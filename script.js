@@ -589,10 +589,12 @@ async function requestNotificationPermission() {
 /* ============================================ */
 /* SPLASH SCREEN */
 /* ============================================ */
-const MIN_SPLASH_DURATION = 900; // ms — splash minimal tampil segini, supaya
+const MIN_SPLASH_DURATION = 1800; // ms — splash minimal tampil segini, supaya
 // transisi terasa smooth & konsisten walau data (getSession/getUser/profile)
 // kebetulan selesai sangat cepat. Tanpa ini, di koneksi kencang splash bisa
 // "kedip" sekilas lalu langsung hilang, terasa patah-patah/tidak smooth.
+// (diperpanjang dari 900ms -> 1800ms atas permintaan, supaya animasi loader
+// baru sempat "kelihatan" dulu sebelum pindah ke halaman berikutnya)
 
 function hideSplash() {
   const splash = $('#splash-screen');
@@ -5382,6 +5384,6 @@ supabase.auth.onAuthStateChange(async (event, session) => {
   }
 })();
 
-// Fallback hide splash after 5 seconds
-setTimeout(hideSplash, 5000);
+// Fallback hide splash after 7 seconds (diperpanjang dari 5s, tetap di atas MIN_SPLASH_DURATION)
+setTimeout(hideSplash, 7000);
 })();
