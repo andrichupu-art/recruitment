@@ -1522,6 +1522,18 @@ button.home-card { cursor: pointer; }
 .chat-input .btn { padding: 10px 14px; border-radius: 50%; }
 .chat-input .btn svg { width: 18px; height: 18px; }
 
+/* Tombol kirim chat sebelumnya ikut var(--gradient-brand) (emas -> navy) lewat
+   .btn-primary global, jadi terlihat dominan kuning, beda sendiri dari elemen
+   navy lain di dashboard. Disamakan pakai var(--gradient-focus), sama seperti
+   avatar/ikon navy lainnya. */
+.chat-input .btn-primary {
+  background: var(--gradient-focus);
+  box-shadow: var(--glow-focus);
+}
+.chat-input .btn-primary:hover {
+  box-shadow: 0 12px 28px rgba(21, 46, 69, 0.4);
+}
+
 .upload-preview { margin-top: 0; text-align: center; width: 100%; }
 .upload-preview img { max-width: 100%; max-height: 200px; border-radius: var(--radius-sm); display: block; margin: 0 auto; }
 .preview-info { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: var(--gray-500); margin-top: 8px; }
