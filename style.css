@@ -4154,6 +4154,66 @@ button.home-card { cursor: pointer; }
   #view-admin-peserta .table-search {
     width: 100%;
   }
+
+  /* Sembunyikan kolom Status (kolom ke-4: No, Nama, Tahapan, Status, Aksi)
+     dan buat tabel muat dalam satu layar (No, Nama, Tahap, Aksi) tanpa perlu
+     scroll horizontal — lebar kolom mengikuti table-layout: fixed, bukan
+     min-width: 700px seperti di desktop. */
+  #admin-table th:nth-child(4),
+  #admin-table td:nth-child(4) {
+    display: none;
+  }
+
+  #view-admin-peserta .table-container {
+    overflow-x: hidden;
+  }
+
+  #admin-table {
+    min-width: 0;
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  #admin-table th,
+  #admin-table td {
+    padding: 6px 3px;
+    font-size: 10.5px;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  #admin-table th:nth-child(1),
+  #admin-table td:nth-child(1) {
+    width: 26px;
+  }
+
+  #admin-table th:nth-child(3),
+  #admin-table td:nth-child(3) {
+    width: 62px;
+  }
+
+  #admin-table th:nth-child(5),
+  #admin-table td:nth-child(5) {
+    width: 74px;
+  }
+
+  #admin-table .status-tahap {
+    font-size: 9.5px;
+    padding: 2px 5px;
+    white-space: normal;
+  }
+
+  #admin-table .table-actions-group {
+    flex-direction: column;
+    gap: 3px;
+    width: 100%;
+  }
+
+  #admin-table .table-actions-cell button {
+    width: 100%;
+    padding: 3px 4px;
+    font-size: 9.5px;
+  }
 }
 
 /* Scrollbar */
