@@ -112,12 +112,21 @@
   --watermark-tile: 190px;
   --watermark-opacity: 0.4;
 
-  /* Motif latar belakang geometris ala Timur Tengah (girih / bintang delapan),
-     digambar langsung sebagai data-URI SVG (garis tipis, tanpa file eksternal)
-     supaya ringan dan gampang diatur ukuran ubin/kekuatannya lewat variabel. */
-  --me-pattern-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cg fill='none' stroke='%23CDA434' stroke-width='1.5'%3E%3Cpath d='M10 10H54V54H10Z'/%3E%3Cpath d='M32 3L61 32L32 61L3 32Z'/%3E%3C/g%3E%3C/svg%3E");
-  --me-pattern-tile: 64px;
-  --me-pattern-opacity: 0.16;
+  /* Motif latar belakang geometris ala Timur Tengah — bintang delapan (khatam)
+     di tengah ubin + bintang kecil di tiap sudut yang saling mengunci dengan
+     ubin sebelahnya membentuk pola "star & cross" klasik girih, plus permata
+     kecil di pusat. Digambar sebagai data-URI SVG (garis tipis, tanpa file
+     eksternal) supaya ringan dan gampang diatur ukuran ubin/kekuatannya
+     lewat variabel. */
+  --me-pattern-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%23CDA434' stroke-width='1.1' stroke-linejoin='round'%3E%3Cpath d='M50 20 L54.59 38.91 L71.21 28.79 L61.09 45.41 L80 50 L61.09 54.59 L71.21 71.21 L54.59 61.09 L50 80 L45.41 61.09 L28.79 71.21 L38.91 54.59 L20 50 L38.91 45.41 L28.79 28.79 L45.41 38.91 Z'/%3E%3Cpath d='M0 -16 L2.3 -5.54 L11.31 -11.31 L5.54 -2.3 L16 0 L5.54 2.3 L11.31 11.31 L2.3 5.54 L0 16 L-2.3 5.54 L-11.31 11.31 L-5.54 2.3 L-16 0 L-5.54 -2.3 L-11.31 -11.31 L-2.3 -5.54 Z'/%3E%3Cpath d='M100 -16 L102.3 -5.54 L111.31 -11.31 L105.54 -2.3 L116 0 L105.54 2.3 L111.31 11.31 L102.3 5.54 L100 16 L97.7 5.54 L88.69 11.31 L94.46 2.3 L84 0 L94.46 -2.3 L88.69 -11.31 L97.7 -5.54 Z'/%3E%3Cpath d='M0 84 L2.3 94.46 L11.31 88.69 L5.54 97.7 L16 100 L5.54 102.3 L11.31 111.31 L2.3 105.54 L0 116 L-2.3 105.54 L-11.31 111.31 L-5.54 102.3 L-16 100 L-5.54 97.7 L-11.31 88.69 L-2.3 94.46 Z'/%3E%3Cpath d='M100 84 L102.3 94.46 L111.31 88.69 L105.54 97.7 L116 100 L105.54 102.3 L111.31 111.31 L102.3 105.54 L100 116 L97.7 105.54 L88.69 111.31 L94.46 102.3 L84 100 L94.46 97.7 L88.69 88.69 L97.7 94.46 Z'/%3E%3Cpath d='M50 42 L58 50 L50 58 L42 50 Z' fill='%23CDA434' fill-opacity='0.5' stroke='none'/%3E%3C/g%3E%3C/svg%3E");
+  --me-pattern-tile: 100px;
+  --me-pattern-opacity: 0.18;
+  /* Lapisan gradasi tambahan: memudarkan motif dari sudut layar menuju
+     tengah/konten dan sekaligus "membaurkan" warna gold motif ke warna
+     background di titik-titik tertentu, supaya teksturnya tidak flat. */
+  --me-pattern-glow: radial-gradient(120% 90% at 15% 0%, rgba(205, 164, 52, 0.10), transparent 55%),
+                     radial-gradient(120% 90% at 85% 100%, rgba(205, 164, 52, 0.08), transparent 55%);
+  --me-pattern-fade: radial-gradient(130% 110% at 50% 45%, transparent 42%, #000 100%);
 
   /* Bento */
   --bento-gap: 14px;
@@ -160,8 +169,21 @@ body {
   color: var(--gray-800);
   font-size: 14px;
   line-height: 1.5;
-  overflow-x: hidden;
-  overscroll-behavior-y: none;
+  /* FIX: sebelumnya cuma overflow-x yang dikunci, sumbu Y dibiarkan bebas.
+     Semua area yang memang butuh scroll (main-content, chat, tabel, dll)
+     sudah punya overflow-y:auto sendiri di kontainernya masing-masing,
+     jadi body/html sama sekali tidak perlu ikut discroll. Kalau sumbu Y
+     body dibiarkan bebas, sedikit saja tinggi konten (splash/modal/dsb di
+     root) melebihi viewport, seluruh layar (termasuk halaman login) jadi
+     bisa digeser-geser padahal seharusnya statis mengunci satu layar
+     penuh. overflow:hidden di sini mengunci layar utuh, scroll internal
+     tetap jalan normal lewat kontainer masing-masing. */
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+html {
+  overflow: hidden;
 }
 
 /* ============================================ */
@@ -177,11 +199,17 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-image: var(--me-pattern-image);
-  background-repeat: repeat;
-  background-size: var(--me-pattern-tile) var(--me-pattern-tile);
+  background-image: var(--me-pattern-glow), var(--me-pattern-image);
+  background-repeat: no-repeat, repeat;
+  background-size: cover, var(--me-pattern-tile) var(--me-pattern-tile);
   opacity: var(--me-pattern-opacity);
   mix-blend-mode: multiply;
+  /* Memudarkan motif secara halus dari tepi/sudut layar menuju tengah,
+     supaya menyatu (gradasi) ke warna background alih-alih tekstur flat
+     merata di seluruh layar — konsisten di HP maupun desktop karena
+     inset:0 selalu mengikuti ukuran viewport. */
+  -webkit-mask-image: var(--me-pattern-fade);
+  mask-image: var(--me-pattern-fade);
 }
 
 [data-theme="dark"] body::before {
@@ -190,7 +218,12 @@ body::before {
 }
 
 @media (max-width: 640px) {
-  body::before { --me-pattern-tile: 48px; }
+  body::before {
+    --me-pattern-tile: 60px;
+    /* Motif lebih rapat memenuhi layar sempit tanpa perlu bergantung ke
+       satu titik fokus gradasi, tapi tetap memudar di tepi. */
+    --me-pattern-fade: radial-gradient(150% 120% at 50% 40%, transparent 48%, #000 100%);
+  }
 }
 
 a { text-decoration: none; color: inherit; }
@@ -594,13 +627,18 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 /* ============================================ */
 .auth-wrapper {
   position: relative;
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
-  overflow: hidden;
-  background: linear-gradient(135deg, var(--cream) 0%, var(--blue-50) 55%, var(--gold-300) 100%);
+  /* FIX: body sekarang overflow:hidden (dikunci total). Supaya kartu
+     login/register tidak ikut terpotong di layar pendek (mis. HP posisi
+     landscape), wrapper ini yang menyediakan scroll fallback-nya sendiri,
+     bukan body. */
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--cream);
 }
 /* FIX: .auth-wrapper full-viewport (min-height:100vh) punya background gradient
    OPAQUE sendiri, jadi menutup total motif global body::before (z-index:-1)
@@ -613,11 +651,15 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-image: var(--me-pattern-image);
-  background-repeat: repeat;
-  background-size: var(--me-pattern-tile) var(--me-pattern-tile);
+  background-image: var(--me-pattern-glow), var(--me-pattern-image);
+  background-repeat: no-repeat, repeat;
+  background-size: cover, var(--me-pattern-tile) var(--me-pattern-tile);
   opacity: var(--me-pattern-opacity);
   mix-blend-mode: multiply;
+  /* Sama seperti body::before: motif memudar ke arah tepi/sudut sehingga
+     membaur ke warna background .auth-wrapper, bukan tekstur rata. */
+  -webkit-mask-image: var(--me-pattern-fade);
+  mask-image: var(--me-pattern-fade);
 }
 .auth-wrapper > * { position: relative; z-index: 1; }
 [data-theme="dark"] .auth-wrapper::before {
@@ -625,59 +667,11 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   opacity: calc(var(--me-pattern-opacity) * 1.4);
 }
 
-.auth-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-}
-
-.blob {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(70px);
-  opacity: 0.5;
-  animation: blobFloat 12s ease-in-out infinite;
-}
-
-.blob-1 {
-  width: 340px;
-  height: 340px;
-  background: var(--blue-400);
-  top: -80px;
-  left: -80px;
-}
-
-.blob-2 {
-  width: 300px;
-  height: 300px;
-  background: var(--coral-500);
-  bottom: -60px;
-  right: -60px;
-  animation-delay: 2s;
-}
-
-.blob-3 {
-  width: 240px;
-  height: 240px;
-  background: var(--gold-500);
-  bottom: 20%;
-  left: 10%;
-  animation-delay: 4s;
-}
-
-.blob-4 {
-  width: 200px;
-  height: 200px;
-  background: var(--purple-500);
-  top: 15%;
-  right: 12%;
-  animation-delay: 6s;
-}
-
-@keyframes blobFloat {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(30px, -30px) scale(1.1); }
+@media (max-width: 640px) {
+  .auth-wrapper::before {
+    --me-pattern-tile: 60px;
+    --me-pattern-fade: radial-gradient(150% 120% at 50% 40%, transparent 48%, #000 100%);
+  }
 }
 
 .auth-page {
@@ -1044,10 +1038,10 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 
 .nav-item.logout {
   margin: 8px 12px 0;
-  color: var(--red-500);
+  color: var(--gray-600);
 }
-.nav-item.logout:hover { background: transparent; }
-.nav-item.logout:hover svg { background: var(--tonal-red); }
+.nav-item.logout:hover { color: var(--blue-700); background: transparent; }
+.nav-item.logout:hover svg { background: var(--blue-50); }
 
 .nav-item-badge {
   margin-left: auto;
@@ -3509,6 +3503,13 @@ button.home-card { cursor: pointer; }
 
 .modern-table tbody tr { transition: var(--transition); }
 .modern-table tbody tr:hover { background: var(--blue-50); }
+
+/* Kolom No. Telp di tabel Kelola Peserta hanya tampil di desktop, disembunyikan
+   di layar mobile (sama seperti breakpoint sidebar/bottom-nav di 900px) supaya
+   tabel tidak makin sempit di HP. */
+@media (max-width: 900px) {
+  .modern-table .col-phone { display: none; }
+}
 
 /* Kolom Status di tabel Kelola Peserta dikunci lebarnya (bukan auto-size)
    supaya kolom tidak melebar/menyempit tidak konsisten tergantung isi badge
