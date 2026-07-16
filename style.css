@@ -3165,10 +3165,47 @@ button.home-card { cursor: pointer; }
 .admin-stats-grid {
   display: flex;
   flex-direction: column;
-  gap: var(--bento-gap);
-  margin-bottom: 0;
+  /* FIX: gap 14px (var(--bento-gap)) ditambah blur 18px dari .glass di tiap
+     kartu membuat "kanvas" untuk motif watermark cuma tersisa sliver ~14px
+     yang nyaris polos (tile 90px, jadi cuma ~1/6 pola per baris kelihatan).
+     Gap dibesarkan khusus di grid ini supaya ada ruang nyata untuk motif,
+     bukan cuma celah tipis yang gampang "hilang" di antara efek blur. */
+  gap: 26px;
+  margin: 6px 0;
   flex: 1;
   min-height: 0;
+  /* FIX: sebelumnya watermark lokal grid ini hanya didefinisikan di dalam
+     @media (max-width: 900px), jadi di desktop grid ini cuma mengandalkan
+     body::before global yang di-mask supaya memudar di area tengah layar —
+     hasilnya latar kartu statistik terlihat polos di desktop. Ditambahkan
+     position: relative + ::before di sini (rule dasar, bukan di dalam media
+     query) supaya watermark lokal yang sama juga tampil di desktop. */
+  position: relative;
+}
+
+.admin-stats-grid::before {
+  content: "";
+  position: absolute;
+  /* FIX: inset disamakan dengan margin baru grid ini (6px atas/bawah)
+     supaya bleed-nya tidak pernah kepotong oleh overflow-y:auto pada
+     .main-content (yang otomatis ikut meng-clip sumbu X juga). */
+  top: -6px;
+  right: -16px;
+  bottom: -6px;
+  left: -16px;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--watermark-image);
+  background-repeat: repeat;
+  background-size: 90px auto;
+  background-position: center top;
+  opacity: 0.65;
+  mix-blend-mode: multiply;
+}
+
+[data-theme="dark"] .admin-stats-grid::before {
+  mix-blend-mode: soft-light;
+  opacity: 0.45;
 }
 
 .admin-stat-card {
@@ -3183,6 +3220,12 @@ button.home-card { cursor: pointer; }
   transition: var(--transition);
   position: relative;
   overflow: hidden;
+  /* FIX: .glass bawaan pakai blur(18px), yang menyamarkan motif watermark
+     di baliknya sampai nyaris tak kelihatan. Diturunkan khusus di kartu
+     statistik ini supaya sedikit motif tetap tembus lewat body kartu,
+     bukan cuma di celah antar-kartu. */
+  backdrop-filter: blur(8px) saturate(160%);
+  -webkit-backdrop-filter: blur(8px) saturate(160%);
 }
 
 /* Watermark ikon besar & transparan di pojok kanan tiap kartu statistik,
@@ -4013,7 +4056,7 @@ button.home-card { cursor: pointer; }
     background-repeat: repeat;
     background-size: 64px auto;
     background-position: center top;
-    opacity: 0.55;
+    opacity: 0.68;
     mix-blend-mode: multiply;
   }
   [data-theme="dark"] .admin-stats-grid::before {
