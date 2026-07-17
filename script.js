@@ -5360,6 +5360,28 @@ function playNotificationSound() {
 }
 
 /* ============================================ */
+/* SET PASSWORD BARU (khusus peserta baru daftar via Google) */
+/* ============================================ */
+// Akun yang dibuat lewat Google OAuth secara default TIDAK punya password
+// di Supabase Auth (cuma bisa login via Google). Supaya peserta juga bisa
+// login pakai form email/password yang sudah ada, mereka diarahkan sekali
+// ke halaman terpisah set-password.html untuk membuat password sendiri.
+//
+// Penanda "sudah pernah set password" DISIMPAN DI user_metadata
+// (password_set: true) — BUKAN cek session.user.identities — karena ada
+// bug resmi di Supabase Auth: updateUser({ password }) tidak menambahkan
+// provider 'email' ke identities/providers, jadi cek via identities akan
+// terus-menerus salah mendeteksi peserta yang sebetulnya sudah set password.
+// Referensi: github.com/supabase/auth/issues/2085
+function needsPasswordSetup(session) {
+  const user = session?.user;
+  if (!user) return false;
+  const provider = user.app_metadata?.provider; // 'google' | 'email' | dst.
+  const passwordAlreadySet = user.user_metadata?.password_set === true;
+  return provider === 'google' && !passwordAlreadySet;
+}
+
+/* ============================================ */
 /* AUTH STATE LISTENER */
 /* ============================================ */
 supabase.auth.onAuthStateChange(async (event, session) => {
@@ -5372,6 +5394,10 @@ supabase.auth.onAuthStateChange(async (event, session) => {
   }
   if (event === 'SIGNED_IN' && session) {
     if ($('#page-reset').classList.contains('active')) return;
+    if (needsPasswordSetup(session)) {
+      window.location.replace('set-password.html');
+      return;
+    }
     // hideSplash() TIDAK dipanggil di sini — initDashboard() yang akan
     // menutup splash setelah dashboard-wrapper benar-benar siap ditampilkan.
     initDashboard();
@@ -5397,6 +5423,8 @@ supabase.auth.onAuthStateChange(async (event, session) => {
       show($('#auth-wrapper'));
       showAuthPage('reset');
       hideSplash();
+    } else if (session && needsPasswordSetup(session)) {
+      window.location.replace('set-password.html');
     } else if (session) {
       // Splash ditutup di dalam initDashboard(), setelah dashboard-wrapper
       // (nama, avatar, menu/nav) selesai disiapkan — bukan di sini, supaya
