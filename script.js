@@ -5,6 +5,14 @@
 // bisa menghitung sudah berapa lama splash tampil sejak app mulai jalan.
 const APP_START_TIME = Date.now();
 
+// FIX: percobaan-percobaan sebelumnya untuk "menitip" penanda balik-dari-
+// Google di URL index.html (sessionStorage, localStorage, lalu query string
+// `?auth=google`) semuanya rapuh karena harus berbagi URL yang sama dengan
+// query string lain (mis. `?code=...` dari PKCE). Sekarang OAuth Google
+// diarahkan ke halaman terpisah (google-setup.html, lihat signInWithGoogle
+// di bawah) yang menangani sesi & gate wajib-buat-password sendiri, jadi
+// index.html tidak perlu tahu apa-apa soal "baru saja balik dari Google".
+
 /* ============================================ */
 /* KONFIGURASI SUPABASE */
 /* ============================================ */
@@ -64,7 +72,11 @@ const state = {
   theme: localStorage.getItem('theme') || 'light',
   autoSaveTimers: {},
   dashboardInitializing: false,
-  dashboardReady: false
+  dashboardReady: false,
+  // 'reset' = alur lupa password biasa, 'google-setup' = user baru pertama
+  // kali masuk lewat Google dan belum pernah bikin password sendiri.
+  // Dipakai oleh #form-reset untuk tahu payload/pesan apa yang dipakai.
+  resetPageMode: 'reset'
 };
 
 const DOC_TYPES = [
@@ -759,6 +771,69 @@ async function loadFormDraft(formKey) {
 }
 
 /* ============================================ */
+/* GOOGLE SIGN-IN -> WAJIB BUAT PASSWORD */
+/* ============================================ */
+// Deteksi user yang baru masuk lewat Google OAuth dan belum pernah punya
+// password sendiri (belum pernah signup/link lewat email+password). Supabase
+// menandai identity 'email' hanya kalau user pernah signUp/updateUser dengan
+// password lewat provider email — user Google murni tidak akan punya identity
+// ini. Ditambah flag user_metadata sebagai penanda eksplisit begitu user
+// selesai melewati layar "Buat Password" ini sekali, supaya tidak diulang
+// terus tiap login berikutnya kalau untuk alasan tertentu identity 'email'
+// belum sempat terbentuk di sisi Supabase.
+function needsGooglePasswordSetup(user) {
+  if (!user) return false;
+  const providers = user.app_metadata?.providers
+    || (user.app_metadata?.provider ? [user.app_metadata.provider] : []);
+  const isGoogleUser = providers.includes('google');
+  const hasEmailIdentity = Array.isArray(user.identities)
+    && user.identities.some(id => id.provider === 'email');
+  const alreadySetup = !!user.user_metadata?.google_password_set;
+  return isGoogleUser && !hasEmailIdentity && !alreadySetup;
+}
+
+// FIX: redirect Google sekarang mendarat di google-setup.html (bukan di sini
+// lagi), dan halaman itu sudah menuntaskan gate wajib-buat-password sebelum
+// pernah melempar user ke index.html. Jadi fungsi ini di index.html tinggal
+// jadi fallback untuk sesi Google yang di-resume TANPA lewat redirect baru
+// sama sekali — mis. user menutup tab google-setup.html sebelum sempat isi
+// form, lalu lain waktu buka index.html langsung dengan sesi lama itu masih
+// aktif. getUser() dipanggil ulang di sini (bukan cuma pakai objek session
+// yang dikirim event) supaya app_metadata/identities-nya paling baru.
+async function checkNeedsGooglePasswordSetup(fallbackUser) {
+  let freshUser = fallbackUser;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (!error && data?.user) freshUser = data.user;
+  } catch (err) {
+    console.error('checkNeedsGooglePasswordSetup error:', err);
+  }
+
+  if (!freshUser) return false;
+  return needsGooglePasswordSetup(freshUser);
+}
+
+// Layar #page-reset dipakai ulang untuk 2 skenario: lupa password (link email)
+// dan wajib-buat-password setelah signup Google pertama kali. Teks judul/
+// subjudul/tombol perlu disesuaikan supaya tidak membingungkan peserta yang
+// baru saja pakai Google — dia bukan sedang "reset" apa pun, karena memang
+// belum pernah punya password.
+function setResetPageCopy(mode) {
+  const h1 = $('#page-reset .auth-logo h1');
+  const tagline = $('#page-reset .auth-logo .tagline');
+  const submitText = $('#form-reset .btn-text');
+  if (mode === 'google-setup') {
+    if (h1) h1.textContent = 'Buat Password Akun';
+    if (tagline) tagline.textContent = 'Anda masuk dengan Google. Buat password supaya bisa login manual juga kapan pun.';
+    if (submitText) submitText.textContent = 'Simpan Password';
+  } else {
+    if (h1) h1.textContent = 'Buat Password Baru';
+    if (tagline) tagline.textContent = 'Masukkan password baru untuk akun Anda';
+    if (submitText) submitText.textContent = 'Simpan Password Baru';
+  }
+}
+
+/* ============================================ */
 /* AUTH PAGES NAVIGATION */
 /* ============================================ */
 function showAuthPage(page) {
@@ -836,6 +911,40 @@ $('#form-login').addEventListener('submit', async (e) => {
   }
 });
 
+// Login/Daftar dengan Google memakai satu action yang sama persis
+// (supabase.auth.signInWithOAuth). Supabase yang menentukan sendiri di
+// belakang layar: kalau email akun Google itu belum pernah dipakai, otomatis
+// dibuatkan akun baru (signup); kalau sudah ada, langsung login. Karena itu
+// tombol di halaman login & register cukup dipasangi handler yang identik.
+async function signInWithGoogle(btn) {
+  setLoading(btn, true);
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        // Balik ke google-setup.html (bukan index.html) — halaman statis
+        // terpisah, pola yang sama seperti EMAIL_CONFIRM_REDIRECT/confirmed.html.
+        // Halaman itu sendiri yang menangkap sesi & menentukan apakah user
+        // perlu digate ke layar "Buat Password" atau langsung dilempar balik
+        // ke aplikasi. PENTING: URL ini juga wajib didaftarkan di Supabase
+        // Dashboard -> Authentication -> URL Configuration -> Redirect URLs.
+        redirectTo: window.location.origin + window.location.pathname.replace(/index\.html$/, '').replace(/\/$/, '') + '/google-setup.html'
+      }
+    });
+    if (error) {
+      setLoading(btn, false);
+      toast('error', 'Gagal Masuk dengan Google', error.message);
+    }
+    // Kalau sukses, browser akan di-redirect ke halaman consent Google,
+    // jadi tidak perlu setLoading(false) di sini — halaman akan berpindah.
+  } catch (err) {
+    setLoading(btn, false);
+    toast('error', 'Error', 'Terjadi kesalahan. Silakan coba lagi.');
+  }
+}
+$('#btn-google-login')?.addEventListener('click', (e) => signInWithGoogle(e.currentTarget));
+$('#btn-google-register')?.addEventListener('click', (e) => signInWithGoogle(e.currentTarget));
+
 $('#form-register').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!validateForm(e.target)) return;
@@ -844,7 +953,6 @@ $('#form-register').addEventListener('submit', async (e) => {
   setLoading(btn, true);
 
   const full_name = $('#register-name').value.trim();
-  const phone = $('#register-phone').value.trim();
   const email = $('#register-email').value.trim();
   const password = $('#register-password').value;
 
@@ -853,7 +961,7 @@ $('#form-register').addEventListener('submit', async (e) => {
       email,
       password,
       options: {
-        data: { full_name, phone },
+        data: { full_name },
         emailRedirectTo: EMAIL_CONFIRM_REDIRECT
       }
     });
@@ -920,8 +1028,18 @@ $('#form-reset').addEventListener('submit', async (e) => {
 
   setLoading(btn, true);
 
+  const isGoogleSetup = state.resetPageMode === 'google-setup';
+
   try {
-    const { error } = await supabase.auth.updateUser({ password });
+    const updatePayload = { password };
+    // Tandai user_metadata begitu user (yang tadinya cuma punya akun Google)
+    // selesai bikin password sendiri, supaya layar ini tidak muncul lagi di
+    // login-login berikutnya untuk akun yang sama.
+    if (isGoogleSetup) {
+      updatePayload.data = { google_password_set: true };
+    }
+
+    const { error } = await supabase.auth.updateUser(updatePayload);
 
     setLoading(btn, false);
     if (error) {
@@ -929,7 +1047,16 @@ $('#form-reset').addEventListener('submit', async (e) => {
       return;
     }
 
-    toast('success', 'Password Berhasil Diubah', 'Silakan masuk dengan password baru Anda.');
+    if (isGoogleSetup) {
+      toast('success', 'Password Berhasil Dibuat', 'Silakan masuk kembali menggunakan email & password baru Anda.');
+    } else {
+      toast('success', 'Password Berhasil Diubah', 'Silakan masuk dengan password baru Anda.');
+    }
+
+    // Sign out lagi setelah password dibuat/diubah — konsisten dengan alur
+    // lupa password: peserta login ulang secara manual pakai password baru,
+    // bukan langsung "diloloskan" ke dashboard dari sini.
+    state.resetPageMode = 'reset';
     await supabase.auth.signOut();
     showAuthPage('login');
   } catch (err) {
@@ -5334,6 +5461,8 @@ function playNotificationSound() {
 /* ============================================ */
 supabase.auth.onAuthStateChange(async (event, session) => {
   if (event === 'PASSWORD_RECOVERY') {
+    state.resetPageMode = 'reset';
+    setResetPageCopy('reset');
     hide($('#dashboard-wrapper'));
     show($('#auth-wrapper'));
     showAuthPage('reset');
@@ -5342,6 +5471,18 @@ supabase.auth.onAuthStateChange(async (event, session) => {
   }
   if (event === 'SIGNED_IN' && session) {
     if ($('#page-reset').classList.contains('active')) return;
+    // Baru pertama kali masuk lewat Google & belum pernah bikin password ->
+    // gate ke layar "Buat Password" dulu (layar sama dengan #page-reset,
+    // hanya teksnya diganti), sebelum boleh masuk dashboard.
+    if (await checkNeedsGooglePasswordSetup(session.user)) {
+      state.resetPageMode = 'google-setup';
+      setResetPageCopy('google-setup');
+      hide($('#dashboard-wrapper'));
+      show($('#auth-wrapper'));
+      showAuthPage('reset');
+      hideSplash();
+      return;
+    }
     // hideSplash() TIDAK dipanggil di sini — initDashboard() yang akan
     // menutup splash setelah dashboard-wrapper benar-benar siap ditampilkan.
     initDashboard();
@@ -5363,6 +5504,18 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     const { data: { session } } = await supabase.auth.getSession();
 
     if (isRecoveryLink) {
+      state.resetPageMode = 'reset';
+      setResetPageCopy('reset');
+      hide($('#dashboard-wrapper'));
+      show($('#auth-wrapper'));
+      showAuthPage('reset');
+      hideSplash();
+    } else if (session && await checkNeedsGooglePasswordSetup(session.user)) {
+      // Kasus refresh halaman saat sesi Google yang belum punya password
+      // masih aktif (mis. tab ditutup tanpa sempat isi form) -> tetap
+      // di-gate ke layar "Buat Password", jangan langsung ke dashboard.
+      state.resetPageMode = 'google-setup';
+      setResetPageCopy('google-setup');
       hide($('#dashboard-wrapper'));
       show($('#auth-wrapper'));
       showAuthPage('reset');
