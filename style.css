@@ -107,8 +107,8 @@
   --gradient-focus: linear-gradient(135deg, var(--blue-500), var(--blue-800));
   --glow-focus: 0 6px 14px rgba(21, 46, 69, 0.35);
 
-  /* Watermark motif latar belakang (logo_3.svg) — ukuran ubin & kekuatan gradasi */
-  --watermark-image: url('logo_3.svg');
+  /* Watermark motif latar belakang (pattern-khatam.png) — ukuran ubin & kekuatan gradasi */
+  --watermark-image: url('pattern-khatam.png');
   --watermark-tile: 190px;
   --watermark-opacity: 0.4;
 
@@ -192,46 +192,10 @@ html {
 
 /* ============================================ */
 /* BACKGROUND MOTIF TIMUR TENGAH (girih / bintang) */
-/* Ditumpuk di atas gradient-mesh, sangat ringan   */
-/* (opacity rendah) supaya tidak mengganggu        */
-/* keterbacaan konten, konsisten di semua halaman  */
-/* (auth, dashboard peserta & admin).              */
+/* FIX: motif global body::before DIHAPUS — sekarang motif HANYA */
+/* dipakai di halaman login/register (.auth-wrapper::before).     */
+/* Dashboard, admin, dan halaman lain sengaja dibiarkan polos.     */
 /* ============================================ */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background-image: var(--me-pattern-glow), var(--me-pattern-image);
-  background-repeat: no-repeat, repeat;
-  background-size: cover, var(--me-pattern-tile) var(--me-pattern-tile);
-  opacity: var(--me-pattern-opacity);
-  mix-blend-mode: multiply;
-  /* Memudarkan motif secara halus dari tepi/sudut layar menuju tengah,
-     supaya menyatu (gradasi) ke warna background alih-alih tekstur flat
-     merata di seluruh layar — konsisten di HP maupun desktop karena
-     inset:0 selalu mengikuti ukuran viewport. */
-  -webkit-mask-image: var(--me-pattern-fade);
-  mask-image: var(--me-pattern-fade);
-}
-
-[data-theme="dark"] body::before {
-  mix-blend-mode: soft-light;
-  opacity: 0.30;
-}
-
-@media (max-width: 640px) {
-  body::before {
-    --me-pattern-tile: 60px;
-    /* Motif lebih rapat memenuhi layar sempit tanpa perlu bergantung ke
-       satu titik fokus gradasi, tapi tetap memudar di tepi. */
-    /* FIX: sama seperti root — 48% sebelumnya menyembunyikan hampir separuh
-       layar tepat di area konten utama, sehingga motif jarang kelihatan di
-       HP. Diturunkan ke 20% supaya konsisten dengan desktop. */
-    --me-pattern-fade: radial-gradient(150% 120% at 50% 40%, transparent 20%, #000 100%);
-  }
-}
 
 a { text-decoration: none; color: inherit; }
 button { font-family: inherit; border: none; background: none; cursor: pointer; }
@@ -670,11 +634,10 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   mix-blend-mode: multiply;
   /* Sama seperti body::before: motif memudar ke arah tepi/sudut sehingga
      membaur ke warna background .auth-wrapper, bukan tekstur rata.
-     FIX: area tersembunyi (transparan) dikurangi dari 42% ke 30% supaya
-     pinggiran yang kelihatan lebih lebar — sebelumnya motif nyaris hanya
-     boleh tampil di sisa tipis di luar kartu. */
-  -webkit-mask-image: radial-gradient(130% 110% at 50% 45%, transparent 30%, #000 100%);
-  mask-image: radial-gradient(130% 110% at 50% 45%, transparent 30%, #000 100%);
+     FIX: area transparan dikurangi lagi (30% → 6%) supaya motif tidak
+     cepat pudar di tengah — cuma memudar tipis di sudut paling luar. */
+  -webkit-mask-image: radial-gradient(130% 110% at 50% 45%, transparent 6%, #000 100%);
+  mask-image: radial-gradient(130% 110% at 50% 45%, transparent 6%, #000 100%);
 }
 .auth-wrapper > * { position: relative; z-index: 1; }
 [data-theme="dark"] .auth-wrapper::before {
@@ -685,12 +648,10 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 @media (max-width: 640px) {
   .auth-wrapper::before {
     --me-pattern-tile: 60px;
-    /* FIX: sebelumnya transparent 48% di mobile menyembunyikan hampir
-       separuh layar tepat di area kartu, ditambah kartu yang sudah lebar
-       penuh — hasilnya motif nyaris tidak pernah kelihatan di HP.
-       Diturunkan ke 20% supaya pinggiran kartu tetap menampakkan motif. */
-    -webkit-mask-image: radial-gradient(150% 120% at 50% 40%, transparent 20%, #000 100%);
-    mask-image: radial-gradient(150% 120% at 50% 40%, transparent 20%, #000 100%);
+    /* FIX: sama seperti desktop — transparent stop diturunkan (20% → 4%)
+       supaya motif tetap terlihat jelas sampai lebih dekat ke tengah. */
+    -webkit-mask-image: radial-gradient(150% 120% at 50% 40%, transparent 4%, #000 100%);
+    mask-image: radial-gradient(150% 120% at 50% 40%, transparent 4%, #000 100%);
   }
 }
 
@@ -869,29 +830,35 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   position: relative;
 }
 
-/* FIX: sama seperti .auth-wrapper — sidebar/.glass, topbar, dan kartu-kartu
-   (.surface/.glass) di dashboard menutup hampir seluruh viewport dengan
-   background solid, sehingga motif global body::before (z-index:-1) yang
-   cuma tampak di celah tipis (padding/gap 16px) nyaris tidak kelihatan sama
-   sekali di semua halaman dashboard (PC maupun HP). Ditambahkan motif lokal
-   di sini juga, sama seperti auth-wrapper, supaya konsisten tampil. */
+/* Motif watermark yang sama seperti halaman login (.auth-wrapper::before)
+   sekarang juga dipakai di dashboard — berlaku untuk admin desktop maupun
+   peserta mobile, karena keduanya sama-sama memakai .dashboard-wrapper
+   sebagai kerangka halaman. Ditaruh sebagai ::before di belakang
+   sidebar/topbar/main-content, opacity dibuat jauh lebih rendah daripada
+   di login (0.41) supaya tidak mengganggu keterbacaan tabel/kartu yang
+   padat konten — motif hanya "mengintip" di celah antar-kartu. */
 .dashboard-wrapper::before {
   content: "";
   position: absolute;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   pointer-events: none;
   background-image: var(--me-pattern-glow), var(--me-pattern-image);
   background-repeat: no-repeat, repeat;
   background-size: cover, var(--me-pattern-tile) var(--me-pattern-tile);
-  opacity: 0.41;
+  opacity: 0.26;
   mix-blend-mode: multiply;
-  -webkit-mask-image: radial-gradient(130% 110% at 50% 45%, transparent 30%, #000 100%);
-  mask-image: radial-gradient(130% 110% at 50% 45%, transparent 30%, #000 100%);
+  -webkit-mask-image: radial-gradient(140% 120% at 50% 15%, transparent 4%, #000 100%);
+  mask-image: radial-gradient(140% 120% at 50% 15%, transparent 4%, #000 100%);
 }
+/* Sidebar & topbar sudah position:sticky (otomatis di atas ::before), tapi
+   main-content masih statis — dipaksa jadi stacking context sendiri di
+   atas motif supaya konten (tabel, kartu, dsb.) tidak ketiban tekstur. */
+.main-content { position: relative; z-index: 1; }
+
 [data-theme="dark"] .dashboard-wrapper::before {
   mix-blend-mode: soft-light;
-  opacity: 0.30;
+  opacity: 0.35;
 }
 
 .topbar {
@@ -3307,48 +3274,16 @@ button.home-card { cursor: pointer; }
 .admin-stats-grid {
   display: flex;
   flex-direction: column;
-  /* FIX: gap 14px (var(--bento-gap)) ditambah blur 18px dari .glass di tiap
-     kartu membuat "kanvas" untuk motif watermark cuma tersisa sliver ~14px
-     yang nyaris polos (tile 90px, jadi cuma ~1/6 pola per baris kelihatan).
-     Gap dibesarkan khusus di grid ini supaya ada ruang nyata untuk motif,
-     bukan cuma celah tipis yang gampang "hilang" di antara efek blur. */
   gap: 26px;
   margin: 6px 0;
   flex: 1;
   min-height: 0;
-  /* FIX: sebelumnya watermark lokal grid ini hanya didefinisikan di dalam
-     @media (max-width: 900px), jadi di desktop grid ini cuma mengandalkan
-     body::before global yang di-mask supaya memudar di area tengah layar —
-     hasilnya latar kartu statistik terlihat polos di desktop. Ditambahkan
-     position: relative + ::before di sini (rule dasar, bukan di dalam media
-     query) supaya watermark lokal yang sama juga tampil di desktop. */
-  position: relative;
 }
 
-.admin-stats-grid::before {
-  content: "";
-  position: absolute;
-  /* FIX: inset disamakan dengan margin baru grid ini (6px atas/bawah)
-     supaya bleed-nya tidak pernah kepotong oleh overflow-y:auto pada
-     .main-content (yang otomatis ikut meng-clip sumbu X juga). */
-  top: -6px;
-  right: -16px;
-  bottom: -6px;
-  left: -16px;
-  z-index: -1;
-  pointer-events: none;
-  background-image: var(--watermark-image);
-  background-repeat: repeat;
-  background-size: 90px auto;
-  background-position: center top;
-  opacity: 0.65;
-  mix-blend-mode: multiply;
-}
+/* FIX: watermark lokal admin-stats-grid DIHAPUS — motif hanya dipakai di
+   halaman login. Kartu statistik sekarang polos (tidak ada ::before). */
 
-[data-theme="dark"] .admin-stats-grid::before {
-  mix-blend-mode: soft-light;
-  opacity: 0.45;
-}
+
 
 .admin-stat-card {
   padding: 22px 26px;
@@ -3362,10 +3297,6 @@ button.home-card { cursor: pointer; }
   transition: var(--transition);
   position: relative;
   overflow: hidden;
-  /* FIX: .glass bawaan pakai blur(18px), yang menyamarkan motif watermark
-     di baliknya sampai nyaris tak kelihatan. Diturunkan khusus di kartu
-     statistik ini supaya sedikit motif tetap tembus lewat body kartu,
-     bukan cuma di celah antar-kartu. */
   backdrop-filter: blur(8px) saturate(160%);
   -webkit-backdrop-filter: blur(8px) saturate(160%);
 }
@@ -3446,6 +3377,7 @@ button.home-card { cursor: pointer; }
 .admin-stat-icon.green { background: linear-gradient(135deg, var(--blue-500), var(--blue-800)); color: var(--white); box-shadow: 0 6px 14px rgba(21,46,69,0.35); }
 .admin-stat-icon.red { background: linear-gradient(135deg, var(--blue-500), var(--blue-800)); color: var(--white); box-shadow: 0 6px 14px rgba(21,46,69,0.35); }
 
+/* FIX: sebelumnya solid var(--white) (100% opaque) sehingga motif watermark
 /* Kartu solid putih, senada dengan warna sidebar/navbar */
 .admin-stat-card:has(.admin-stat-icon.blue) { background: var(--white); }
 .admin-stat-card:has(.admin-stat-icon.purple) { background: var(--white); }
@@ -4129,6 +4061,13 @@ button.home-card { cursor: pointer; }
     padding: 0;
   }
 
+  /* Ubin motif diperkecil di HP (peserta mobile) — di layar sempit ubin
+     190px terlalu besar sehingga motif nyaris tidak kelihatan berulang,
+     samakan dengan pendekatan .auth-wrapper::before di breakpoint 640px. */
+  .dashboard-wrapper::before {
+    --me-pattern-tile: 90px;
+  }
+
   .sidebar {
     position: fixed;
     top: 0;
@@ -4181,74 +4120,14 @@ button.home-card { cursor: pointer; }
   .admin-stat-info p { font-size: 11.5px; margin-bottom: 2px; }
   .admin-stat-info h3 { font-size: 20px; }
 
-  /* FIX: motif watermark logo_3.svg (body::before) memakai ubin besar
-     (140px) yang nyaris tidak kelihatan di celah sempit antar-kartu
-     statistik Dashboard Admin versi HP (kartu full-width, celah cuma
-     ~10px), sehingga latar terlihat polos/rata dibanding halaman Beranda
-     yang punya area kosong lebih luas. Ditambahkan watermark lokal khusus
-     di balik grid kartu statistik ini, dengan ubin lebih kecil supaya
-     motifnya benar-benar terlihat di celah & pinggir kartu, sama seperti
-     tampilan di halaman Beranda. */
-  .admin-stats-grid {
-    position: relative;
-  }
-  .admin-stats-grid::before {
-    content: "";
-    position: absolute;
-    top: -8px;
-    right: -14px;
-    bottom: -8px;
-    left: -14px;
-    z-index: -1;
-    pointer-events: none;
-    background-image: var(--watermark-image);
-    background-repeat: repeat;
-    background-size: 64px auto;
-    background-position: center top;
-    opacity: 0.68;
-    mix-blend-mode: multiply;
-  }
-  [data-theme="dark"] .admin-stats-grid::before {
-    mix-blend-mode: soft-light;
-    opacity: 0.4;
-  }
+  /* FIX: watermark lokal mobile (admin-stats-grid & view-admin-peserta)
+     DIHAPUS — motif hanya dipakai di halaman login. */
 
   #view-admin-peserta.active {
     display: block;
     height: auto;
     margin-bottom: 0;
     position: relative;
-  }
-
-  /* FIX: sama seperti admin-stats-grid di atas — motif watermark
-     logo_3.svg dari body::before nyaris tidak terlihat di halaman Kelola
-     Peserta versi HP karena area tengah layar "dipudarkan" oleh mask
-     radial di body::before, dan konten (view-header, table-controls,
-     table-container, pagination) menutup penuh lebar layar di mobile.
-     Ditambahkan watermark lokal khusus di balik seluruh view ini, ubin
-     lebih kecil supaya motif tetap kelihatan di celah antar-elemen &
-     lewat elemen ber-class .glass yang transparan (table-controls,
-     table-container). Baris tabel sendiri (.modern-table) tetap solid
-     putih supaya data tetap mudah dibaca. */
-  #view-admin-peserta.active::before {
-    content: "";
-    position: absolute;
-    top: -10px;
-    right: -14px;
-    bottom: -10px;
-    left: -14px;
-    z-index: -1;
-    pointer-events: none;
-    background-image: var(--watermark-image);
-    background-repeat: repeat;
-    background-size: 64px auto;
-    background-position: center top;
-    opacity: 0.5;
-    mix-blend-mode: multiply;
-  }
-  [data-theme="dark"] #view-admin-peserta.active::before {
-    mix-blend-mode: soft-light;
-    opacity: 0.35;
   }
 
   #view-admin-peserta .table-container {
