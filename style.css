@@ -261,6 +261,40 @@ svg { display: block; }
 
 .btn-block { width: 100%; }
 
+/* Tombol "Lanjutkan/Masuk/Daftar dengan Google" — dipakai di halaman login
+   maupun register, dan divider "atau" di atasnya supaya jelas ini opsi
+   alternatif dari form email/password, bukan bagian dari form itu. */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+  color: var(--gray-400);
+  font-size: 12px;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--gray-200);
+}
+
+.btn-google {
+  background: var(--white);
+  color: var(--gray-700);
+  border: 1.5px solid var(--gray-200);
+}
+.btn-google svg { flex-shrink: 0; }
+.btn-google:hover { background: var(--gray-50); border-color: var(--gray-300); }
+.btn-google:active { transform: scale(0.98); }
+[data-theme="dark"] .btn-google {
+  background: var(--gray-800);
+  color: var(--gray-50);
+  border-color: var(--gray-700);
+}
+[data-theme="dark"] .btn-google:hover { background: var(--gray-700); }
+
 .btn-text { display: inline-block; }
 
 .btn-loader {
