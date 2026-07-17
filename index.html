@@ -742,12 +742,12 @@
             <div class="home-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
             <p class="home-card-label">Chat Admin</p>
           </button>
-          <button class="home-card quick-card" data-page="progress">
+          <button class="home-card quick-card" data-page="coming-soon" data-label="Administrasi">
             <div class="home-card-watermark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1" ry="1"/><path d="M9 14l2 2 4-4"/></svg></div>
             <div class="home-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1" ry="1"/><path d="M9 14l2 2 4-4"/></svg></div>
             <p class="home-card-label">Administrasi</p>
           </button>
-          <button class="home-card quick-card" data-page="progress">
+          <button class="home-card quick-card" data-page="coming-soon" data-label="Penempatan">
             <div class="home-card-watermark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
             <div class="home-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
             <p class="home-card-label">Penempatan</p>
@@ -757,6 +757,27 @@
         <div class="section-title"><span class="section-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/></svg></span>Pengumuman Terbaru</div>
         <div id="home-announcements" class="card-list"><div class="skeleton-card"></div></div>
       </section>
+
+      <!-- USER: HALAMAN PLACEHOLDER (dipakai kartu Administrasi & Penempatan
+           di Beranda selama fiturnya belum dibangun). Judul diisi otomatis
+           lewat data-label tombol yang diklik (lihat script.js). Tombol
+           "Kembali" mengambang khusus HP otomatis tampil di halaman ini
+           sama seperti halaman lain, karena hanya disembunyikan di Beranda
+           dan Dashboard Admin (lihat navigateTo() di script.js). -->
+      <section id="view-coming-soon" class="view">
+        <div class="view-header">
+          <h1 id="coming-soon-title">Segera Hadir</h1>
+          <p>Fitur ini sedang dalam pengembangan</p>
+        </div>
+        <div class="form-card glass">
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <h4>Sedang Dalam Pengembangan</h4>
+            <p>Fitur ini akan segera tersedia. Terima kasih atas kesabaran Anda.</p>
+          </div>
+        </div>
+      </section>
+
 
       <!-- USER: LOWONGAN KERJA -->
       <section id="view-lowongan" class="view">
