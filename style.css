@@ -1358,12 +1358,14 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   .profile-logout-mobile { display: flex; }
 }
 
-/* Nonaktifkan scroll di halaman Profil — KHUSUS HP. Konten Profil sudah
-   dirancang muat dalam satu layar (form + tombol Logout + tombol Kembali),
-   jadi scroll dimatikan di sini saja supaya tidak ada "rubber-band"/geser
-   yang tidak perlu. Class .no-scroll-mobile di-toggle oleh navigateTo() di
-   script.js hanya saat halaman aktif adalah "profil"; di PC tidak berlaku
-   karena di-scope di dalam media query ini. */
+/* Nonaktifkan scroll di halaman Beranda & Profil — KHUSUS HP. Berlaku
+   sebagai default untuk kedua halaman (di-toggle oleh navigateTo() di
+   script.js). KHUSUS untuk Profil, override di bawah (blok
+   ":has(#view-profil.active)") menyalakan kembali scroll vertikal, karena
+   konten Profil (form + Zona Berbahaya) ternyata lebih tinggi dari layar
+   HP dan bagian bawahnya jadi tidak terjangkau kalau scroll dimatikan
+   total — ini berlaku untuk semua role (Admin maupun Peserta) karena
+   keduanya memakai halaman Profil yang sama. */
 @media (max-width: 900px) {
   .main-content.no-scroll-mobile {
     overflow: hidden;
@@ -1381,6 +1383,17 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
    (form-grid) tetap dijaga cukup lega supaya isi kolom (label & value
    dropdown) tidak saling mepet/terpotong. */
 @media (max-width: 900px) {
+  /* FIX: halaman Profil ternyata punya konten lebih tinggi dari layar HP
+     (form + kartu "Zona Berbahaya" / Hapus Akun), jadi overflow:hidden dari
+     .no-scroll-mobile bikin bagian bawah (tombol Logout/Hapus Akun) kepotong
+     dan tidak bisa dijangkau sama sekali — termasuk saat diakses oleh Admin.
+     Override di sini: aktifkan scroll vertikal KHUSUS saat halaman Profil
+     yang aktif, sementara halaman lain (mis. Beranda) tetap no-scroll. */
+  .main-content.no-scroll-mobile:has(#view-profil.active) {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .main-content.no-scroll-mobile:has(#view-profil.active) { padding-top: 14px; padding-bottom: 72px; }
 
   .main-content.no-scroll-mobile #view-profil .view-header { margin-bottom: 16px; }
