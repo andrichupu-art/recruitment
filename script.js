@@ -5,13 +5,23 @@
 // bisa menghitung sudah berapa lama splash tampil sejak app mulai jalan.
 const APP_START_TIME = Date.now();
 
-// FIX: percobaan-percobaan sebelumnya untuk "menitip" penanda balik-dari-
-// Google di URL index.html (sessionStorage, localStorage, lalu query string
-// `?auth=google`) semuanya rapuh karena harus berbagi URL yang sama dengan
-// query string lain (mis. `?code=...` dari PKCE). Sekarang OAuth Google
-// diarahkan ke halaman terpisah (google-setup.html, lihat signInWithGoogle
-// di bawah) yang menangani sesi & gate wajib-buat-password sendiri, jadi
-// index.html tidak perlu tahu apa-apa soal "baru saja balik dari Google".
+// FIX BUG (v3): dua percobaan sebelumnya (sessionStorage lalu localStorage)
+// untuk menandai "baru saja balik dari redirect Google" ternyata masih bisa
+// gagal di sebagian device/browser HP — kemungkinan karena app ini PWA dan
+// alur OAuth-nya bisa melibatkan storage partitioning atau relaunch context
+// yang membuat Web Storage tidak konsisten dibawa balik. Sekarang penanda
+// ditaruh LANGSUNG DI URL redirect (query string `?auth=google`), bagian
+// dari redirectTo yang dikirim ke signInWithOAuth() — ini tidak bergantung
+// pada storage APA PUN, karena browser memang mengarahkan balik persis ke
+// URL tersebut (Supabase hanya menambahkan token di bagian hash, bukan
+// mengganti query string). Ditangkap sekali di awal load, lalu URL
+// dibersihkan lagi (history.replaceState) supaya refresh berikutnya tidak
+// salah kira baru saja balik dari Google lagi.
+const CAME_FROM_GOOGLE_REDIRECT = new URLSearchParams(window.location.search).get('auth') === 'google';
+if (CAME_FROM_GOOGLE_REDIRECT) {
+  const cleanUrl = window.location.pathname + window.location.hash;
+  window.history.replaceState({}, document.title, cleanUrl);
+}
 
 /* ============================================ */
 /* KONFIGURASI SUPABASE */
@@ -792,14 +802,18 @@ function needsGooglePasswordSetup(user) {
   return isGoogleUser && !hasEmailIdentity && !alreadySetup;
 }
 
-// FIX: redirect Google sekarang mendarat di google-setup.html (bukan di sini
-// lagi), dan halaman itu sudah menuntaskan gate wajib-buat-password sebelum
-// pernah melempar user ke index.html. Jadi fungsi ini di index.html tinggal
-// jadi fallback untuk sesi Google yang di-resume TANPA lewat redirect baru
-// sama sekali — mis. user menutup tab google-setup.html sebelum sempat isi
-// form, lalu lain waktu buka index.html langsung dengan sesi lama itu masih
-// aktif. getUser() dipanggil ulang di sini (bukan cuma pakai objek session
-// yang dikirim event) supaya app_metadata/identities-nya paling baru.
+// FIX: mengandalkan app_metadata/identities dari objek user yang dikirim
+// Supabase (baik lewat event SIGNED_IN maupun getUser()) ternyata tidak
+// selalu bisa diandalkan tepat di detik-detik pertama setelah redirect balik
+// dari Google — kadang sudah lengkap, kadang belum, sehingga gate KADANG
+// ke-skip dan user Google baru malah tembus ke dashboard. Sinyal UTAMA
+// sekarang dipakai dari CAME_FROM_GOOGLE_REDIRECT (ditangkap dari query
+// string URL redirect, lihat komentar di dekat definisinya) — 100% pasti
+// ada begitu user baru kembali dari alur Google, tidak bergantung pada Web
+// Storage maupun pada kapan Supabase selesai menghidrasi field-fieldnya.
+// app_metadata/identities tetap dicek sebagai fallback untuk kasus sesi
+// Google lama yang di-resume TANPA lewat redirect baru sama sekali (mis.
+// buka lagi tab/browser dengan sesi lama yang masih aktif).
 async function checkNeedsGooglePasswordSetup(fallbackUser) {
   let freshUser = fallbackUser;
   try {
@@ -810,6 +824,18 @@ async function checkNeedsGooglePasswordSetup(fallbackUser) {
   }
 
   if (!freshUser) return false;
+  const alreadySetup = !!freshUser.user_metadata?.google_password_set;
+  console.debug('[google-password-gate]', {
+    CAME_FROM_GOOGLE_REDIRECT,
+    alreadySetup,
+    provider: freshUser.app_metadata?.provider,
+    providers: freshUser.app_metadata?.providers,
+    identities: (freshUser.identities || []).map(i => i.provider)
+  });
+  if (alreadySetup) return false;
+
+  if (CAME_FROM_GOOGLE_REDIRECT) return true;
+
   return needsGooglePasswordSetup(freshUser);
 }
 
@@ -922,13 +948,13 @@ async function signInWithGoogle(btn) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        // Balik ke google-setup.html (bukan index.html) — halaman statis
-        // terpisah, pola yang sama seperti EMAIL_CONFIRM_REDIRECT/confirmed.html.
-        // Halaman itu sendiri yang menangkap sesi & menentukan apakah user
-        // perlu digate ke layar "Buat Password" atau langsung dilempar balik
-        // ke aplikasi. PENTING: URL ini juga wajib didaftarkan di Supabase
-        // Dashboard -> Authentication -> URL Configuration -> Redirect URLs.
-        redirectTo: window.location.origin + window.location.pathname.replace(/index\.html$/, '').replace(/\/$/, '') + '/google-setup.html'
+        // Balik ke index.html (bukan confirmed.html) karena OAuth Google
+        // langsung membawa sesi aktif begitu kembali — tidak ada langkah
+        // "cek email" seperti signup lewat email/password.
+        // `?auth=google` adalah penanda sendiri (lihat CAME_FROM_GOOGLE_REDIRECT
+        // di awal file) untuk gate wajib-buat-password, ditaruh di query
+        // string supaya pasti terbawa balik apa pun konteks browser/PWA-nya.
+        redirectTo: window.location.origin + window.location.pathname + '?auth=google'
       }
     });
     if (error) {
