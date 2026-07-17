@@ -1226,12 +1226,19 @@ async function initDashboard() {
       const mobileAvatarImg = $('#mobile-profile-avatar-img');
       if (mobileAvatarImg) mobileAvatarImg.src = avatarUrl;
     } else {
-      ['#sidebar-avatar', '#profile-avatar-img', '#mobile-profile-avatar-img'].forEach(sel => {
+      ['#sidebar-avatar', '#profile-avatar-img'].forEach(sel => {
         const img = $(sel);
         if (img) {
           img.src = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect width='100' height='100' fill='%23234c73'/><g transform='translate(31,31) scale(1.6)' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></g></svg>`;
         }
       });
+      // Fallback KHUSUS tombol Profil mengambang (mobile-profile-btn): tanpa
+      // kotak/blok warna dasar — hanya siluet ikon avatar transparan, sesuai
+      // gaya tombol ini yang sudah tanpa lingkaran/background.
+      const mobileAvatarImg = $('#mobile-profile-avatar-img');
+      if (mobileAvatarImg) {
+        mobileAvatarImg.src = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%23efe5cf' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>`;
+      }
     }
 
     // FIX: bottom-nav (menu bawah khusus tampilan HP) sebelumnya hardcode
@@ -1278,6 +1285,18 @@ async function initDashboard() {
 /* ============================================ */
 /* BERANDA */
 /* ============================================ */
+// Ikon lencana per tingkat prioritas pengumuman — dipakai di kartu
+// "Pengumuman Terbaru" Beranda (tampilan HP, lihat redesign di style.css).
+function announcementIconSvg(priority) {
+  const paths = {
+    urgent: '<path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>',
+    high: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+    low: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-5"/><path d="M12 8h.01"/>'
+  };
+  const d = paths[priority] || '<path d="M3 11l18-5v12L3 14v-3z"/>'; // default: normal (megafon)
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+}
+
 async function loadBeranda() {
   const userId = state.user.id;
 
@@ -1337,12 +1356,15 @@ async function loadBeranda() {
       `;
     } else {
       container.innerHTML = announcements.map(a => `
-        <div class="card-item priority-${a.priority}">
-          <div class="card-item-header">
-            <div class="card-item-title">${escapeHtml(a.title)}</div>
-            <span class="card-item-meta">${formatDate(a.created_at)}</span>
+        <div class="card-item announcement-card priority-${a.priority}">
+          <div class="announcement-icon-badge">${announcementIconSvg(a.priority)}</div>
+          <div class="announcement-card-content">
+            <div class="card-item-header">
+              <div class="card-item-title">${escapeHtml(a.title)}</div>
+              <span class="card-item-meta">${formatDate(a.created_at)}</span>
+            </div>
+            <div class="card-item-body">${escapeHtml(a.content || '')}</div>
           </div>
-          <div class="card-item-body">${escapeHtml(a.content || '')}</div>
         </div>
       `).join('');
     }
