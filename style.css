@@ -1241,7 +1241,8 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 
 /* Tombol Profil (avatar) mengambang, pojok kanan atas. Default hidden;
    dimunculkan lewat media query (max-width: 900px) di bawah, supaya di PC
-   tampilan (sidebar) tidak berubah sama sekali. */
+   tampilan (sidebar) tidak berubah sama sekali. Tanpa lingkaran/background —
+   hanya menampilkan gambar avatar apa adanya (transparan, seperti PNG). */
 .mobile-profile-btn {
   display: none;
   position: fixed;
@@ -1250,18 +1251,18 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   z-index: 210;
   width: 42px;
   height: 42px;
-  border-radius: 50%;
-  border: 2px solid rgba(239, 229, 207, 0.75);
+  border-radius: 0;
+  border: none;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
   cursor: pointer;
-  background: var(--navy);
-  box-shadow: var(--shadow-md);
+  background: transparent;
+  box-shadow: none;
   transition: var(--transition);
 }
-.mobile-profile-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mobile-profile-btn img { width: 100%; height: 100%; object-fit: contain; display: block; border-radius: 0; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35)); }
 .mobile-profile-btn:active { transform: scale(0.94); }
-.mobile-profile-btn.active { border-color: var(--gold); }
+.mobile-profile-btn.active img { filter: drop-shadow(0 2px 8px rgba(197,155,58,0.65)); }
 
 /* Tombol Kembali mengambang, menempati posisi yang dulu dipakai bottom-nav.
    Default hidden; dimunculkan lewat media query (max-width: 900px), dan
@@ -4088,6 +4089,96 @@ button.home-card { cursor: pointer; }
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Icon judul "Pengumuman Terbaru" — disembunyikan di PC (tampilan desktop
+   tetap sama persis seperti semula), hanya tampil di HP lewat media query
+   redesign kartu di bawah. */
+.section-title-icon { display: none; }
+
+/* Lencana ikon prioritas di dalam tiap kartu pengumuman — disembunyikan
+   default (PC), diaktifkan hanya di HP (lihat @media max-width:900px). */
+#home-announcements .announcement-icon-badge { display: none; }
+
+/* ============================================ */
+/* REDESIGN KARTU "PENGUMUMAN TERBARU" — KHUSUS HP */
+/* Tampilan desktop/sidebar TIDAK diubah sama sekali; semua styling baru
+   di-scope di dalam media query (max-width: 900px) ini. */
+/* ============================================ */
+@media (max-width: 900px) {
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--navy), var(--brand-blue));
+    color: var(--gold);
+    flex-shrink: 0;
+  }
+  .section-title-icon svg { width: 13px; height: 13px; }
+
+  #home-announcements.card-list { gap: 10px; }
+
+  #home-announcements .card-item.announcement-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px;
+    border-left: none;
+    border-radius: 16px;
+    background: var(--white);
+  }
+  #home-announcements .card-item.announcement-card:hover { transform: none; }
+  #home-announcements .card-item.announcement-card:active { transform: scale(0.98); box-shadow: var(--shadow-sm); }
+
+  #home-announcements .priority-urgent { background: linear-gradient(135deg, var(--white) 45%, var(--tonal-red) 160%); }
+  #home-announcements .priority-high { background: linear-gradient(135deg, var(--white) 45%, var(--tonal-orange) 160%); }
+  #home-announcements .priority-normal { background: linear-gradient(135deg, var(--white) 45%, var(--tonal-blue) 160%); }
+  #home-announcements .priority-low { background: var(--white); }
+
+  #home-announcements .announcement-icon-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 13px;
+    flex-shrink: 0;
+    color: var(--white);
+  }
+  #home-announcements .announcement-icon-badge svg { width: 19px; height: 19px; }
+
+  #home-announcements .priority-urgent .announcement-icon-badge { background: linear-gradient(135deg, var(--red-500), var(--navy)); box-shadow: 0 4px 10px rgba(10,30,51,0.35); }
+  #home-announcements .priority-high .announcement-icon-badge { background: linear-gradient(135deg, var(--orange-500), var(--gold-600)); box-shadow: 0 4px 10px rgba(173,138,42,0.35); }
+  #home-announcements .priority-normal .announcement-icon-badge { background: linear-gradient(135deg, var(--brand-blue), var(--navy)); box-shadow: 0 4px 10px rgba(28,64,98,0.35); }
+  #home-announcements .priority-low .announcement-icon-badge { background: linear-gradient(135deg, var(--gray-400), var(--gray-500)); }
+
+  #home-announcements .announcement-card-content { flex: 1; min-width: 0; }
+
+  #home-announcements .card-item-header { align-items: center; margin-bottom: 3px; }
+  #home-announcements .card-item-title {
+    font-size: 13.5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #home-announcements .card-item-meta {
+    font-size: 10px;
+    margin-top: 0;
+    flex-shrink: 0;
+    background: var(--gray-100);
+    color: var(--gray-500);
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
 }
 
 .status-badge {
