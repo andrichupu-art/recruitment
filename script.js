@@ -1004,6 +1004,12 @@ function navigateTo(page) {
   const mobileProfileBtn = $('#mobile-profile-btn');
   if (mobileProfileBtn) mobileProfileBtn.classList.toggle('active', page === 'profil');
 
+  // Nonaktifkan scroll KHUSUS di halaman Profil, KHUSUS tampilan HP (lihat
+  // scoping media query di style.css) — supaya form + tombol Logout + tombol
+  // Kembali muat pas dalam satu layar tanpa perlu digeser.
+  const mainContentEl = $('#main-content');
+  if (mainContentEl) mainContentEl.classList.toggle('no-scroll-mobile', page === 'profil');
+
   // Load data per page
   const loaders = {
     'beranda': loadBeranda,
