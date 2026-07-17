@@ -1683,6 +1683,15 @@ button.home-card { cursor: pointer; }
 
 @media (max-width: 640px) {
   .home-hero { margin: -16px -14px 20px; border-radius: 0 0 90px 90px; }
+
+  /* Kartu menu Beranda (Keberangkatan/Upload Dokumen/dst) diperbesar sedikit
+     khusus HP supaya total tinggi halaman lebih mengisi layar, tidak
+     menyisakan area kosong di bawah "Pengumuman Terbaru". */
+  .home-card { height: 168px; padding: 20px; gap: 9px; }
+  .home-card-icon { width: 66px; height: 66px; }
+  .home-card-icon svg { width: 33px; height: 33px; }
+  .home-card-label { font-size: 13px; }
+  .home-card h3 { font-size: 21px; }
 }
 
 
