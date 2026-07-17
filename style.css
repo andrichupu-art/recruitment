@@ -1340,49 +1340,49 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
    (form-grid) tetap dijaga cukup lega supaya isi kolom (label & value
    dropdown) tidak saling mepet/terpotong. */
 @media (max-width: 900px) {
-  .main-content.no-scroll-mobile { padding-top: 12px; padding-bottom: 70px; }
+  .main-content.no-scroll-mobile { padding-top: 14px; padding-bottom: 72px; }
 
-  .main-content.no-scroll-mobile #view-profil .view-header { margin-bottom: 14px; }
-  .main-content.no-scroll-mobile #view-profil .view-header h1 { font-size: 20px; margin-bottom: 3px; }
-  .main-content.no-scroll-mobile #view-profil .view-header p { font-size: 12.5px; }
+  .main-content.no-scroll-mobile #view-profil .view-header { margin-bottom: 16px; }
+  .main-content.no-scroll-mobile #view-profil .view-header h1 { font-size: 22px; margin-bottom: 4px; }
+  .main-content.no-scroll-mobile #view-profil .view-header p { font-size: 13px; }
 
-  .main-content.no-scroll-mobile .profile-card { padding: 16px 18px; margin-bottom: 14px; }
-  .main-content.no-scroll-mobile .profile-header { gap: 14px; }
-  .main-content.no-scroll-mobile .profile-avatar { width: 64px; height: 64px; }
-  .main-content.no-scroll-mobile .avatar-upload { width: 22px; height: 22px; }
-  .main-content.no-scroll-mobile .avatar-upload svg { width: 12px; height: 12px; }
-  .main-content.no-scroll-mobile .profile-name h3 { font-size: 15px; }
-  .main-content.no-scroll-mobile .profile-name p { font-size: 12px; margin-top: 2px; }
+  .main-content.no-scroll-mobile .profile-card { padding: 18px 20px; margin-bottom: 16px; }
+  .main-content.no-scroll-mobile .profile-header { gap: 16px; }
+  .main-content.no-scroll-mobile .profile-avatar { width: 70px; height: 70px; }
+  .main-content.no-scroll-mobile .avatar-upload { width: 24px; height: 24px; }
+  .main-content.no-scroll-mobile .avatar-upload svg { width: 13px; height: 13px; }
+  .main-content.no-scroll-mobile .profile-name h3 { font-size: 16px; }
+  .main-content.no-scroll-mobile .profile-name p { font-size: 12.5px; margin-top: 2px; }
 
-  .main-content.no-scroll-mobile .form-card { padding: 18px; }
-  .main-content.no-scroll-mobile .form-title { font-size: 14px; margin-bottom: 10px; }
+  .main-content.no-scroll-mobile .form-card { padding: 20px; }
+  .main-content.no-scroll-mobile .form-title { font-size: 15px; margin-bottom: 12px; }
 
   /* Kolom: gap vertikal dipadatkan secukupnya, gap horizontal tetap dijaga
      lega supaya dua kolom tidak saling mepet/terpotong. */
-  .main-content.no-scroll-mobile #view-profil .form-grid { gap: 3px 18px; }
-  .main-content.no-scroll-mobile #view-profil .input-group { margin-bottom: 8px; }
-  .main-content.no-scroll-mobile #view-profil .input-group label { font-size: 12px; margin-bottom: 4px; }
+  .main-content.no-scroll-mobile #view-profil .form-grid { gap: 4px 20px; }
+  .main-content.no-scroll-mobile #view-profil .input-group { margin-bottom: 10px; }
+  .main-content.no-scroll-mobile #view-profil .input-group label { font-size: 12.5px; margin-bottom: 5px; }
   .main-content.no-scroll-mobile #view-profil .input-group input,
   .main-content.no-scroll-mobile #view-profil .input-group select,
   .main-content.no-scroll-mobile #view-profil .input-group textarea,
   .main-content.no-scroll-mobile #view-profil .custom-select-trigger {
-    padding: 10px 12px;
-    font-size: 13.5px;
+    padding: 11px 13px;
+    font-size: 14px;
   }
-  .main-content.no-scroll-mobile #view-profil .custom-select-chevron { width: 15px; height: 15px; }
-  .main-content.no-scroll-mobile #view-profil textarea#profile-address { height: 62px; resize: none; }
+  .main-content.no-scroll-mobile #view-profil .custom-select-chevron { width: 16px; height: 16px; }
+  .main-content.no-scroll-mobile #view-profil textarea#profile-address { height: 70px; resize: none; }
 
-  .main-content.no-scroll-mobile #view-profil .form-actions { margin-top: 6px; }
-  .main-content.no-scroll-mobile #view-profil .autosave-indicator { font-size: 11.5px; }
+  .main-content.no-scroll-mobile #view-profil .form-actions { margin-top: 8px; }
+  .main-content.no-scroll-mobile #view-profil .autosave-indicator { font-size: 12px; }
   .main-content.no-scroll-mobile #view-profil .form-actions .btn {
-    padding: 10px 18px;
-    font-size: 13px;
+    padding: 11px 20px;
+    font-size: 13.5px;
   }
 
   .main-content.no-scroll-mobile .profile-logout-mobile {
-    margin: 12px 0 16px;
-    padding: 10px;
-    font-size: 13px;
+    margin: 14px 0 18px;
+    padding: 11px;
+    font-size: 13.5px;
   }
 }
 
