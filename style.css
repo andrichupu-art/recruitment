@@ -311,6 +311,33 @@ svg { display: block; }
   border-top-color: var(--gray-600);
 }
 
+/* Tombol untuk aksi destruktif sungguhan (beda dari .btn-outline/.btn-primary
+   yang warnanya dipetakan ke brand navy/emas) — pakai --true-red seperti
+   .btn-reject supaya user sadar ini tindakan yang tidak bisa dibatalkan. */
+.btn-danger {
+  background: var(--true-red-500);
+  color: var(--white);
+}
+.btn-danger:hover { background: var(--true-red-600); transform: translateY(-1px); }
+.btn-danger:active { transform: scale(0.98); }
+.btn-danger .btn-loader {
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: var(--white);
+}
+
+/* Kartu "Zona Berbahaya" di halaman Profil Saya (tombol reset akun) */
+.danger-zone {
+  border: 1.5px solid rgba(220, 38, 38, 0.25);
+  margin-top: 16px;
+}
+.danger-zone-title { color: var(--true-red-500); }
+.danger-zone-desc {
+  color: var(--gray-600);
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
@@ -708,6 +735,20 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
 }
+
+/* FIX: kartu login/register terasa terlalu "over" tinggi atas-bawahnya
+   (banyak jarak kosong antar logo/field/tombol). Dipadatkan di sini,
+   khusus untuk .auth-card saja — tidak menyentuh .input-group/.btn di
+   form lain (profil, modal, dll). */
+.auth-card { padding: 26px 36px 34px; }
+.auth-card .auth-logo { margin-bottom: 14px; }
+.auth-card .logo-icon.brand-logo { width: 148px; }
+.auth-card .auth-form { margin-top: 2px; }
+.auth-card .auth-form .input-group { margin-bottom: 10px; }
+.auth-card .form-row { margin-bottom: 12px; }
+.auth-card .auth-divider { margin: 12px 0; }
+.auth-card .auth-footer { margin-top: 12px; }
+.auth-card #btn-google-login { margin-bottom: 2px; }
 
 .auth-logo {
   text-align: center;
