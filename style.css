@@ -1298,14 +1298,15 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 
 /* Tombol Logout di halaman Profil — khusus HP, sebagai pengganti tab "Keluar"
    yang dulu ada di navbar bawah. Di PC tetap pakai logout di sidebar seperti
-   semula (tombol ini disembunyikan). */
+   semula (tombol ini disembunyikan). Margin bawah dibuat lebih lega supaya
+   tidak mepet dengan tombol "Kembali" mengambang di bawahnya. */
 .profile-logout-mobile {
   display: none;
   width: 100%;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-top: 16px;
+  margin: 20px 0 34px;
   color: var(--red-500);
   border-color: var(--red-500);
 }
@@ -1314,6 +1315,18 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 
 @media (max-width: 900px) {
   .profile-logout-mobile { display: flex; }
+}
+
+/* Nonaktifkan scroll di halaman Profil — KHUSUS HP. Konten Profil sudah
+   dirancang muat dalam satu layar (form + tombol Logout + tombol Kembali),
+   jadi scroll dimatikan di sini saja supaya tidak ada "rubber-band"/geser
+   yang tidak perlu. Class .no-scroll-mobile di-toggle oleh navigateTo() di
+   script.js hanya saat halaman aktif adalah "profil"; di PC tidak berlaku
+   karena di-scope di dalam media query ini. */
+@media (max-width: 900px) {
+  .main-content.no-scroll-mobile {
+    overflow: hidden;
+  }
 }
 
 /* ============================================ */
