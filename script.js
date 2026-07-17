@@ -993,6 +993,17 @@ function navigateTo(page) {
   const topbarChatBtn = $('#topbar-chat-btn');
   if (topbarChatBtn) topbarChatBtn.classList.toggle('active', page === 'chat' || page === 'admin-chat');
 
+  // NAVIGASI PENGGANTI NAVBAR (KHUSUS HP): tombol "Kembali" mengambang hanya
+  // tampil selama BUKAN di halaman utama (Beranda untuk peserta, Dashboard
+  // untuk admin) — sama seperti navbar lama yang tab "Beranda"-nya tidak
+  // perlu tombol back karena sudah di halaman utama.
+  const mobileBackBtn = $('#mobile-back-btn');
+  const isHomePage = page === 'beranda' || page === 'admin-dashboard';
+  if (mobileBackBtn) mobileBackBtn.classList.toggle('hidden', isHomePage);
+
+  const mobileProfileBtn = $('#mobile-profile-btn');
+  if (mobileProfileBtn) mobileProfileBtn.classList.toggle('active', page === 'profil');
+
   // Load data per page
   const loaders = {
     'beranda': loadBeranda,
@@ -1034,6 +1045,19 @@ $$('.bottom-item[data-page]').forEach(item => {
 
 $('#topbar-chat-btn').addEventListener('click', () => {
   navigateTo(state.isAdmin ? 'admin-chat' : 'chat');
+});
+
+// Tombol "Kembali" mengambang (khusus HP) — pengganti navigasi navbar bawah.
+// Selalu kembali ke halaman utama sesuai role (Beranda untuk peserta,
+// Dashboard untuk admin).
+$('#mobile-back-btn')?.addEventListener('click', () => {
+  navigateTo(state.isAdmin ? 'admin-dashboard' : 'beranda');
+});
+
+// Tombol Profil (avatar) mengambang pojok kanan atas (khusus HP) — pengganti
+// tab "Profil" yang dulu ada di navbar bawah.
+$('#mobile-profile-btn')?.addEventListener('click', () => {
+  navigateTo('profil');
 });
 
 $$('.quick-card[data-page]').forEach(item => {
@@ -1084,6 +1108,19 @@ $('#btn-logout').addEventListener('click', (e) => {
 // sama persis dengan logout di sidebar, supaya setelah logout langsung
 // kembali ke halaman login (location.reload() menampilkan layar auth).
 $('#mobile-logout-btn')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  confirmDialog('Logout', 'Yakin ingin keluar dari akun?', async () => {
+    if ('clearAppBadge' in navigator) navigator.clearAppBadge().catch(() => {});
+    await supabase.auth.signOut();
+    location.reload();
+  });
+});
+
+// Tombol logout di dalam halaman Profil (khusus HP). Navbar bawah (yang
+// dulu berisi tab "Keluar"/mobile-logout-btn) sekarang disembunyikan di HP,
+// jadi logout dipindahkan ke sini. Logic-nya sama persis: signOut lalu
+// location.reload() supaya kembali ke halaman login.
+$('#btn-profile-logout')?.addEventListener('click', (e) => {
   e.preventDefault();
   confirmDialog('Logout', 'Yakin ingin keluar dari akun?', async () => {
     if ('clearAppBadge' in navigator) navigator.clearAppBadge().catch(() => {});
@@ -1186,8 +1223,10 @@ async function initDashboard() {
     if (avatarUrl) {
       $('#sidebar-avatar').src = avatarUrl;
       $('#profile-avatar-img').src = avatarUrl;
+      const mobileAvatarImg = $('#mobile-profile-avatar-img');
+      if (mobileAvatarImg) mobileAvatarImg.src = avatarUrl;
     } else {
-      ['#sidebar-avatar', '#profile-avatar-img'].forEach(sel => {
+      ['#sidebar-avatar', '#profile-avatar-img', '#mobile-profile-avatar-img'].forEach(sel => {
         const img = $(sel);
         if (img) {
           img.src = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect width='100' height='100' fill='%23234c73'/><g transform='translate(31,31) scale(1.6)' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></g></svg>`;
@@ -1435,7 +1474,7 @@ $('#avatar-input').addEventListener('change', async (e) => {
     }
 
     state.profile.avatar_url = avatarUrl;
-    ['#sidebar-avatar', '#profile-avatar-img'].forEach(sel => {
+    ['#sidebar-avatar', '#profile-avatar-img', '#mobile-profile-avatar-img'].forEach(sel => {
       const img = $(sel);
       if (img) img.src = avatarUrl;
     });
