@@ -1067,7 +1067,13 @@ $('#mobile-profile-btn')?.addEventListener('click', () => {
 });
 
 $$('.quick-card[data-page]').forEach(item => {
-  item.addEventListener('click', () => navigateTo(item.dataset.page));
+  item.addEventListener('click', () => {
+    if (item.dataset.page === 'coming-soon') {
+      const titleEl = $('#coming-soon-title');
+      if (titleEl) titleEl.textContent = item.dataset.label || 'Segera Hadir';
+    }
+    navigateTo(item.dataset.page);
+  });
 });
 
 // Kartu statistik Dashboard Admin: klik untuk lompat ke halaman terkait,
