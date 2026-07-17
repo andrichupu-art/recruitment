@@ -4442,13 +4442,13 @@ button.home-card { cursor: pointer; }
      di kolom yang lebih sempit. */
   .docs-checklist { grid-template-columns: repeat(2, 1fr); gap: 10px; }
 
-  .doc-item { padding: 12px; }
-  .doc-item-header { margin-bottom: 8px; flex-wrap: wrap; gap: 4px; }
-  .doc-item-title { font-size: 12.5px; }
-  .doc-item-status { font-size: 9.5px; }
-  .doc-item-preview { gap: 6px; margin-top: 8px; flex-wrap: wrap; }
-  .doc-item-preview button { padding: 8px 4px; font-size: 11px; flex-basis: 100%; }
-  .doc-item-preview button svg { width: 12px; height: 12px; }
+  .doc-item { padding: 18px; }
+  .doc-item-header { margin-bottom: 14px; flex-wrap: wrap; gap: 4px; }
+  .doc-item-title { font-size: 14px; }
+  .doc-item-status { font-size: 11px; }
+  .doc-item-preview { gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .doc-item-preview button { padding: 13px 4px; font-size: 12.5px; flex-basis: 100%; }
+  .doc-item-preview button svg { width: 14px; height: 14px; }
 
   .lowongan-grid { grid-template-columns: 1fr; }
   
