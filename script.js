@@ -836,6 +836,37 @@ $('#form-login').addEventListener('submit', async (e) => {
   }
 });
 
+// Login/Daftar dengan Google memakai satu action yang sama persis
+// (supabase.auth.signInWithOAuth). Supabase yang menentukan sendiri di
+// belakang layar: kalau email akun Google itu belum pernah dipakai, otomatis
+// dibuatkan akun baru (signup); kalau sudah ada, langsung login. Karena itu
+// tombol di halaman login & register cukup dipasangi handler yang identik.
+async function signInWithGoogle(btn) {
+  setLoading(btn, true);
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        // Balik ke index.html (bukan confirmed.html) karena OAuth Google
+        // langsung membawa sesi aktif begitu kembali — tidak ada langkah
+        // "cek email" seperti signup lewat email/password.
+        redirectTo: window.location.origin + window.location.pathname
+      }
+    });
+    if (error) {
+      setLoading(btn, false);
+      toast('error', 'Gagal Masuk dengan Google', error.message);
+    }
+    // Kalau sukses, browser akan di-redirect ke halaman consent Google,
+    // jadi tidak perlu setLoading(false) di sini — halaman akan berpindah.
+  } catch (err) {
+    setLoading(btn, false);
+    toast('error', 'Error', 'Terjadi kesalahan. Silakan coba lagi.');
+  }
+}
+$('#btn-google-login')?.addEventListener('click', (e) => signInWithGoogle(e.currentTarget));
+$('#btn-google-register')?.addEventListener('click', (e) => signInWithGoogle(e.currentTarget));
+
 $('#form-register').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!validateForm(e.target)) return;
