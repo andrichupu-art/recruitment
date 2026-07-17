@@ -555,7 +555,7 @@
     <aside class="sidebar glass" id="sidebar">
       <div class="sidebar-header">
         <div class="user-info">
-          <div class="user-avatar large">
+          <div class="user-avatar large user-avatar-clickable" id="sidebar-avatar-btn" role="button" tabindex="0" aria-label="Lihat Profil Saya" title="Lihat Profil Saya">
             <img id="sidebar-avatar" src="" alt="avatar" />
           </div>
           <div class="user-detail">
@@ -1019,20 +1019,8 @@
             <button class="btn btn-outline" id="btn-export-pdf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>PDF</button>
           </div>
         </div>
-        <div class="table-container glass">
-          <table class="modern-table" id="admin-table">
-            <thead><tr>
-              <th>No</th>
-              <th data-sort="full_name">Nama <span class="sort-icon">↕</span></th>
-              <th class="col-phone">No. Telp</th>
-              <th data-sort="current_step">Tahapan <span class="sort-icon">↕</span></th>
-              <th data-sort="status">Status <span class="sort-icon">↕</span></th>
-              <th>Aksi</th>
-            </tr></thead>
-            <tbody id="admin-table-body"><tr class="skeleton-row"><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td><td class="col-phone"><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td></tr><tr class="skeleton-row"><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td><td class="col-phone"><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td></tr><tr class="skeleton-row"><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar"></div></td><td class="col-phone"><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar pill"></div></td><td><div class="skeleton-bar"></div></td></tr></tbody>
-          </table>
-        </div>
-        <div class="table-pagination" id="admin-pagination"><div class="skeleton-bar short"></div></div>
+        <!-- Container untuk daftar peserta (sekarang accordion, bukan tabel) -->
+        <div id="admin-peserta-list" class="card-list"></div>
       </section>
 
       <!-- ADMIN: CHAT (ala WhatsApp) -->
