@@ -332,10 +332,6 @@
             <span class="btn-text">Masuk dengan Google</span>
             <span class="btn-loader hidden"></span>
           </button>
-
-          <p class="auth-footer">
-            Belum punya akun? <a href="#" class="link" data-page="register">Daftar sekarang</a>
-          </p>
         </form>
       </div>
     </div>
@@ -852,6 +848,25 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           Logout
         </button>
+
+        <!-- ZONA BERBAHAYA: Reset Akun. Menghapus seluruh data pendaftaran
+             peserta (profil, dokumen, progress, jadwal, chat) dan akun
+             auth-nya sendiri, lalu peserta harus mendaftar ulang dari awal
+             kalau mau bergabung kembali. Ditaruh terpisah dari form utama
+             dan diberi gaya "danger" supaya tidak tertekan tidak sengaja. -->
+        <div class="form-card glass danger-zone">
+          <h3 class="form-title danger-zone-title">Zona Berbahaya</h3>
+          <p class="danger-zone-desc">
+            Tindakan ini akan menghapus <strong>semua data pendaftaran Anda</strong> (profil, dokumen, progress, jadwal keberangkatan, riwayat chat) beserta akun Anda secara permanen. Setelah dihapus, Anda harus mendaftar ulang dari awal untuk bisa bergabung kembali. Tindakan ini tidak bisa dibatalkan.
+          </p>
+          <button type="button" id="btn-reset-account" class="btn btn-danger">
+            <span class="btn-text">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+              Hapus Akun & Reset Semua Data
+            </span>
+            <span class="btn-loader hidden"></span>
+          </button>
+        </div>
       </section>
 
       <!-- USER: DOKUMEN -->
