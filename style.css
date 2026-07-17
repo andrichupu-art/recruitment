@@ -1340,7 +1340,7 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
    (form-grid) tetap dijaga cukup lega supaya isi kolom (label & value
    dropdown) tidak saling mepet/terpotong. */
 @media (max-width: 900px) {
-  .main-content.no-scroll-mobile { padding-top: 14px; padding-bottom: 72px; }
+  .main-content.no-scroll-mobile:has(#view-profil.active) { padding-top: 14px; padding-bottom: 72px; }
 
   .main-content.no-scroll-mobile #view-profil .view-header { margin-bottom: 16px; }
   .main-content.no-scroll-mobile #view-profil .view-header h1 { font-size: 22px; margin-bottom: 4px; }
@@ -3092,8 +3092,8 @@ button.home-card { cursor: pointer; }
 .btn-view { background: var(--blue-50); color: var(--blue-700); }
 .btn-view:hover { background: var(--blue-100); }
 
-.btn-upload { background: var(--orange-500); color: var(--white); }
-.btn-upload:hover { background: var(--orange-600); }
+.btn-upload { background: var(--gradient-focus); color: var(--white); }
+.btn-upload:hover { background: var(--navy); }
 
 .btn-reupload { background: var(--blue-600); color: var(--white); }
 .btn-reupload:hover { background: var(--blue-700); }
@@ -4436,7 +4436,20 @@ button.home-card { cursor: pointer; }
 }
 
 @media (max-width: 768px) {
-  .docs-checklist { grid-template-columns: 1fr; }
+  /* Checklist dokumen jadi 2 kolom (kiri-kanan) khusus HP supaya lebih hemat
+     ruang vertikal, bukan 1 kolom penuh seperti sebelumnya. Konten tiap
+     kartu (judul, status, tombol) dipadatkan sedikit supaya tetap muat rapi
+     di kolom yang lebih sempit. */
+  .docs-checklist { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+  .doc-item { padding: 12px; }
+  .doc-item-header { margin-bottom: 8px; flex-wrap: wrap; gap: 4px; }
+  .doc-item-title { font-size: 12.5px; }
+  .doc-item-status { font-size: 9.5px; }
+  .doc-item-preview { gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .doc-item-preview button { padding: 8px 4px; font-size: 11px; flex-basis: 100%; }
+  .doc-item-preview button svg { width: 12px; height: 12px; }
+
   .lowongan-grid { grid-template-columns: 1fr; }
   
   .table-controls { flex-direction: column; align-items: stretch; }
