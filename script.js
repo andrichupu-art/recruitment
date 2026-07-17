@@ -1391,13 +1391,15 @@ async function loadProfil() {
   
   $('#profile-fullname').value = data.full_name || '';
   $('#profile-phone').value = data.phone || '';
-  $('#profile-address').value = data.address || '';
+  $('#profile-birthplace').value = data.birth_place || '';
   $('#profile-birth').value = data.birth_date || '';
   $('#profile-gender').value = data.gender || '';
   $('#profile-education').value = data.education || '';
-  $('#profile-job').value = data.job_interest || '';
   $('#profile-marital').value = data.marital_status || '';
   $('#profile-religion').value = data.religion || '';
+  $('#profile-address').value = data.address || '';
+  $('#profile-province').value = data.province || '';
+  $('#profile-city').value = data.city || '';
   
   if (draft) {
     toast('info', 'Draft Ditemukan', 'Data terakhir yang belum disimpan telah dimuat');
@@ -1409,13 +1411,15 @@ $('#form-profile').addEventListener('input', (e) => {
   const data = {
     full_name: $('#profile-fullname').value,
     phone: $('#profile-phone').value,
-    address: $('#profile-address').value,
+    birth_place: $('#profile-birthplace').value,
     birth_date: $('#profile-birth').value,
     gender: $('#profile-gender').value,
     education: $('#profile-education').value,
-    job_interest: $('#profile-job').value,
     marital_status: $('#profile-marital').value,
-    religion: $('#profile-religion').value
+    religion: $('#profile-religion').value,
+    address: $('#profile-address').value,
+    province: $('#profile-province').value,
+    city: $('#profile-city').value
   };
   autoSaveForm('profile', data);
 });
@@ -1431,13 +1435,15 @@ $('#form-profile').addEventListener('submit', async (e) => {
     id: state.user.id,
     full_name: $('#profile-fullname').value.trim(),
     phone: $('#profile-phone').value.trim(),
-    address: $('#profile-address').value.trim(),
+    birth_place: $('#profile-birthplace').value.trim(),
     birth_date: $('#profile-birth').value || null,
     gender: $('#profile-gender').value || null,
     education: $('#profile-education').value || null,
-    job_interest: $('#profile-job').value.trim(),
     marital_status: $('#profile-marital').value || null,
     religion: $('#profile-religion').value || null,
+    address: $('#profile-address').value.trim(),
+    province: $('#profile-province').value.trim(),
+    city: $('#profile-city').value.trim(),
     updated_at: new Date().toISOString()
   };
 
