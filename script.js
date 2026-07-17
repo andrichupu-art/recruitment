@@ -1142,6 +1142,118 @@ $('#btn-profile-logout')?.addEventListener('click', (e) => {
 });
 
 /* ============================================ */
+/* RESET AKUN (Zona Berbahaya di Profil Saya)    */
+/* ============================================ */
+// Menghapus SEMUA data pendaftaran milik user yang sedang login (storage
+// file, baris di semua tabel terkait, lalu baris profiles-nya sendiri),
+// lalu memanggil Edge Function 'delete-account' untuk menghapus akun
+// auth.users-nya (penghapusan auth user WAJIB pakai service_role key, tidak
+// bisa lewat anon key di client — lihat catatan di dalam resetAccountData()
+// dan file supabase/functions/delete-account/index.ts yang perlu di-deploy
+// terpisah). Kalau Edge Function itu belum di-deploy/gagal dipanggil, data
+// tetap dihapus tuntas dan user di-signOut — hanya baris auth.users-nya yang
+// tersisa (tidak berbahaya, tapi berarti "mendaftar ulang" untuk sementara
+// masih pakai email yang sama sampai Edge Function terpasang).
+async function resetAccountData() {
+  const btn = $('#btn-reset-account');
+  if (!state.user) return;
+  const userId = state.user.id;
+
+  setLoading(btn, true);
+  try {
+    // 1) Hapus semua file storage milik user ini (avatar & dokumen upload).
+    //    Bucket 'documents' juga dipakai untuk lampiran chat (path sama:
+    //    `${userId}/...`), jadi otomatis ikut terhapus di sini juga.
+    for (const bucket of ['avatars', 'documents']) {
+      try {
+        const { data: files, error: listErr } = await supabase.storage.from(bucket).list(userId);
+        if (!listErr && files && files.length) {
+          const paths = files.map(f => `${userId}/${f.name}`);
+          await supabase.storage.from(bucket).remove(paths);
+        }
+      } catch (storageErr) {
+        console.warn(`resetAccountData: gagal bersihkan storage bucket "${bucket}":`, storageErr);
+      }
+    }
+
+    // 2) Hapus baris data di semua tabel yang terhubung ke user ini.
+    //    profiles dihapus PALING TERAKHIR karena beberapa tabel lain mungkin
+    //    berelasi ke profiles lewat foreign key.
+    await Promise.all([
+      supabase.from('chat_messages').delete().eq('user_id', userId),
+      supabase.from('notifications').delete().eq('user_id', userId),
+      supabase.from('form_drafts').delete().eq('user_id', userId),
+      supabase.from('documents').delete().eq('user_id', userId),
+      supabase.from('schedules').delete().eq('user_id', userId),
+      supabase.from('placements').delete().eq('user_id', userId),
+      supabase.from('participant_status').delete().eq('user_id', userId),
+    ]);
+    await supabase.from('profiles').delete().eq('id', userId);
+
+    // 3) Hapus akun auth-nya sendiri lewat Edge Function (service_role).
+    //    Kalau function belum ada/gagal, lanjut saja ke signOut — data
+    //    sudah bersih, cuma akun auth-nya yang belum benar-benar terhapus.
+    let accountDeleted = false;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/delete-account`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json'
+          }
+        });
+        accountDeleted = res.ok;
+        if (!res.ok) console.warn('resetAccountData: Edge Function delete-account belum tersedia/gagal (status ' + res.status + ').');
+      }
+    } catch (fnErr) {
+      console.warn('resetAccountData: Edge Function delete-account belum ter-deploy:', fnErr);
+    }
+
+    if ('clearAppBadge' in navigator) navigator.clearAppBadge().catch(() => {});
+    await supabase.auth.signOut();
+
+    toast('success', accountDeleted ? 'Akun Dihapus' : 'Data Direset',
+      accountDeleted
+        ? 'Semua data & akun Anda telah dihapus permanen. Silakan daftar ulang.'
+        : 'Semua data pendaftaran telah dihapus. Silakan mendaftar ulang.');
+
+    setTimeout(() => location.reload(), 1500);
+  } catch (err) {
+    console.error('resetAccountData error:', err);
+    toast('error', 'Gagal Reset', 'Terjadi kesalahan saat menghapus data. Coba lagi atau hubungi admin.');
+  } finally {
+    setLoading(btn, false);
+  }
+}
+
+$('#btn-reset-account')?.addEventListener('click', () => {
+  confirmDialog(
+    'Hapus Akun & Reset Semua Data',
+    'Tindakan ini akan menghapus SEMUA data Anda (profil, dokumen, progress, jadwal, riwayat chat) secara permanen dan tidak bisa dibatalkan. Anda harus mendaftar ulang dari awal. Lanjutkan?',
+    () => {
+      promptDialog(
+        'Konfirmasi Terakhir',
+        'Ketik "HAPUS" untuk mengonfirmasi penghapusan akun secara permanen.',
+        {
+          placeholder: 'HAPUS',
+          okLabel: 'Hapus Permanen',
+          onSubmit: (value) => {
+            if (value.trim().toUpperCase() !== 'HAPUS') {
+              toast('error', 'Konfirmasi Salah', 'Anda harus mengetik "HAPUS" persis untuk melanjutkan.');
+              return;
+            }
+            resetAccountData();
+          }
+        }
+      );
+    }
+  );
+});
+
+/* ============================================ */
 /* BOTTOM NAV (HP) — SINKRON DENGAN ROLE         */
 /* ============================================ */
 // Bottom-nav cuma satu elemen fisik di HTML (beda dengan sidebar yang punya
