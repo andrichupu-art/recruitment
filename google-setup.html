@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <meta name="theme-color" content="#1c4062" />
+  <meta name="robots" content="noindex" />
+  <title>Masuk dengan Google - PT. Juara</title>
+
+  <link rel="icon" href="favicon.ico" sizes="any" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=1" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="style.css?v=20" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <style>
+    /* Halaman ini berdiri sendiri (tidak memuat script.js/index.html), jadi
+       beberapa elemen pendukung kecil (toast, spinner status) dibuat minimal
+       inline di sini saja, tetap memakai variabel warna & class dari style.css. */
+    body { margin: 0; }
+    .gs-status {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 4px 4px;
+      text-align: center;
+    }
+    .gs-spinner {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 3px solid var(--gray-200, #e5e7eb);
+      border-top-color: var(--gold, #c9a227);
+      animation: gs-spin 0.8s linear infinite;
+    }
+    @keyframes gs-spin { to { transform: rotate(360deg); } }
+    .gs-status p { margin: 0; color: var(--gray-500); font-size: 14px; }
+    .gs-icon-circle {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .gs-icon-circle.error { background: rgba(239,68,68,0.12); color: var(--red-500, #ef4444); }
+    .gs-icon-circle svg { width: 28px; height: 28px; }
+  </style>
+</head>
+<body>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <div id="auth-wrapper" class="auth-wrapper">
+    <div class="auth-page active">
+      <div class="auth-card glass">
+
+        <div class="auth-logo">
+          <div class="logo-icon brand-logo">
+            <img src="LOGO_JD.svg" alt="PT. Juara" />
+          </div>
+          <h1 id="gs-title">Menyiapkan Akun</h1>
+          <p class="tagline" id="gs-tagline">Mohon tunggu sebentar...</p>
+        </div>
+
+        <!-- State: memproses redirect dari Google -->
+        <div id="gs-loading" class="gs-status">
+          <div class="gs-spinner"></div>
+          <p>Menghubungkan ke akun Google Anda...</p>
+        </div>
+
+        <!-- State: wajib buat password (user Google baru) -->
+        <form id="form-google-setup" class="auth-form hidden" novalidate>
+          <div class="input-group">
+            <label>Password Baru</label>
+            <div class="input-with-icon">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              <input type="password" id="gs-password" placeholder="Minimal 6 karakter" required minlength="6" autocomplete="new-password" />
+              <button type="button" class="toggle-password" data-target="gs-password">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+            <span class="field-error"></span>
+            <div class="password-strength">
+              <div class="strength-bar"><div class="strength-fill"></div></div>
+              <span class="strength-text"></span>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label>Konfirmasi Password Baru</label>
+            <div class="input-with-icon">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              <input type="password" id="gs-password-confirm" placeholder="Ulangi password baru" required minlength="6" autocomplete="new-password" />
+            </div>
+            <span class="field-error"></span>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">
+            <span class="btn-text">Simpan Password</span>
+            <span class="btn-loader hidden"></span>
+          </button>
+        </form>
+
+        <!-- State: sudah beres, tinggal redirect balik ke app -->
+        <div id="gs-done" class="gs-status hidden">
+          <div class="gs-spinner"></div>
+          <p>Berhasil! Mengarahkan Anda ke aplikasi...</p>
+        </div>
+
+        <!-- State: gagal (link kedaluwarsa / user batal di Google) -->
+        <div id="gs-error" class="gs-status hidden">
+          <div class="gs-icon-circle error">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+            </svg>
+          </div>
+          <p id="gs-error-message">Gagal memproses login Google. Silakan coba lagi.</p>
+          <a href="index.html" class="btn btn-primary btn-block" style="text-decoration:none; box-sizing:border-box;">Kembali ke Login</a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    const $ = (sel) => document.querySelector(sel);
+    const show = (el) => el && el.classList.remove('hidden');
+    const hide = (el) => el && el.classList.add('hidden');
+
+    const SUPABASE_URL = 'https://sicqlydgtteqzujvuaks.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpY3FseWRndHRlcXp1anZ1YWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NDE1MTcsImV4cCI6MjA5OTUxNzUxN30.CE1VbaKvb66fCrAYymTqQOEPiKG36-de5XoXGTUSOw8';
+
+    function toast(type, title, message) {
+      const container = $('#toast-container');
+      if (!container) return;
+      const icons = {
+        success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+        error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
+      };
+      const t = document.createElement('div');
+      t.className = 'toast ' + type;
+      t.innerHTML =
+        '<div class="toast-icon">' + (icons[type] || icons.success) + '</div>' +
+        '<div class="toast-content"><div class="toast-title"></div>' +
+        (message ? '<div class="toast-message"></div>' : '') + '</div>';
+      t.querySelector('.toast-title').textContent = title;
+      if (message) t.querySelector('.toast-message').textContent = message;
+      container.appendChild(t);
+      setTimeout(function () {
+        t.style.animation = 'slideIn 0.3s ease-out reverse';
+        setTimeout(function () { t.remove(); }, 300);
+      }, 3500);
+    }
+
+    function setLoading(btn, loading) {
+      if (!btn) return;
+      const text = btn.querySelector('.btn-text');
+      const loader = btn.querySelector('.btn-loader');
+      btn.disabled = loading;
+      if (text) text.style.opacity = loading ? '0.5' : '1';
+      if (loader) { if (loading) show(loader); else hide(loader); }
+    }
+
+    function checkPasswordStrength(password) {
+      let strength = 0;
+      if (password.length >= 6) strength++;
+      if (password.length >= 10) strength++;
+      if (/[A-Z]/.test(password)) strength++;
+      if (/[0-9]/.test(password)) strength++;
+      if (/[^A-Za-z0-9]/.test(password)) strength++;
+
+      const fill = $('.strength-fill');
+      const text = $('.strength-text');
+      if (!fill || !text) return;
+
+      fill.className = 'strength-fill';
+      if (password.length === 0) {
+        text.textContent = '';
+      } else if (strength <= 2) {
+        fill.classList.add('weak'); text.textContent = 'Lemah';
+      } else if (strength <= 3) {
+        fill.classList.add('medium'); text.textContent = 'Sedang';
+      } else {
+        fill.classList.add('strong'); text.textContent = 'Kuat';
+      }
+    }
+
+    document.querySelectorAll('.toggle-password').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const input = document.getElementById(btn.dataset.target);
+        if (input) input.type = input.type === 'password' ? 'text' : 'password';
+      });
+    });
+
+    const gsPasswordInput = $('#gs-password');
+    if (gsPasswordInput) {
+      gsPasswordInput.addEventListener('input', function (e) { checkPasswordStrength(e.target.value); });
+    }
+
+    function showState(name) {
+      hide($('#gs-loading'));
+      hide($('#form-google-setup'));
+      hide($('#gs-done'));
+      hide($('#gs-error'));
+      if (name === 'loading') show($('#gs-loading'));
+      if (name === 'form') show($('#form-google-setup'));
+      if (name === 'done') show($('#gs-done'));
+      if (name === 'error') show($('#gs-error'));
+    }
+
+    function setCopy(title, tagline) {
+      $('#gs-title').textContent = title;
+      $('#gs-tagline').textContent = tagline;
+    }
+
+    function needsGooglePasswordSetup(user) {
+      if (!user) return false;
+      const providers = (user.app_metadata && user.app_metadata.providers)
+        || (user.app_metadata && user.app_metadata.provider ? [user.app_metadata.provider] : []);
+      const isGoogleUser = providers.indexOf('google') !== -1;
+      const hasEmailIdentity = Array.isArray(user.identities)
+        && user.identities.some(function (id) { return id.provider === 'email'; });
+      const alreadySetup = !!(user.user_metadata && user.user_metadata.google_password_set);
+      return isGoogleUser && !hasEmailIdentity && !alreadySetup;
+    }
+
+    function redirectToApp(delayMs) {
+      showState('done');
+      setCopy('Berhasil Masuk', 'Anda akan diarahkan ke aplikasi...');
+      setTimeout(function () {
+        window.location.replace('index.html');
+      }, delayMs || 900);
+    }
+
+    function showFatalError(message) {
+      showState('error');
+      setCopy('Terjadi Kendala', 'Login dengan Google tidak dapat diselesaikan');
+      $('#gs-error-message').textContent = message;
+    }
+
+    async function init() {
+      // Kalau Google/Supabase mengirim balik dengan error di query string
+      // (mis. user membatalkan consent screen), tangani lebih dulu sebelum
+      // apa pun lainnya.
+      const params = new URLSearchParams(window.location.search);
+      const oauthError = params.get('error_description') || params.get('error');
+      if (oauthError) {
+        showFatalError('Login Google dibatalkan atau gagal: ' + oauthError);
+        return;
+      }
+
+      if (!window.supabase) {
+        showFatalError('Gagal memuat komponen autentikasi. Periksa koneksi internet Anda dan coba lagi.');
+        return;
+      }
+
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      // supabase-js (PKCE, default di v2) menukar parameter `?code=...` di URL
+      // ini secara otomatis menjadi sesi aktif sebelum getSession() selesai.
+      // Halaman ini didedikasikan hanya untuk menangkap redirect tsb, jadi
+      // tidak ada risiko bentrok dengan query string lain seperti di index.html.
+      let session = null;
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        session = data && data.session;
+      } catch (err) {
+        console.error('getSession error:', err);
+      }
+
+      if (!session) {
+        showFatalError('Link login sudah tidak berlaku. Silakan ulangi proses login dari halaman utama.');
+        return;
+      }
+
+      let user = session.user;
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (!error && data && data.user) user = data.user;
+      } catch (err) {
+        console.error('getUser error:', err);
+      }
+
+      if (!needsGooglePasswordSetup(user)) {
+        // Login Google biasa (bukan pertama kali) -> tidak perlu bikin
+        // password, langsung lempar balik ke aplikasi. Sesi sudah tersimpan
+        // di localStorage yang sama, jadi index.html akan langsung mengenali
+        // sesi ini via supabase.auth.getSession() saat dimuat.
+        redirectToApp();
+        return;
+      }
+
+      setCopy('Buat Password Akun', 'Anda masuk dengan Google. Buat password supaya bisa login manual juga kapan pun.');
+      showState('form');
+
+      const form = $('#form-google-setup');
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const password = $('#gs-password').value;
+        const passwordConfirm = $('#gs-password-confirm').value;
+
+        if (password.length < 6) {
+          toast('error', 'Password Terlalu Pendek', 'Password minimal 6 karakter.');
+          return;
+        }
+        if (password !== passwordConfirm) {
+          toast('error', 'Password Tidak Cocok', 'Password baru dan konfirmasi harus sama.');
+          return;
+        }
+
+        const btn = form.querySelector('button[type="submit"]');
+        setLoading(btn, true);
+
+        try {
+          const { error } = await supabase.auth.updateUser({
+            password: password,
+            data: { google_password_set: true }
+          });
+
+          setLoading(btn, false);
+          if (error) {
+            toast('error', 'Gagal Menyimpan Password', error.message);
+            return;
+          }
+
+          toast('success', 'Password Tersimpan', 'Akun Anda siap digunakan.');
+          redirectToApp(1200);
+        } catch (err) {
+          setLoading(btn, false);
+          toast('error', 'Error', 'Terjadi kesalahan. Silakan coba lagi.');
+        }
+      });
+    }
+
+    init();
+  })();
+  </script>
+</body>
+</html>
