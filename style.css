@@ -394,6 +394,30 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   box-shadow: 0 0 0 3px var(--blue-50);
 }
 
+/* Menandai field yang sudah terisi (diisi otomatis lewat JS, dibedakan
+   dari field yang masih kosong) supaya peserta gampang lihat mana yang
+   perlu dilengkapi. Warna gold dipakai supaya konsisten dengan aksen
+   brand, dan cukup beda dari border abu-abu default & focus biru. */
+.input-group.is-filled input,
+.input-group.is-filled select,
+.input-group.is-filled textarea {
+  border-color: var(--gold-400);
+  background: rgba(205, 164, 52, 0.06);
+}
+.input-group.is-filled label::after {
+  content: '✓';
+  color: var(--gold-600);
+  font-weight: 700;
+  margin-left: 4px;
+}
+/* Dropdown yang di-enhance custom-select.js: tandai trigger-nya juga
+   berdasarkan ada/tidaknya class .placeholder di label (di-set oleh
+   custom-select.js sendiri saat select belum punya value). */
+.input-group.is-filled .custom-select-trigger {
+  border-color: var(--gold-400);
+  background: rgba(205, 164, 52, 0.06);
+}
+
 .input-with-icon {
   position: relative;
   display: flex;
