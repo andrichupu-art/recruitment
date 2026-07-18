@@ -826,6 +826,16 @@ $('#form-login').addEventListener('submit', async (e) => {
       return;
     }
 
+    // SELF-HEAL: login pakai email/password berhasil = bukti sah user ini
+    // memang sudah punya password. Paksa password_set:true di sini juga
+    // (bukan cuma di set-password.js) supaya akun lama yang sudah terlanjur
+    // ke-flip app_metadata.provider jadi 'google' (akibat identity linking
+    // saat pernah pakai tombol "Masuk dengan Google" dgn email yg sama)
+    // tidak lagi salah dilempar ke set-password.html tiap kali login.
+    if (data?.user && data.user.user_metadata?.password_set !== true) {
+      supabase.auth.updateUser({ data: { password_set: true } }).catch(() => {});
+    }
+
     toast('success', 'Login Berhasil', 'Selamat datang kembali!');
     // initDashboard() akan otomatis dijalankan oleh listener onAuthStateChange (event SIGNED_IN)
     // begitu sesi terbentuk — tidak perlu dipanggil lagi di sini (dulu menyebabkan dashboard
@@ -886,7 +896,14 @@ $('#form-register').addEventListener('submit', async (e) => {
       email,
       password,
       options: {
-        data: { full_name },
+        // password_set: true WAJIB disertakan di sini juga (bukan cuma di
+        // set-password.js). Alasan: app_metadata.provider TIDAK selalu
+        // permanen — kalau user ini nanti klik "Masuk dengan Google" pakai
+        // email yang sama, Supabase Auth bisa me-link identity dan mengubah
+        // provider jadi 'google'. Tanpa flag ini, needsPasswordSetup() akan
+        // salah menyimpulkan user belum pernah set password, padahal dia
+        // sudah punya password dari registrasi normal ini.
+        data: { full_name, password_set: true },
         emailRedirectTo: EMAIL_CONFIRM_REDIRECT
       }
     });
