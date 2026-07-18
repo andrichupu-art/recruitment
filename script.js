@@ -1631,6 +1631,20 @@ async function loadProfil() {
   if (draft) {
     toast('info', 'Draft Ditemukan', 'Data terakhir yang belum disimpan telah dimuat');
   }
+
+  updateProfileFilledState();
+}
+
+// Tandai tiap .input-group di form profil dengan class 'is-filled' kalau
+// field-nya sudah ada isinya, supaya kelihatan mana yang sudah/belum
+// dilengkapi. Dipanggil sekali saat data dimuat, dan tiap kali user
+// mengetik/memilih (lihat listener 'input'/'change' di bawah).
+function updateProfileFilledState() {
+  $$('#form-profile .input-group').forEach((group) => {
+    const field = group.querySelector('input, select, textarea');
+    if (!field) return;
+    group.classList.toggle('is-filled', !!field.value && field.value.trim() !== '');
+  });
 }
 
 // Auto-save on profile form
@@ -1649,7 +1663,13 @@ $('#form-profile').addEventListener('input', (e) => {
     city: $('#profile-city').value
   };
   autoSaveForm('profile', data);
+  updateProfileFilledState();
 });
+
+// Dropdown (select) native memicu event 'change', bukan 'input', jadi
+// perlu listener terpisah supaya penanda is-filled ikut update saat
+// peserta memilih salah satu opsi (Jenis Kelamin, Pendidikan, dst).
+$('#form-profile').addEventListener('change', updateProfileFilledState);
 
 $('#form-profile').addEventListener('submit', async (e) => {
   e.preventDefault();
