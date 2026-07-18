@@ -1607,6 +1607,51 @@ async function loadBeranda() {
 }
 
 /* ============================================ */
+/* PROVINSI & KOTA (cascading dropdown) */
+/* ============================================ */
+// Data provinsi/kota disuplai oleh wilayah-indonesia.js (window.WILAYAH_INDONESIA),
+// harus sudah ter-load sebelum baris ini jalan (lihat urutan <script> di index.html).
+function populateProvinceOptions() {
+  const provinceSelect = $('#profile-province');
+  if (!provinceSelect || !window.WILAYAH_INDONESIA) return;
+  const provinces = window.WILAYAH_INDONESIA.provinces;
+  provinceSelect.innerHTML = '<option value="">Pilih Provinsi...</option>' +
+    provinces.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+}
+
+// Isi ulang dropdown Kota berdasarkan provinsi yang dipilih. Kalau
+// selectedCity diisi & memang ada di daftar kota provinsi itu, otomatis
+// terpilih (dipakai saat loadProfil() memuat data yang sudah tersimpan).
+function populateCityOptions(provinceName, selectedCity) {
+  const citySelect = $('#profile-city');
+  if (!citySelect || !window.WILAYAH_INDONESIA) return;
+  const cities = window.WILAYAH_INDONESIA.cities[provinceName] || [];
+
+  if (!provinceName || !cities.length) {
+    citySelect.innerHTML = '<option value="">Pilih Provinsi dulu...</option>';
+    citySelect.disabled = true;
+    return;
+  }
+
+  citySelect.disabled = false;
+  citySelect.innerHTML = '<option value="">Pilih Kota/Kabupaten...</option>' +
+    cities.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  citySelect.value = (selectedCity && cities.includes(selectedCity)) ? selectedCity : '';
+}
+
+populateProvinceOptions();
+
+// Saat peserta ganti Provinsi secara manual, daftar Kota mengikuti &
+// dikosongkan (kota lama biasanya tidak relevan lagi untuk provinsi baru).
+// Listener pada elemen target (#profile-province) selalu jalan duluan
+// sebelum event 'change' ini bubbling ke listener umum #form-profile di
+// bawah — jadi daftar Kota sudah kefilter ulang dulu sebelum autosave
+// umum sempat membaca $('#profile-city').value.
+$('#profile-province')?.addEventListener('change', () => {
+  populateCityOptions($('#profile-province').value, '');
+});
+
+/* ============================================ */
 /* PROFIL */
 /* ============================================ */
 async function loadProfil() {
@@ -1626,7 +1671,7 @@ async function loadProfil() {
   $('#profile-religion').value = data.religion || '';
   $('#profile-address').value = data.address || '';
   $('#profile-province').value = data.province || '';
-  $('#profile-city').value = data.city || '';
+  populateCityOptions(data.province || '', data.city || '');
   
   if (draft) {
     toast('info', 'Draft Ditemukan', 'Data terakhir yang belum disimpan telah dimuat');
@@ -1647,9 +1692,8 @@ function updateProfileFilledState() {
   });
 }
 
-// Auto-save on profile form
-$('#form-profile').addEventListener('input', (e) => {
-  const data = {
+function collectProfileFormData() {
+  return {
     full_name: $('#profile-fullname').value,
     phone: $('#profile-phone').value,
     birth_place: $('#profile-birthplace').value,
@@ -1662,14 +1706,22 @@ $('#form-profile').addEventListener('input', (e) => {
     province: $('#profile-province').value,
     city: $('#profile-city').value
   };
-  autoSaveForm('profile', data);
+}
+
+// Auto-save on profile form (event 'input': text/textarea)
+$('#form-profile').addEventListener('input', (e) => {
+  autoSaveForm('profile', collectProfileFormData());
   updateProfileFilledState();
 });
 
-// Dropdown (select) native memicu event 'change', bukan 'input', jadi
-// perlu listener terpisah supaya penanda is-filled ikut update saat
-// peserta memilih salah satu opsi (Jenis Kelamin, Pendidikan, dst).
-$('#form-profile').addEventListener('change', updateProfileFilledState);
+// Dropdown (select) native memicu event 'change', bukan 'input' — dulu
+// perubahan di dropdown (Jenis Kelamin, Pendidikan, dst) tidak ke-autosave
+// sama sekali karena cuma didengar lewat event 'input'. Sekarang autosave
+// & penanda is-filled ikut jalan untuk semua dropdown.
+$('#form-profile').addEventListener('change', (e) => {
+  autoSaveForm('profile', collectProfileFormData());
+  updateProfileFilledState();
+});
 
 $('#form-profile').addEventListener('submit', async (e) => {
   e.preventDefault();
