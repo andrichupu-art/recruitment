@@ -46,6 +46,9 @@ const state = {
     filterStep: ''
   },
   adminDetail: { activeUserId: null, previewReturnsToDetail: false },
+  // Item biaya kolektif per peserta, cuma disimpan di memori sesi browser ini
+  // (belum ada tabel Supabase khusus untuk ini) — lihat openKolektifModal().
+  kolektif: { activeUserId: null, items: {} },
   adminChat: { userId: null, channel: null },
   adminChatTab: {
     conversations: [],   // [{ userId, fullName, email, lastMessage, lastAt, unreadCount }]
@@ -836,6 +839,37 @@ $('#form-login').addEventListener('submit', async (e) => {
   }
 });
 
+// Login/Daftar dengan Google memakai satu action yang sama persis
+// (supabase.auth.signInWithOAuth). Supabase yang menentukan sendiri di
+// belakang layar: kalau email akun Google itu belum pernah dipakai, otomatis
+// dibuatkan akun baru (signup); kalau sudah ada, langsung login. Karena itu
+// tombol di halaman login & register cukup dipasangi handler yang identik.
+async function signInWithGoogle(btn) {
+  setLoading(btn, true);
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        // Balik ke index.html (bukan confirmed.html) karena OAuth Google
+        // langsung membawa sesi aktif begitu kembali — tidak ada langkah
+        // "cek email" seperti signup lewat email/password.
+        redirectTo: window.location.origin + window.location.pathname
+      }
+    });
+    if (error) {
+      setLoading(btn, false);
+      toast('error', 'Gagal Masuk dengan Google', error.message);
+    }
+    // Kalau sukses, browser akan di-redirect ke halaman consent Google,
+    // jadi tidak perlu setLoading(false) di sini — halaman akan berpindah.
+  } catch (err) {
+    setLoading(btn, false);
+    toast('error', 'Error', 'Terjadi kesalahan. Silakan coba lagi.');
+  }
+}
+$('#btn-google-login')?.addEventListener('click', (e) => signInWithGoogle(e.currentTarget));
+$('#btn-google-register')?.addEventListener('click', (e) => signInWithGoogle(e.currentTarget));
+
 $('#form-register').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!validateForm(e.target)) return;
@@ -844,7 +878,6 @@ $('#form-register').addEventListener('submit', async (e) => {
   setLoading(btn, true);
 
   const full_name = $('#register-name').value.trim();
-  const phone = $('#register-phone').value.trim();
   const email = $('#register-email').value.trim();
   const password = $('#register-password').value;
 
@@ -853,7 +886,7 @@ $('#form-register').addEventListener('submit', async (e) => {
       email,
       password,
       options: {
-        data: { full_name, phone },
+        data: { full_name },
         emailRedirectTo: EMAIL_CONFIRM_REDIRECT
       }
     });
@@ -946,39 +979,6 @@ $$('.toggle-password').forEach(btn => {
 });
 
 /* ============================================ */
-/* AUTH: GOOGLE OAUTH */
-/* ============================================ */
-async function signInWithGoogle(btn) {
-  setLoading(btn, true);
-  try {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        // Arahkan kembali ke halaman utama setelah login Google berhasil.
-        // Supabase akan menangani sesi dan memicu onAuthStateChange.
-        redirectTo: window.location.origin + window.location.pathname
-      }
-    });
-    if (error) {
-      setLoading(btn, false);
-      toast('error', 'Login Google Gagal', error.message);
-    }
-    // Tidak perlu setLoading(false) di sini karena halaman akan dialihkan.
-  } catch (err) {
-    setLoading(btn, false);
-    toast('error', 'Error', 'Terjadi kesalahan. Silakan coba lagi.');
-  }
-}
-
-$('#btn-google-login').addEventListener('click', (e) => {
-  signInWithGoogle(e.currentTarget);
-});
-
-$('#btn-google-register').addEventListener('click', (e) => {
-  signInWithGoogle(e.currentTarget);
-});
-
-/* ============================================ */
 /* DASHBOARD ROUTING */
 /* ============================================ */
 function navigateTo(page) {
@@ -986,6 +986,13 @@ function navigateTo(page) {
   $$('.view').forEach(v => v.classList.remove('active'));
   const view = $(`#view-${page}`);
   if (view) view.classList.add('active');
+
+  // FIX: semua .view berbagi satu kontainer scroll (#main-content), jadi kalau
+  // tidak di-reset, tab baru yang dibuka mewarisi posisi scroll dari tab
+  // sebelumnya (mis. sempat scroll ke bawah di Dashboard lalu pindah ke Kelola
+  // Peserta -> tampilannya kelihatan "kegeser", bukan mulai dari atas).
+  const scrollResetEl = $('#main-content');
+  if (scrollResetEl) scrollResetEl.scrollTop = 0;
 
   $$('.nav-item').forEach(n => n.classList.remove('active'));
   $$('.nav-item[data-page="' + page + '"]').forEach(n => n.classList.add('active'));
@@ -995,6 +1002,23 @@ function navigateTo(page) {
 
   const topbarChatBtn = $('#topbar-chat-btn');
   if (topbarChatBtn) topbarChatBtn.classList.toggle('active', page === 'chat' || page === 'admin-chat');
+
+  // NAVIGASI PENGGANTI NAVBAR (KHUSUS HP): tombol "Kembali" mengambang hanya
+  // tampil selama BUKAN di halaman utama (Beranda untuk peserta, Dashboard
+  // untuk admin) — sama seperti navbar lama yang tab "Beranda"-nya tidak
+  // perlu tombol back karena sudah di halaman utama.
+  const mobileBackBtn = $('#mobile-back-btn');
+  const isHomePage = page === 'beranda' || page === 'admin-dashboard';
+  if (mobileBackBtn) mobileBackBtn.classList.toggle('hidden', isHomePage);
+
+  const mobileProfileBtn = $('#mobile-profile-btn');
+  if (mobileProfileBtn) mobileProfileBtn.classList.toggle('active', page === 'profil');
+
+  // Nonaktifkan scroll KHUSUS di halaman Profil & Beranda, KHUSUS tampilan HP
+  // (lihat scoping media query di style.css) — supaya kontennya muat pas
+  // dalam satu layar tanpa perlu digeser.
+  const mainContentEl = $('#main-content');
+  if (mainContentEl) mainContentEl.classList.toggle('no-scroll-mobile', page === 'profil' || page === 'beranda');
 
   // Load data per page
   const loaders = {
@@ -1039,8 +1063,44 @@ $('#topbar-chat-btn').addEventListener('click', () => {
   navigateTo(state.isAdmin ? 'admin-chat' : 'chat');
 });
 
+// Tombol "Kembali" mengambang (khusus HP) — pengganti navigasi navbar bawah.
+// Selalu kembali ke halaman utama sesuai role (Beranda untuk peserta,
+// Dashboard untuk admin).
+$('#mobile-back-btn')?.addEventListener('click', () => {
+  navigateTo(state.isAdmin ? 'admin-dashboard' : 'beranda');
+});
+
+// Tombol Profil (avatar) mengambang pojok kanan atas (khusus HP) — pengganti
+// tab "Profil" yang dulu ada di navbar bawah.
+$('#mobile-profile-btn')?.addEventListener('click', () => {
+  navigateTo('profil');
+});
+
+// Avatar di kartu identitas atas sidebar (desktop & HP) — diklik untuk
+// membuka halaman Profil Saya, supaya admin (yang tidak punya menu
+// "Profil" di sidebar-nya) tetap bisa melihat/mengelola biodatanya
+// sendiri, sama seperti peserta.
+const sidebarAvatarBtn = $('#sidebar-avatar-btn');
+if (sidebarAvatarBtn) {
+  sidebarAvatarBtn.addEventListener('click', () => {
+    navigateTo('profil');
+  });
+  sidebarAvatarBtn.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      navigateTo('profil');
+    }
+  });
+}
+
 $$('.quick-card[data-page]').forEach(item => {
-  item.addEventListener('click', () => navigateTo(item.dataset.page));
+  item.addEventListener('click', () => {
+    if (item.dataset.page === 'coming-soon') {
+      const titleEl = $('#coming-soon-title');
+      if (titleEl) titleEl.textContent = item.dataset.label || 'Segera Hadir';
+    }
+    navigateTo(item.dataset.page);
+  });
 });
 
 // Kartu statistik Dashboard Admin: klik untuk lompat ke halaman terkait,
@@ -1093,6 +1153,196 @@ $('#mobile-logout-btn')?.addEventListener('click', (e) => {
     await supabase.auth.signOut();
     location.reload();
   });
+});
+
+// Tombol logout di dalam halaman Profil (khusus HP). Navbar bawah (yang
+// dulu berisi tab "Keluar"/mobile-logout-btn) sekarang disembunyikan di HP,
+// jadi logout dipindahkan ke sini. Logic-nya sama persis: signOut lalu
+// location.reload() supaya kembali ke halaman login.
+$('#btn-profile-logout')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  confirmDialog('Logout', 'Yakin ingin keluar dari akun?', async () => {
+    if ('clearAppBadge' in navigator) navigator.clearAppBadge().catch(() => {});
+    await supabase.auth.signOut();
+    location.reload();
+  });
+});
+
+/* ============================================ */
+/* RESET AKUN (Zona Berbahaya di Profil Saya)    */
+/* ============================================ */
+// Menghapus SEMUA data pendaftaran milik user yang sedang login (storage
+// file, baris di semua tabel terkait, lalu baris profiles-nya sendiri),
+// lalu memanggil Edge Function 'delete-account' untuk menghapus akun
+// auth.users-nya (penghapusan auth user WAJIB pakai service_role key, tidak
+// bisa lewat anon key di client — lihat catatan di dalam resetAccountData()
+// dan file supabase/functions/delete-account/index.ts yang perlu di-deploy
+// terpisah). Kalau Edge Function itu belum di-deploy/gagal dipanggil, data
+// tetap dihapus tuntas dan user di-signOut — hanya baris auth.users-nya yang
+// tersisa (tidak berbahaya, tapi berarti "mendaftar ulang" untuk sementara
+// masih pakai email yang sama sampai Edge Function terpasang).
+async function resetAccountData() {
+  const btn = $('#btn-reset-account');
+  if (!state.user) return;
+  const userId = state.user.id;
+
+  setLoading(btn, true);
+  try {
+    // 1) Hapus semua file storage milik user ini (avatar & dokumen upload).
+    //    Bucket 'documents' juga dipakai untuk lampiran chat (path sama:
+    //    `${userId}/...`), jadi otomatis ikut terhapus di sini juga.
+    for (const bucket of ['avatars', 'documents']) {
+      try {
+        const { data: files, error: listErr } = await supabase.storage.from(bucket).list(userId);
+        if (!listErr && files && files.length) {
+          const paths = files.map(f => `${userId}/${f.name}`);
+          await supabase.storage.from(bucket).remove(paths);
+        }
+      } catch (storageErr) {
+        console.warn(`resetAccountData: gagal bersihkan storage bucket "${bucket}":`, storageErr);
+      }
+    }
+
+    // 2) Hapus baris data di semua tabel yang terhubung ke user ini.
+    //    profiles dihapus PALING TERAKHIR karena beberapa tabel lain mungkin
+    //    berelasi ke profiles lewat foreign key.
+    //    PENTING: Supabase JS TIDAK melempar exception kalau delete diblokir
+    //    RLS policy — ia balik `{ data, error: null }` tapi 0 baris yang
+    //    benar-benar terhapus. Makanya setiap delete di sini pakai `.select()`
+    //    supaya bisa dicek jumlah baris yang sungguh terhapus (sama seperti
+    //    pola di deleteUnverifiedParticipant()), bukan cuma dianggap sukses
+    //    kalau tidak ada error.
+    const tablesToClear = [
+      { table: 'chat_messages', column: 'user_id' },
+      { table: 'notifications', column: 'user_id' },
+      { table: 'form_drafts', column: 'user_id' },
+      { table: 'documents', column: 'user_id' },
+      { table: 'schedules', column: 'user_id' },
+      { table: 'placements', column: 'user_id' },
+      { table: 'participant_status', column: 'user_id' },
+    ];
+
+    const deleteResults = await Promise.all(
+      tablesToClear.map(async ({ table, column }) => {
+        const { data, error } = await supabase.from(table).delete().eq(column, userId).select();
+        return { table, error, count: data ? data.length : 0 };
+      })
+    );
+
+    const blockedTables = deleteResults.filter(r => r.error).map(r => `${r.table} (${r.error.message})`);
+    if (blockedTables.length) {
+      console.error('resetAccountData: gagal menghapus tabel berikut:', blockedTables);
+    }
+
+    // 2b) Lepas referensi FK ke profiles ini dari baris milik USER/PESERTA
+    //     LAIN. Kalau akun ini pernah bertindak sebagai admin (mereview
+    //     dokumen, mengirim chat, atau membuat pengumuman/negara/lowongan/
+    //     jadwal), baris-baris ITU tetap harus dipertahankan (bukan punya
+    //     akun ini, jadi tidak boleh ikut terhapus) — tapi kolom penunjuknya
+    //     (reviewed_by/sender_id/created_by) harus di-NULL-kan dulu, kalau
+    //     tidak baris `profiles` gagal dihapus karena foreign key constraint
+    //     (kasus nyata: "documents_reviewed_by_fkey"). Update ini aman untuk
+    //     user biasa (bukan admin) karena otomatis 0 baris yang ke-affect.
+    const fkColumnsToNull = [
+      { table: 'documents', column: 'reviewed_by' },
+      { table: 'chat_messages', column: 'sender_id' },
+      { table: 'announcements', column: 'created_by' },
+      { table: 'countries', column: 'created_by' },
+      { table: 'job_positions', column: 'created_by' },
+      { table: 'departure_schedules', column: 'created_by' },
+    ];
+
+    const nullifyResults = await Promise.all(
+      fkColumnsToNull.map(async ({ table, column }) => {
+        const { error } = await supabase.from(table).update({ [column]: null }).eq(column, userId);
+        return { table, column, error };
+      })
+    );
+
+    const blockedFkColumns = nullifyResults.filter(r => r.error).map(r => `${r.table}.${r.column} (${r.error.message})`);
+    if (blockedFkColumns.length) {
+      console.error('resetAccountData: gagal melepas referensi FK berikut:', blockedFkColumns);
+    }
+
+    const { data: profileDeleted, error: profileDelErr } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', userId)
+      .select();
+
+    if (profileDelErr) {
+      throw new Error(`Gagal menghapus profil: ${profileDelErr.message}`);
+    }
+    if (!profileDeleted || profileDeleted.length === 0) {
+      // Query "sukses" (tidak ada error) tapi 0 baris yang benar-benar
+      // terhapus — hampir selalu berarti diblokir RLS policy DELETE pada
+      // tabel profiles untuk user itu sendiri. Ini akar masalah kenapa data
+      // "masih ada" setelah reset: proses lanjut ke signOut() padahal baris
+      // profiles-nya tidak pernah benar-benar hilang.
+      throw new Error('Data profil tidak terhapus (kemungkinan diblokir RLS policy DELETE pada tabel profiles). Hubungi admin untuk memeriksa policy tersebut.');
+    }
+
+    // 3) Hapus akun auth-nya sendiri lewat Edge Function (service_role).
+    //    Kalau function belum ada/gagal, lanjut saja ke signOut — data
+    //    sudah bersih, cuma akun auth-nya yang belum benar-benar terhapus.
+    let accountDeleted = false;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/delete-account`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json'
+          }
+        });
+        accountDeleted = res.ok;
+        if (!res.ok) console.warn('resetAccountData: Edge Function delete-account belum tersedia/gagal (status ' + res.status + ').');
+      }
+    } catch (fnErr) {
+      console.warn('resetAccountData: Edge Function delete-account belum ter-deploy:', fnErr);
+    }
+
+    if ('clearAppBadge' in navigator) navigator.clearAppBadge().catch(() => {});
+    await supabase.auth.signOut();
+
+    toast('success', accountDeleted ? 'Akun Dihapus' : 'Data Direset',
+      accountDeleted
+        ? 'Semua data & akun Anda telah dihapus permanen. Silakan daftar ulang.'
+        : 'Semua data pendaftaran telah dihapus. Silakan mendaftar ulang.');
+
+    setTimeout(() => location.reload(), 1500);
+  } catch (err) {
+    console.error('resetAccountData error:', err);
+    toast('error', 'Gagal Reset', err?.message || 'Terjadi kesalahan saat menghapus data. Coba lagi atau hubungi admin.');
+  } finally {
+    setLoading(btn, false);
+  }
+}
+
+$('#btn-reset-account')?.addEventListener('click', () => {
+  confirmDialog(
+    'Hapus Akun & Reset Semua Data',
+    'Tindakan ini akan menghapus SEMUA data Anda (profil, dokumen, progress, jadwal, riwayat chat) secara permanen dan tidak bisa dibatalkan. Anda harus mendaftar ulang dari awal. Lanjutkan?',
+    () => {
+      promptDialog(
+        'Konfirmasi Terakhir',
+        'Ketik "HAPUS" untuk mengonfirmasi penghapusan akun secara permanen.',
+        {
+          placeholder: 'HAPUS',
+          okLabel: 'Hapus Permanen',
+          onSubmit: (value) => {
+            if (value.trim().toUpperCase() !== 'HAPUS') {
+              toast('error', 'Konfirmasi Salah', 'Anda harus mengetik "HAPUS" persis untuk melanjutkan.');
+              return;
+            }
+            resetAccountData();
+          }
+        }
+      );
+    }
+  );
 });
 
 /* ============================================ */
@@ -1189,6 +1439,8 @@ async function initDashboard() {
     if (avatarUrl) {
       $('#sidebar-avatar').src = avatarUrl;
       $('#profile-avatar-img').src = avatarUrl;
+      const mobileAvatarImg = $('#mobile-profile-avatar-img');
+      if (mobileAvatarImg) mobileAvatarImg.src = avatarUrl;
     } else {
       ['#sidebar-avatar', '#profile-avatar-img'].forEach(sel => {
         const img = $(sel);
@@ -1196,6 +1448,13 @@ async function initDashboard() {
           img.src = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect width='100' height='100' fill='%23234c73'/><g transform='translate(31,31) scale(1.6)' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></g></svg>`;
         }
       });
+      // Fallback KHUSUS tombol Profil mengambang (mobile-profile-btn): tanpa
+      // kotak/blok warna dasar — hanya siluet ikon avatar transparan, sesuai
+      // gaya tombol ini yang sudah tanpa lingkaran/background.
+      const mobileAvatarImg = $('#mobile-profile-avatar-img');
+      if (mobileAvatarImg) {
+        mobileAvatarImg.src = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%23efe5cf' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>`;
+      }
     }
 
     // FIX: bottom-nav (menu bawah khusus tampilan HP) sebelumnya hardcode
@@ -1242,6 +1501,18 @@ async function initDashboard() {
 /* ============================================ */
 /* BERANDA */
 /* ============================================ */
+// Ikon lencana per tingkat prioritas pengumuman — dipakai di kartu
+// "Pengumuman Terbaru" Beranda (tampilan HP, lihat redesign di style.css).
+function announcementIconSvg(priority) {
+  const paths = {
+    urgent: '<path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>',
+    high: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+    low: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-5"/><path d="M12 8h.01"/>'
+  };
+  const d = paths[priority] || '<path d="M3 11l18-5v12L3 14v-3z"/>'; // default: normal (megafon)
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+}
+
 async function loadBeranda() {
   const userId = state.user.id;
 
@@ -1301,12 +1572,15 @@ async function loadBeranda() {
       `;
     } else {
       container.innerHTML = announcements.map(a => `
-        <div class="card-item priority-${a.priority}">
-          <div class="card-item-header">
-            <div class="card-item-title">${escapeHtml(a.title)}</div>
-            <span class="card-item-meta">${formatDate(a.created_at)}</span>
+        <div class="card-item announcement-card priority-${a.priority}">
+          <div class="announcement-icon-badge">${announcementIconSvg(a.priority)}</div>
+          <div class="announcement-card-content">
+            <div class="card-item-header">
+              <div class="card-item-title">${escapeHtml(a.title)}</div>
+              <span class="card-item-meta">${formatDate(a.created_at)}</span>
+            </div>
+            <div class="card-item-body">${escapeHtml(a.content || '')}</div>
           </div>
-          <div class="card-item-body">${escapeHtml(a.content || '')}</div>
         </div>
       `).join('');
     }
@@ -1327,13 +1601,15 @@ async function loadProfil() {
   
   $('#profile-fullname').value = data.full_name || '';
   $('#profile-phone').value = data.phone || '';
-  $('#profile-address').value = data.address || '';
+  $('#profile-birthplace').value = data.birth_place || '';
   $('#profile-birth').value = data.birth_date || '';
   $('#profile-gender').value = data.gender || '';
   $('#profile-education').value = data.education || '';
-  $('#profile-job').value = data.job_interest || '';
   $('#profile-marital').value = data.marital_status || '';
   $('#profile-religion').value = data.religion || '';
+  $('#profile-address').value = data.address || '';
+  $('#profile-province').value = data.province || '';
+  $('#profile-city').value = data.city || '';
   
   if (draft) {
     toast('info', 'Draft Ditemukan', 'Data terakhir yang belum disimpan telah dimuat');
@@ -1345,13 +1621,15 @@ $('#form-profile').addEventListener('input', (e) => {
   const data = {
     full_name: $('#profile-fullname').value,
     phone: $('#profile-phone').value,
-    address: $('#profile-address').value,
+    birth_place: $('#profile-birthplace').value,
     birth_date: $('#profile-birth').value,
     gender: $('#profile-gender').value,
     education: $('#profile-education').value,
-    job_interest: $('#profile-job').value,
     marital_status: $('#profile-marital').value,
-    religion: $('#profile-religion').value
+    religion: $('#profile-religion').value,
+    address: $('#profile-address').value,
+    province: $('#profile-province').value,
+    city: $('#profile-city').value
   };
   autoSaveForm('profile', data);
 });
@@ -1367,13 +1645,15 @@ $('#form-profile').addEventListener('submit', async (e) => {
     id: state.user.id,
     full_name: $('#profile-fullname').value.trim(),
     phone: $('#profile-phone').value.trim(),
-    address: $('#profile-address').value.trim(),
+    birth_place: $('#profile-birthplace').value.trim(),
     birth_date: $('#profile-birth').value || null,
     gender: $('#profile-gender').value || null,
     education: $('#profile-education').value || null,
-    job_interest: $('#profile-job').value.trim(),
     marital_status: $('#profile-marital').value || null,
     religion: $('#profile-religion').value || null,
+    address: $('#profile-address').value.trim(),
+    province: $('#profile-province').value.trim(),
+    city: $('#profile-city').value.trim(),
     updated_at: new Date().toISOString()
   };
 
@@ -1438,7 +1718,7 @@ $('#avatar-input').addEventListener('change', async (e) => {
     }
 
     state.profile.avatar_url = avatarUrl;
-    ['#sidebar-avatar', '#profile-avatar-img'].forEach(sel => {
+    ['#sidebar-avatar', '#profile-avatar-img', '#mobile-profile-avatar-img'].forEach(sel => {
       const img = $(sel);
       if (img) img.src = avatarUrl;
     });
@@ -1681,11 +1961,14 @@ function closeAdminChatChannel() {
 }
 
 $('#preview-close').addEventListener('click', closePreviewModal);
+$('#kolektif-close').addEventListener('click', closeKolektifModal);
 $$('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', (e) => {
     if (e.target.classList.contains('modal-overlay')) {
       if (e.target.closest('#preview-modal')) {
         closePreviewModal();
+      } else if (e.target.closest('#kolektif-modal')) {
+        closeKolektifModal();
       } else {
         hide($('#preview-modal'));
         state.adminDetail.previewReturnsToDetail = false;
@@ -1696,6 +1979,122 @@ $$('.modal-overlay').forEach(overlay => {
     }
   });
 });
+
+window.openKolektifModal = function(userId, fullName) {
+  state.kolektif.activeUserId = userId;
+  if (!state.kolektif.items[userId]) {
+    state.kolektif.items[userId] = [{ name: 'Visa', amount: '' }];
+  }
+  $('#kolektif-title').textContent = `Dokumen Kolektif — ${fullName}`;
+  renderKolektifBody();
+  show($('#kolektif-modal'));
+};
+
+function closeKolektifModal() {
+  hide($('#kolektif-modal'));
+  state.kolektif.activeUserId = null;
+}
+
+// Format angka mentah jadi "1.000.000" (pemisah ribuan ala Indonesia) supaya
+// enak dibaca sambil tetap gampang diketik ulang (bukan format mata uang penuh).
+function formatRibuan(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (!digits) return '';
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function renderKolektifBody() {
+  const userId = state.kolektif.activeUserId;
+  const items = state.kolektif.items[userId] || [];
+  const total = items.reduce((sum, it) => sum + (parseInt(String(it.amount).replace(/\D/g, ''), 10) || 0), 0);
+
+  $('#kolektif-body').innerHTML = `
+    <div class="kolektif-list">
+      ${items.length === 0 ? '<p class="kolektif-empty">Belum ada item. Klik tombol di bawah untuk menambahkan.</p>' : ''}
+      ${items.map((it, idx) => `
+        <div class="kolektif-item">
+          <div class="kolektif-item-num">${idx + 1}</div>
+          <div class="kolektif-item-name-wrap">
+            <input type="text" class="kolektif-item-name" value="${escapeHtml(it.name)}"
+              placeholder="Nama biaya (mis. Visa, Paspor)"
+              data-idx="${idx}" data-field="name"
+              oninput="updateKolektifItem(${idx}, 'name', this.value)"
+              onkeydown="handleKolektifKeydown(event, ${idx})">
+          </div>
+          <div class="kolektif-item-amount-wrap">
+            <span class="kolektif-item-prefix">Rp.</span>
+            <input type="text" inputmode="numeric" class="kolektif-item-amount" value="${formatRibuan(it.amount)}"
+              placeholder="0"
+              data-idx="${idx}" data-field="amount"
+              oninput="updateKolektifItem(${idx}, 'amount', this.value)"
+              onkeydown="handleKolektifKeydown(event, ${idx})">
+          </div>
+          <button class="kolektif-item-remove" title="Hapus item" onclick="removeKolektifItem(${idx})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="kolektif-total-row">
+      <strong>Total</strong>
+      <span class="kolektif-total-value">${formatCurrency(total)}</span>
+    </div>
+
+    <button class="kolektif-add-btn" onclick="addKolektifItem()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Tambah Biaya
+    </button>
+  `;
+}
+
+// Interaktivitas keyboard: tekan Enter di baris terakhir (field nama maupun
+// nominal) otomatis menambah baris baru dan langsung fokus ke nama barisnya,
+// jadi admin bisa isi berturut-turut tanpa harus klik tombol (+) tiap kali.
+window.handleKolektifKeydown = function(e, idx) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const userId = state.kolektif.activeUserId;
+  const items = state.kolektif.items[userId];
+  if (idx === items.length - 1) {
+    addKolektifItem();
+  } else {
+    const next = $(`.kolektif-item-name[data-idx="${idx + 1}"]`);
+    if (next) next.focus();
+  }
+};
+
+window.updateKolektifItem = function(idx, field, value) {
+  const userId = state.kolektif.activeUserId;
+  const items = state.kolektif.items[userId];
+  if (!items || !items[idx]) return;
+  items[idx][field] = value;
+  // Cukup update angka Total tanpa render ulang seluruh list — supaya fokus
+  // input (kursor sedang mengetik) tidak hilang tiap kali huruf/angka diketik.
+  if (field === 'amount') {
+    const total = items.reduce((sum, it) => sum + (parseInt(String(it.amount).replace(/\D/g, ''), 10) || 0), 0);
+    const totalEl = $('.kolektif-total-value');
+    totalEl.textContent = formatCurrency(total);
+    totalEl.classList.remove('pulse');
+    void totalEl.offsetWidth; // restart animasi CSS meski class-nya sama seperti sebelumnya
+    totalEl.classList.add('pulse');
+  }
+};
+
+window.addKolektifItem = function() {
+  const userId = state.kolektif.activeUserId;
+  state.kolektif.items[userId].push({ name: '', amount: '' });
+  renderKolektifBody();
+  const newIdx = state.kolektif.items[userId].length - 1;
+  const newInput = $(`.kolektif-item-name[data-idx="${newIdx}"]`);
+  if (newInput) newInput.focus();
+};
+
+window.removeKolektifItem = function(idx) {
+  const userId = state.kolektif.activeUserId;
+  state.kolektif.items[userId].splice(idx, 1);
+  renderKolektifBody();
+};
 
 window.openUploadModal = function(docType) {
   const modal = $('#preview-modal');
@@ -2651,7 +3050,7 @@ function applyAdminFilters() {
   });
 
   state.adminTable.filtered = filtered;
-  renderAdminPesertaList();
+  renderAdminTable();
 }
 
 // Badge kolom Status di tabel Kelola Peserta. Tahapan sekarang murni linear dan
@@ -2701,61 +3100,115 @@ function renderPesertaStatusBadge(p) {
   return `<span class="status-badge status-approved">Selesai</span>`;
 }
 
-function renderAdminPesertaList() {
-  const { filtered } = state.adminTable;
-  const container = $('#admin-peserta-list');
+function renderAdminTable() {
+  const { filtered, page, perPage } = state.adminTable;
+  const start = (page - 1) * perPage;
+  const end = start + perPage;
+  const pageData = filtered.slice(start, end);
 
+  // Accordion "Peserta" (menggantikan tabel di semua ukuran layar, lihat
+  // Qwen_css/js 2026-07-17). Container aslinya ditambahkan di index.html
+  // tepat di atas .table-container (tabel lama dibiarkan ada di DOM tapi
+  // disembunyikan lewat CSS supaya #admin-table-body / logic lain yang
+  // masih mereferensikannya tidak error).
+  const container = $('#admin-peserta-accordion-container');
   if (!container) return;
-  
-  if (filtered.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state glass" style="margin-top: 20px;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <h4>Tidak Ada Peserta</h4>
-        <p>Tidak ada peserta yang cocok dengan filter saat ini.</p>
-      </div>
-    `;
-  } else {
-    container.innerHTML = filtered.map((p, i) => {
-      const safeName = escapeHtml(p.full_name).replace(/'/g, "\\'");
-      const dataIncompleteTitle = p.isDataComplete ? 'Detail Peserta' : `Belum lengkap: ${escapeHtml([...p.missingProfileFields, ...p.missingDocTypes.map(t => 'Dok. ' + t)].join(', '))}`;
 
+  if (pageData.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        <h4>Tidak ada data peserta</h4>
+        <p>Coba ubah filter pencarian atau tahapan.</p>
+      </div>`;
+    renderPagination();
+    return;
+  }
+
+  container.innerHTML = `<div class="peserta-accordion-list">
+    ${pageData.map((p, idx) => {
+      const rowNumber = start + idx + 1;
+      const stepTitle = TIMELINE_STEPS.find(s => s.step === p.current_step)?.title || '-';
+      const safeName = escapeHtml(p.full_name).replace(/'/g, "\\'");
+
+      const missingList = [...p.missingProfileFields, ...p.missingDocTypes.map(t => 'Dok. ' + t)];
       return `
-        <div class="accordion-card glass">
-          <div class="accordion-header">
-            <div class="accordion-main-info">
-              <span class="accordion-index">${i + 1}.</span>
-              <strong class="accordion-name">${escapeHtml(p.full_name)}</strong>
+      <div class="peserta-accordion-group">
+        <div class="peserta-card-header">
+          <div class="peserta-header-left">
+            <div class="peserta-row-number">${rowNumber}</div>
+            <div class="peserta-avatar-icon peserta-avatar-icon-clickable" onclick="viewParticipantDetail('${p.id}')" title="${p.isDataComplete ? 'Detail Peserta' : `Belum lengkap: ${escapeHtml(missingList.join(', '))}`}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </div>
-            <div class="accordion-badges">
-              <span class="status-tahap status-tahap-${p.current_step}">${TIMELINE_STEPS.find(s => s.step === p.current_step)?.title || '-'}</span>
-              ${renderPesertaStatusBadge(p)}
-              <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            <div class="peserta-info">
+              <h3>${escapeHtml(p.full_name)}</h3>
+              <p>
+                <span class="peserta-tag-step peserta-tag-step-header">${stepTitle.toUpperCase()}</span>
+                ${renderPesertaStatusBadge(p)}
+              </p>
             </div>
           </div>
-          <div class="accordion-body">
-            <div class="accordion-details">
-              <p><strong>Email:</strong> ${escapeHtml(p.email)}</p>
-              <p><strong>Telepon:</strong> ${escapeHtml(p.phone || '-')}</p>
-            </div>
-            <div class="table-actions-cell" style="justify-content: flex-end;">
-              <div class="table-actions-group">
-                <button class="btn-action btn-icon-only ${p.isDataComplete ? '' : 'btn-action-incomplete'}" onclick="viewParticipantDetail('${p.id}')" aria-label="Detail" title="${dataIncompleteTitle}">
-                  <svg class="btn-icon-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                  <span class="btn-label">Detail</span>
-                </button>
-                <button class="btn-reject btn-icon-only" onclick="rejectParticipant('${p.id}', '${safeName}')" aria-label="Tolak" title="Tolak Peserta">
-                  <svg class="btn-icon-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                  <span class="btn-label">Tolak</span>
-                </button>
-              </div>
-            </div>
+          <div class="peserta-header-right">
+            <button class="btn-action-sm btn-kolektif-sm" onclick="openKolektifModal('${p.id}', '${safeName}')" title="Dokumen Kolektif">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7h-9m9 5h-9m9 5h-9M4 7h.01M4 12h.01M4 17h.01"/></svg>
+              Kolektif
+            </button>
+            <button class="btn-action-sm btn-reject-sm" onclick="rejectParticipant('${p.id}', '${safeName}')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              Tolak
+            </button>
           </div>
         </div>
-      `;
-    }).join('');
-  }
+      </div>`;
+    }).join('')}
+  </div>`;
+
+  renderPagination();
 }
+
+// Toggle buka/tutup satu grup accordion peserta.
+// FIX: sebelumnya hanya toggle class 'active', dan CSS men-transisi max-height
+// dari/ke angka flat 2000px (jauh lebih besar dari tinggi konten asli). Itu
+// menyebabkan saat MENUTUP kartu terasa "bergeser dulu baru menutup" — sebagian
+// besar durasi transisi habis di rentang 2000px -> tinggi asli yang tak
+// terlihat, baru setelah itu bagian yang kelihatan mengecil cepat/tersentak.
+// Sekarang tinggi dihitung dari scrollHeight aktual body accordion, jadi
+// transisi buka & tutup benar-benar mulai dari titik yang tepat.
+window.togglePesertaAccordion = function (headerEl) {
+  var body = headerEl.nextElementSibling;
+  if (!body || !body.classList.contains('peserta-card-body')) {
+    headerEl.classList.toggle('active');
+    return;
+  }
+
+  var isOpen = headerEl.classList.contains('active');
+
+  if (!isOpen) {
+    // Membuka: animasikan dari 0 ke tinggi konten sebenarnya.
+    headerEl.classList.add('active');
+    body.style.maxHeight = body.scrollHeight + 'px';
+
+    body.addEventListener('transitionend', function onOpenEnd(e) {
+      if (e.propertyName !== 'max-height') return;
+      body.removeEventListener('transitionend', onOpenEnd);
+      // Lepas batas tetap setelah animasi selesai, supaya body tetap
+      // menyesuaikan tinggi kalau kontennya berubah selagi terbuka
+      // (mis. status peserta di-update lewat tombol Detail/Tolak).
+      if (headerEl.classList.contains('active')) body.style.maxHeight = 'none';
+    });
+  } else {
+    // Menutup: kunci dulu ke tinggi aktualnya (bukan 'none' atau nilai flat)
+    // supaya browser punya titik awal transisi yang benar, baru di frame
+    // berikutnya turunkan ke 0 — inilah yang menghilangkan efek "lompat/geser".
+    body.style.maxHeight = body.scrollHeight + 'px';
+    // Paksa reflow supaya nilai di atas benar-benar "tercatat" oleh browser
+    // sebelum diubah lagi, kalau tidak browser akan menggabungkan kedua
+    // perubahan style ini jadi satu (tanpa transisi sama sekali).
+    void body.offsetHeight;
+    headerEl.classList.remove('active');
+    body.style.maxHeight = '0px';
+  }
+};
 
 // Majukan peserta SATU tahap (dipanggil dari tombol "Lanjut ke ..." di kolom
 // Status pada tabel Kelola Peserta — lihat NEXT_STAGE_BUTTON di
@@ -3533,6 +3986,62 @@ window.goToAdminChat = function (userId, fullName, email) {
   setTimeout(() => selectAdminChatConversation(userId), 250);
 };
 
+// FIX: pagination sengaja disembunyikan total selama jumlah peserta (hasil
+// filter) masih sedikit -- belum ada gunanya dipaginasi. Baru muncul begitu
+// datanya sudah lebih dari PAGINATION_ACTIVATION_THRESHOLD, dan saat itu juga
+// muncul dropdown untuk memilih jumlah baris per halaman (10/20/30/40/50).
+const PAGINATION_ACTIVATION_THRESHOLD = 10;
+const PAGINATION_PER_PAGE_OPTIONS = [10, 20, 30, 40, 50];
+
+function renderPagination() {
+  const { filtered, page, perPage } = state.adminTable;
+  const container = $('#admin-pagination');
+
+  if (filtered.length <= PAGINATION_ACTIVATION_THRESHOLD) {
+    container.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+  container.style.display = '';
+
+  const totalPages = Math.ceil(filtered.length / perPage);
+  const start = (page - 1) * perPage + 1;
+  const end = Math.min(page * perPage, filtered.length);
+
+  container.innerHTML = `
+    <div class="pagination-perpage">
+      <label for="admin-per-page">Tampilkan</label>
+      <select id="admin-per-page" onchange="changePerPage(this.value)">
+        ${PAGINATION_PER_PAGE_OPTIONS.map(n => `<option value="${n}" ${n === perPage ? 'selected' : ''}>${n}</option>`).join('')}
+      </select>
+    </div>
+    <div class="pagination-info">Menampilkan ${start}-${end} dari ${filtered.length} peserta</div>
+    <div class="pagination-controls">
+      <button ${page === 1 ? 'disabled' : ''} onclick="changePage(${page - 1})">← Prev</button>
+      ${Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+        let pageNum;
+        if (totalPages <= 5) pageNum = i + 1;
+        else if (page <= 3) pageNum = i + 1;
+        else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
+        else pageNum = page - 2 + i;
+        return `<button class="${pageNum === page ? 'active' : ''}" onclick="changePage(${pageNum})">${pageNum}</button>`;
+      }).join('')}
+      <button ${page === totalPages ? 'disabled' : ''} onclick="changePage(${page + 1})">Next →</button>
+    </div>
+  `;
+}
+
+window.changePerPage = function(value) {
+  state.adminTable.perPage = parseInt(value, 10) || 10;
+  state.adminTable.page = 1;
+  renderAdminTable();
+};
+
+window.changePage = function(page) {
+  state.adminTable.page = page;
+  renderAdminTable();
+};
+
 $('#admin-search').addEventListener('input', (e) => {
   state.adminTable.search = e.target.value;
   state.adminTable.page = 1;
@@ -3788,13 +4297,16 @@ window.viewParticipantDetail = async function(userId) {
     const initial = (profile.full_name || '?').charAt(0).toUpperCase();
     const fields = [
       { icon: 'phone', tone: 'blue', label: 'Telepon', value: escapeHtml(profile.phone || '-') },
+      { icon: 'map-pin', tone: 'blue', label: 'Tempat Lahir', value: escapeHtml(profile.birth_place || '-') },
       { icon: 'calendar', tone: 'blue', label: 'Tgl Lahir', value: profile.birth_date ? formatDate(profile.birth_date) : '-' },
       { icon: 'user', tone: 'blue', label: 'Jenis Kelamin', value: escapeHtml(profile.gender || '-') },
       { icon: 'book', tone: 'blue', label: 'Pendidikan', value: escapeHtml(profile.education || '-') },
       { icon: 'heart', tone: 'blue', label: 'Status Nikah', value: escapeHtml(profile.marital_status || '-') },
       { icon: 'star', tone: 'blue', label: 'Agama', value: escapeHtml(profile.religion || '-') },
       { icon: 'briefcase', tone: 'blue', label: 'Pekerjaan Diminati', value: escapeHtml(profile.job_interest || '-') },
-      { icon: 'flag', tone: 'blue', label: 'Tahapan', value: TIMELINE_STEPS.find(s => s.step === status?.current_step)?.title || '-' }
+      { icon: 'flag', tone: 'blue', label: 'Tahapan', value: TIMELINE_STEPS.find(s => s.step === status?.current_step)?.title || '-' },
+      { icon: 'map-pin', tone: 'blue', label: 'Provinsi', value: escapeHtml(profile.province || '-') },
+      { icon: 'map-pin', tone: 'blue', label: 'Kota', value: escapeHtml(profile.city || '-') }
     ];
 
     const fieldIcons = {
@@ -5334,6 +5846,28 @@ function playNotificationSound() {
 }
 
 /* ============================================ */
+/* SET PASSWORD BARU (khusus peserta baru daftar via Google) */
+/* ============================================ */
+// Akun yang dibuat lewat Google OAuth secara default TIDAK punya password
+// di Supabase Auth (cuma bisa login via Google). Supaya peserta juga bisa
+// login pakai form email/password yang sudah ada, mereka diarahkan sekali
+// ke halaman terpisah set-password.html untuk membuat password sendiri.
+//
+// Penanda "sudah pernah set password" DISIMPAN DI user_metadata
+// (password_set: true) — BUKAN cek session.user.identities — karena ada
+// bug resmi di Supabase Auth: updateUser({ password }) tidak menambahkan
+// provider 'email' ke identities/providers, jadi cek via identities akan
+// terus-menerus salah mendeteksi peserta yang sebetulnya sudah set password.
+// Referensi: github.com/supabase/auth/issues/2085
+function needsPasswordSetup(session) {
+  const user = session?.user;
+  if (!user) return false;
+  const provider = user.app_metadata?.provider; // 'google' | 'email' | dst.
+  const passwordAlreadySet = user.user_metadata?.password_set === true;
+  return provider === 'google' && !passwordAlreadySet;
+}
+
+/* ============================================ */
 /* AUTH STATE LISTENER */
 /* ============================================ */
 supabase.auth.onAuthStateChange(async (event, session) => {
@@ -5346,6 +5880,10 @@ supabase.auth.onAuthStateChange(async (event, session) => {
   }
   if (event === 'SIGNED_IN' && session) {
     if ($('#page-reset').classList.contains('active')) return;
+    if (needsPasswordSetup(session)) {
+      window.location.replace('set-password.html');
+      return;
+    }
     // hideSplash() TIDAK dipanggil di sini — initDashboard() yang akan
     // menutup splash setelah dashboard-wrapper benar-benar siap ditampilkan.
     initDashboard();
@@ -5371,6 +5909,8 @@ supabase.auth.onAuthStateChange(async (event, session) => {
       show($('#auth-wrapper'));
       showAuthPage('reset');
       hideSplash();
+    } else if (session && needsPasswordSetup(session)) {
+      window.location.replace('set-password.html');
     } else if (session) {
       // Splash ditutup di dalam initDashboard(), setelah dashboard-wrapper
       // (nama, avatar, menu/nav) selesai disiapkan — bukan di sini, supaya
@@ -5387,18 +5927,6 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     hideSplash();
   }
 })();
-
-// Event listener untuk accordion di halaman Kelola Peserta
-document.addEventListener('click', function(e) {
-  // Pastikan listener ini hanya bekerja untuk accordion di Kelola Peserta
-  const header = e.target.closest('#view-admin-peserta .accordion-header');
-  if (header) {
-    const card = header.closest('.accordion-card');
-    if (card) {
-      card.classList.toggle('open');
-    }
-  }
-});
 
 // Fallback hide splash after 7 seconds (diperpanjang dari 5s, tetap di atas MIN_SPLASH_DURATION)
 setTimeout(hideSplash, 7000);
