@@ -1047,7 +1047,7 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   gap: 12px;
   padding: 12px;
   border-radius: var(--radius);
-  background: var(--gold-500);
+  background: var(--gradient-focus);
   overflow: hidden;
 }
 
@@ -1058,8 +1058,9 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.user-detail h4 { font-size: 14px; font-weight: 600; color: var(--gray-800); }
-.user-detail p:not(.role-badge) { font-size: 10.5px; color: var(--gray-500); margin-top: 2px; }
+.user-detail h4 { font-size: 14px; font-weight: 600; color: var(--white); }
+.user-detail p:not(.role-badge) { font-size: 10.5px; color: rgba(255, 255, 255, 0.72); margin-top: 2px; }
+.user-info .role-badge { background: rgba(255, 255, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.28); }
 
 .sidebar-nav {
   display: flex;
@@ -1125,15 +1126,15 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 .nav-item:hover svg { background: var(--blue-50); }
 
 .nav-item.active {
-  background: var(--gold-500);
-  color: var(--navy);
-  font-weight: 600;
-  box-shadow: none;
-}
-.nav-item.active svg {
   background: var(--gradient-focus);
   color: var(--white);
+  font-weight: 600;
   box-shadow: var(--glow-focus);
+}
+.nav-item.active svg {
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--white);
+  box-shadow: none;
 }
 
 .nav-item.logout {
@@ -1188,14 +1189,14 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
 
 /* Tombol "Jadikan Admin" mengambang: sama persis dengan tombol Chat
    (.topbar-chat-btn di atas), hanya digeser ke kiri supaya sejajar dan
-   berdampingan di pojok kanan atas, dengan warna gold supaya beda fungsi
-   terlihat jelas sekilas dibanding tombol Chat (navy). */
+   berdampingan di pojok kanan atas. Disamakan jadi navy (var(--gradient-focus))
+   supaya konsisten dengan restyle sidebar/header navy lainnya. */
 .topbar-invite-admin-btn {
   right: 86px;
-  background: var(--gold);
-  color: var(--navy);
+  background: var(--gradient-focus);
+  color: var(--white);
 }
-.topbar-invite-admin-btn:hover { background: #b8912c; box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+.topbar-invite-admin-btn:hover { box-shadow: var(--glow-focus); transform: translateY(-1px); }
 
 .topbar-chat-badge {
   position: absolute;
@@ -1220,7 +1221,19 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   padding: 8px 32px 40px;
   min-height: 0;
   height: 100%;
-  overflow-y: auto;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Edge lama/IE */
+}
+
+/* Sembunyikan bar scrollbar #main-content secara visual (Safari/Chrome) —
+   ruang scrollbar tetap direservasi lewat overflow-y:scroll di atas, cuma
+   "batang" scrollbar-nya yang tidak digambar, supaya tidak lagi kelihatan
+   muncul/hilang sekilas saat pindah tab. Scroll tetap berfungsi normal
+   lewat mouse wheel/trackpad/keyboard. */
+.main-content::-webkit-scrollbar {
+  display: none;
 }
 
 .bottom-nav {
@@ -1467,7 +1480,7 @@ button:disabled { opacity: 0.7; cursor: not-allowed; }
   bottom: 3px;
   width: 5px;
   border-radius: 3px;
-  background: var(--gradient-sunrise);
+  background: var(--gradient-focus);
 }
 .view-header h1 { font-size: 24px; font-weight: 700; color: var(--gray-800); margin-bottom: 4px; }
 .view-header p { font-size: 13px; color: var(--gray-500); }
@@ -3956,6 +3969,30 @@ button.home-card { cursor: pointer; }
 
 .pagination-info { font-size: 13px; color: var(--gray-600); }
 
+.pagination-perpage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--gray-600);
+}
+
+.pagination-perpage label { font-weight: 500; white-space: nowrap; }
+
+.pagination-perpage select {
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1.5px solid var(--gray-200);
+  color: var(--gray-700);
+  background: var(--white);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.pagination-perpage select:hover { border-color: var(--blue-300); }
+
 .pagination-controls { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .pagination-controls button {
@@ -4685,3 +4722,404 @@ button.home-card { cursor: pointer; }
 .mt-4 { margin-top: 16px; }
 .mb-2 { margin-bottom: 8px; }
 .mb-4 { margin-bottom: 16px; }
+/* ============================================ */
+/* ACCORDION PESERTA (menggantikan tabel Kelola Peserta) */
+/* ============================================ */
+
+/* Sembunyikan tabel lama saja. CATATAN: JANGAN sembunyikan .table-pagination
+   di sini -- elemen #admin-pagination di index.html memakai class
+   "table-pagination" itu juga (id dan class ada di elemen yang sama), jadi
+   kalau ikut disembunyikan, tombol Prev/Next ikut hilang total. */
+#view-admin-peserta .table-container,
+#view-admin-peserta .modern-table {
+    display: none !important;
+}
+
+.peserta-accordion-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-bottom: 80px;
+}
+
+.peserta-card-header {
+    /* FIX: sebelumnya pakai gradient gold (dominan kuning) — disamakan dengan
+       var(--gradient-focus) navy seperti ikon-ikon lain di dashboard.
+       Accordion dinonaktifkan (kolom putih dihapus) -> header ini sekarang
+       adalah keseluruhan kartu, jadi radius penuh di semua sudut. */
+    background: var(--gradient-focus);
+    border-radius: var(--radius-lg);
+    padding: 14px 20px;
+    color: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--glow-focus);
+    transition: box-shadow 0.2s ease;
+    position: relative;
+}
+
+.peserta-card-header::before {
+    /* FIX: overflow:hidden di .peserta-card-header (dipakai supaya pattern
+       background ini rapi mengikuti sudut membulat) ikut memotong box-shadow
+       tombol Detail/Tolak yang jaraknya dekat ke tepi kanan header — glow-nya
+       jadi terlihat "terpotong" di kiri-kanan. Solusinya: radius dipindah ke
+       pattern-nya sendiri (border-radius: inherit) supaya .peserta-card-header
+       tidak perlu overflow:hidden lagi, dan shadow tombol bebas melebar normal. */
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    background-image: var(--me-pattern-image);
+    opacity: 0.08;
+    pointer-events: none;
+}
+
+.peserta-header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    z-index: 1;
+    min-width: 0;
+}
+
+.peserta-row-number {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: var(--white);
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    z-index: 1;
+}
+
+.peserta-avatar-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.16);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    flex-shrink: 0;
+}
+
+.peserta-avatar-icon svg { width: 20px; height: 20px; }
+
+.peserta-avatar-icon-clickable {
+    cursor: pointer;
+    transition: var(--transition);
+}
+.peserta-avatar-icon-clickable:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.08);
+}
+
+.peserta-info { min-width: 0; }
+
+.peserta-info h3 {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    color: var(--white);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.peserta-info p {
+    font-size: 12.5px;
+    font-weight: 600;
+    opacity: 0.85;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    color: var(--white);
+}
+
+.peserta-badge-status {
+    background: rgba(255, 255, 255, 0.16);
+    color: var(--white);
+    padding: 3px 11px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.peserta-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 1;
+    flex-shrink: 0;
+}
+
+.peserta-tag-step-header {
+    background: rgba(255, 255, 255, 0.18);
+    color: var(--white);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.peserta-tag-step {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--blue-100);
+    color: var(--blue-700);
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.btn-kolektif-sm {
+    background: linear-gradient(135deg, var(--gold-500), #8a6a1e);
+    color: var(--white);
+    box-shadow: 0 6px 16px rgba(138, 106, 30, 0.4);
+}
+.btn-kolektif-sm:hover { box-shadow: 0 10px 22px rgba(138, 106, 30, 0.5); }
+
+/* ============================================ */
+/* KOLEKTIF MODAL */
+/* ============================================ */
+#kolektif-modal .modal-header {
+    background: var(--gradient-focus);
+    border-bottom: none;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding: 20px 24px;
+}
+#kolektif-modal .modal-header h3 { color: var(--white); font-size: 19px; font-weight: 800; }
+#kolektif-modal .modal-header .icon-btn { color: var(--white); }
+#kolektif-modal .modal-header .icon-btn:hover { background: rgba(255, 255, 255, 0.15); }
+
+#kolektif-modal .modal-body {
+    background: var(--cream);
+    padding: 22px 24px 26px;
+}
+
+.kolektif-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.kolektif-empty {
+    text-align: center;
+    color: var(--gray-500);
+    font-size: 13.5px;
+    padding: 18px 0 22px;
+}
+
+/* Grid dengan kolom eksplisit (bukan flex) supaya lebar tiap kolom pasti
+   konsisten dan field nama tidak pernah "kolaps" jadi tak kelihatan. */
+.kolektif-item {
+    display: grid;
+    grid-template-columns: 26px 1fr 168px 34px;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: 12px;
+    transition: background 0.15s ease;
+    animation: kolektifItemIn 0.25s ease;
+}
+.kolektif-item:hover { background: rgba(10, 30, 51, 0.04); }
+
+@keyframes kolektifItemIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.kolektif-item-num {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--gradient-focus);
+    color: var(--white);
+    font-size: 11.5px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.kolektif-item-name-wrap {
+    background: var(--white);
+    border: 1.5px solid var(--gray-200);
+    border-radius: 12px;
+    padding: 10px 14px;
+    transition: var(--transition);
+    min-width: 0;
+}
+.kolektif-item-name-wrap:focus-within {
+    border-color: var(--blue-400);
+    box-shadow: 0 0 0 3px rgba(90, 150, 210, 0.15);
+}
+
+.kolektif-item-name {
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--gray-800);
+}
+.kolektif-item-name:focus { outline: none; }
+.kolektif-item-name::placeholder { color: var(--gray-400); font-weight: 500; }
+
+.kolektif-item-amount-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--white);
+    border: 1.5px solid var(--gray-200);
+    border-radius: 12px;
+    padding: 10px 14px;
+    transition: var(--transition);
+}
+.kolektif-item-amount-wrap:focus-within {
+    border-color: var(--gold-500);
+    box-shadow: 0 0 0 3px rgba(184, 145, 44, 0.15);
+}
+
+.kolektif-item-prefix { color: var(--gray-500); font-weight: 600; font-size: 13.5px; flex-shrink: 0; }
+
+.kolektif-item-amount {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--gray-800);
+    text-align: left;
+}
+.kolektif-item-amount:focus { outline: none; }
+.kolektif-item-amount::placeholder { color: var(--gray-400); font-weight: 500; }
+
+.kolektif-item-remove {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--gray-400);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+}
+.kolektif-item-remove svg { width: 15px; height: 15px; }
+.kolektif-item-remove:hover { background: rgba(220, 38, 38, 0.12); color: var(--true-red-500); transform: scale(1.08); }
+
+.kolektif-total-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 16px;
+    margin-top: 4px;
+    border-top: 2px solid var(--gray-200);
+}
+.kolektif-total-row strong { font-size: 18px; font-weight: 800; color: var(--gray-800); }
+.kolektif-total-value {
+    background: var(--gradient-focus);
+    color: var(--white);
+    border-radius: 12px;
+    padding: 9px 18px;
+    font-size: 16px;
+    font-weight: 800;
+    transition: transform 0.18s ease;
+}
+.kolektif-total-value.pulse { animation: kolektifTotalPulse 0.28s ease; }
+@keyframes kolektifTotalPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+    100% { transform: scale(1); }
+}
+
+.kolektif-add-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 18px;
+    padding: 11px;
+    border-radius: 999px;
+    border: 1.5px dashed var(--gray-300);
+    background: transparent;
+    color: var(--gray-600);
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+}
+.kolektif-add-btn svg { width: 17px; height: 17px; }
+.kolektif-add-btn:hover {
+    background: var(--gradient-focus);
+    border-style: solid;
+    border-color: transparent;
+    color: var(--white);
+    transform: translateY(-1px);
+    box-shadow: var(--glow-focus);
+}
+
+.btn-action-sm {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 22px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+
+.btn-action-sm svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}
+
+.btn-action-sm:hover {
+    transform: translateY(-2px);
+}
+
+.btn-action-sm:active {
+    transform: translateY(0);
+}
+
+.btn-reject-sm {
+    background: linear-gradient(135deg, var(--true-red-500), var(--true-red-600));
+    color: var(--white);
+    box-shadow: 0 6px 16px rgba(185, 28, 28, 0.45);
+}
+.btn-reject-sm:hover { box-shadow: 0 10px 22px rgba(185, 28, 28, 0.55); }
+
+@media (max-width: 640px) {
+    .peserta-card-header { padding: 16px; flex-wrap: wrap; row-gap: 10px; }
+    .peserta-header-right { width: 100%; justify-content: flex-end; }
+    .peserta-info h3 { font-size: 16px; }
+}
