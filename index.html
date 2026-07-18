@@ -848,8 +848,8 @@
             <div class="input-group"><label>Status Pernikahan</label><select id="profile-marital"><option value="">Pilih...</option><option>Belum Menikah</option><option>Menikah</option><option>Cerai</option></select></div>
             <div class="input-group"><label>Agama</label><select id="profile-religion"><option value="">Pilih...</option><option>Islam</option><option>Kristen</option><option>Katolik</option><option>Hindu</option><option>Buddha</option><option>Konghucu</option></select></div>
             <div class="input-group full"><label>Alamat</label><textarea id="profile-address" rows="2"></textarea></div>
-            <div class="input-group"><label>Provinsi</label><input type="text" id="profile-province" /></div>
-            <div class="input-group"><label>Kota</label><input type="text" id="profile-city" /></div>
+            <div class="input-group"><label>Provinsi</label><select id="profile-province"><option value="">Pilih Provinsi...</option></select></div>
+            <div class="input-group"><label>Kota</label><select id="profile-city" disabled><option value="">Pilih Provinsi dulu...</option></select></div>
           </div>
           <div class="form-actions">
             <span class="autosave-indicator" id="profile-autosave">✓ Tersimpan otomatis</span>
@@ -1263,7 +1263,8 @@
     </button>
   </div>
 
-  <script src="script.js?v=19" defer></script>
+  <script src="wilayah-indonesia.js?v=1" defer></script>
+  <script src="script.js?v=20" defer></script>
   <script src="custom-select.js?v=3" defer></script>
 </body>
 </html>
