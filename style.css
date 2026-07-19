@@ -4847,6 +4847,22 @@ button.home-card { cursor: pointer; }
     transform: scale(1.08);
 }
 
+/* Badge notifikasi bulat merah standar di pojok kanan-atas avatar peserta,
+   muncul kalau semua dokumen wajib (8/8) sudah diupload. Perlu
+   position:relative di parent supaya badge (position:absolute) nempel
+   presisi di sudutnya, bukan ikut alur normal flex. */
+.peserta-avatar-icon { position: relative; }
+.peserta-avatar-icon .peserta-docs-complete-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--true-red-500);
+    border: 2px solid var(--navy);
+}
+
 .peserta-info { min-width: 0; }
 
 .peserta-info h3 {
