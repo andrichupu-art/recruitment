@@ -3228,6 +3228,7 @@ function renderAdminTable() {
             <div class="peserta-row-number">${rowNumber}</div>
             <div class="peserta-avatar-icon peserta-avatar-icon-clickable" onclick="viewParticipantDetail('${p.id}')" title="${p.isDataComplete ? 'Detail Peserta' : `Belum lengkap: ${escapeHtml(missingList.join(', '))}`}">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              ${(p.uploadedDocs === p.totalDocs && p.approvedDocs < p.totalDocs) ? '<span class="peserta-docs-complete-badge" title="Dokumen lengkap ' + p.totalDocs + '/' + p.totalDocs + ', menunggu di-approve"></span>' : ''}
             </div>
             <div class="peserta-info">
               <h3>${escapeHtml(p.full_name)}</h3>
